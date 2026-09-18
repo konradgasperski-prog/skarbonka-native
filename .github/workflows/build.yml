@@ -64,7 +64,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
-
+        with :
+          grandle-version : 8.7
+          
       - name: Build debug APK
         working-directory: android
         run: gradle assembleDebug
