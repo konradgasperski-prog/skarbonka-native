@@ -51,3 +51,38 @@ skopiuj mi treść błędu z logów, a poprawię kod. Nie mam możliwości samod
 i przetestowania plików .app/.exe/.apk w tej rozmowie (mój "warsztat" to Linux bez macOS/Windows/Androida),
 więc realne budowanie i pierwsze uruchomienie zawsze będzie po Twojej stronie — ale poprawki kodu mogę
 robić stąd na bieżąco.
+
+## iOS (nowość)
+
+Doszedł folder `ios/` — to samo Stash, tym razem jako projekt Xcode (przez Capacitor).
+
+**WAŻNE — przeczytaj zanim zaczniesz:** instalacja na prawdziwym iPhonie wymaga **decyzji**:
+
+- **Za darmo, ale na 7 dni:** otwierasz projekt w Xcode na swoim Macu, podłączasz iPhone kablem,
+  logujesz się swoim zwykłym Apple ID (to za darmo) i klikasz Uruchom. Appka zainstaluje się i będzie
+  działać przez 7 dni — potem trzeba powtórzyć te same kroki (podłączyć kabel, kliknąć Uruchom).
+- **Płatne (99$/rok), ale trwałe:** konto Apple Developer Program pozwala instalować appkę bez
+  limitu czasowego, bez podłączania kabla za każdym razem, a docelowo też publikować w App Store.
+
+GitHub Actions **nie może** zainstalować appki na Twoim iPhonie automatycznie — potrafi tylko
+sprawdzić, że projekt się poprawnie kompiluje (buduje wersję na symulator, czyli wirtualny iPhone
+na ekranie Maca, nie na prawdziwy telefon). Artifact `skarbonka-ios-simulator` w zakładce Actions
+służy więc tylko do sprawdzenia, że nic się nie posypało — nie da się go zainstalować na telefonie.
+
+### Jak zainstalować na prawdziwym iPhonie (wersja darmowa, 7 dni)
+
+1. Na Macu zainstaluj **Xcode** za darmo z Mac App Store (duże pobieranie, ~15 GB, może chwilę zająć).
+2. Otwórz Terminal, wejdź do folderu projektu: `cd ~/Downloads/skarbonka-native/ios` (popraw ścieżkę
+   do miejsca, gdzie masz rozpakowany projekt).
+3. Zainstaluj zależności: `npm install` a potem `npx cap sync ios`.
+4. Wejdź do `cd App` i zainstaluj CocoaPods: `pod install` (jeśli brak polecenia `pod`,
+   zainstaluj najpierw przez `sudo gem install cocoapods`).
+5. Otwórz `App.xcworkspace` (nie `.xcodeproj`!) — dwuklik w Finderze, otworzy się Xcode.
+6. W Xcode: kliknij projekt "App" w drzewku po lewej → zakładka "Signing & Capabilities" →
+   w polu "Team" wybierz swoje Apple ID (jeśli go tam nie ma, kliknij "Add Account..." i zaloguj się
+   zwykłym Apple ID — bez płacenia).
+7. Podłącz iPhone kablem do Maca, na iPhonie zatwierdź "Zaufaj temu komputerowi".
+8. U góry Xcode wybierz swój iPhone jako cel (zamiast symulatora) i kliknij ▶️ (Uruchom).
+9. Na iPhonie: Ustawienia → Ogólne → VPN i zarządzanie urządzeniem → zaufaj swojemu Apple ID.
+
+Appka będzie działać 7 dni. Po tym czasie wystarczy powtórzyć kroki 7-8 (kabel + Uruchom w Xcode).
