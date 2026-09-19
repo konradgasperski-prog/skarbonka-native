@@ -52,7 +52,11 @@
     --expense: #e07068;
     --shadow: 0 1px 3px rgba(0,0,0,0.4);
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  button, a, .tab, .type-btn, .chart-type-btn, .panel-header, .currency-dd-option, .del-btn, .palette-swatch {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
   body {
     margin: 0;
     background: var(--bg);
@@ -301,10 +305,37 @@
     border-radius: 16px; box-shadow: var(--shadow), inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
     padding: 16px; transform: scale(0.85) translateY(-8px); opacity: 0; pointer-events: none;
     transform-origin: top right; transition: transform 0.22s cubic-bezier(.2,.9,.3,1.3), opacity 0.18s ease;
+    max-height: 80vh; overflow-y: auto;
   }
   .account-popover.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: auto; }
   .account-popover input { margin-bottom: 8px; }
   .account-popover .row { margin-top: 4px; }
+  #appSettingsPopover.left-anchor { width: 290px; }
+
+  .style-preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+  .style-preset-card {
+    width: 62px; cursor: pointer; border-radius: 12px; padding: 4px; text-align: center;
+    border: 2px solid transparent; transition: transform 0.15s ease, border-color 0.15s ease;
+  }
+  .style-preset-card:active { transform: scale(0.94); }
+  .style-preset-card.active { border-color: var(--accent); }
+  .style-preset-swatch {
+    width: 100%; height: 38px; border-radius: 8px; position: relative; overflow: hidden;
+    border: 1px solid color-mix(in srgb, white 20%, var(--border));
+  }
+  .style-preset-swatch .glass-layer {
+    position: absolute; inset: 4px; border-radius: 6px;
+    background: color-mix(in srgb, white 30%, transparent);
+    border: 1px solid color-mix(in srgb, white 40%, transparent);
+  }
+  .style-preset-label { font-size: 9.5px; color: var(--text-dim); margin-top: 3px; display: block; }
+
+  .custom-color-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .custom-color-row input[type="color"] {
+    width: 30px; height: 30px; padding: 0; border-radius: 8px; margin-bottom: 0;
+    border: 1px solid var(--border); cursor: pointer; background: none;
+  }
+  .custom-color-row button { width: auto; margin-bottom: 0; padding: 6px 10px; font-size: 12px; flex-shrink: 0; }
   .account-popover.left-anchor { left: 0; right: auto; transform-origin: top left; width: 280px; }
 
   /* --- Panel hide/show/reorder animations --- */
@@ -318,13 +349,34 @@
 
   /* --- Custom currency dropdown --- */
   .currency-dd-wrap { position: relative; }
+  .currency-picker {
+    position: relative; width: 76px; height: 32px; border-radius: 10px; overflow: hidden;
+    cursor: pointer; user-select: none; touch-action: pan-y; flex-shrink: 0;
+    background: color-mix(in srgb, var(--card) var(--glass-opacity), transparent);
+    border: 1px solid color-mix(in srgb, white 26%, var(--border));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, white 30%, transparent);
+    backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+    transition: transform 0.15s ease;
+  }
+  .currency-picker:active { transform: scale(0.95); }
+  .currency-picker-window { position: relative; width: 100%; height: 100%; }
+  .currency-picker-label {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--text);
+    transition: transform 0.28s cubic-bezier(.2,.85,.25,1.15), opacity 0.28s ease;
+  }
+  .currency-picker-label.slide-out-up { transform: translateY(-130%); opacity: 0; }
+  .currency-picker-label.slide-out-down { transform: translateY(130%); opacity: 0; }
+  .currency-picker-label.slide-in-from-bottom { transform: translateY(130%); opacity: 0; }
+  .currency-picker-label.slide-in-from-top { transform: translateY(-130%); opacity: 0; }
   .currency-dd-btn {
     width: auto; padding: 5px 10px; margin-bottom: 0; font-size: 12px; border-radius: 8px;
     cursor: pointer; display: flex; align-items: center; gap: 4px;
   }
   .currency-dropdown {
-    position: absolute; top: 36px; right: 0; min-width: 90px; z-index: 40;
-    background: color-mix(in srgb, var(--card) 88%, transparent);
+    position: fixed; min-width: 100px; max-width: calc(100vw - 24px); z-index: 60;
+    background: color-mix(in srgb, var(--card) 96%, transparent);
     border: 1px solid color-mix(in srgb, white 28%, var(--border));
     border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
     transform: scale(0.85) translateY(-6px); opacity: 0; pointer-events: none;
@@ -396,9 +448,23 @@
     <button class="theme-toggle" id="appSettingsToggle" title="Wygląd">⚙️</button>
     <div class="account-popover left-anchor" id="appSettingsPopover">
       <div class="section-title">Wygląd</div>
-      <div class="balance-sub">Tło — zestaw kolorów</div>
+
+      <div class="balance-sub">Style — szybki wybór</div>
+      <div class="style-preset-row" id="stylePresetRow"></div>
+      <button class="secondary" id="autoLightDarkBtn" style="width:100%; margin-top:8px;">🌓 Automatycznie jasny/ciemny (wg systemu)</button>
+
+      <div class="balance-sub" style="margin-top:12px;">Tło — zestaw kolorów</div>
       <div class="palette-row" id="paletteRow"></div>
       <div class="balance-sub" style="margin-top:4px;">⚙️ = kolor systemu (telefonu/komputera), gdy dostępny</div>
+
+      <div class="balance-sub" style="margin-top:12px;">Własne kolory tła</div>
+      <div class="custom-color-row">
+        <input type="color" id="customC1" value="#2f6f4f" title="Kolor 1">
+        <input type="color" id="customC2" value="#4fa8d8" title="Kolor 2">
+        <input type="color" id="customC3" value="#e0a458" title="Kolor 3">
+        <button class="secondary" id="applyCustomPalette">Użyj</button>
+      </div>
+
       <div class="glass-slider-row">
         <div class="balance-sub">Intensywność tła</div>
         <input type="range" id="bgOpacitySlider" min="10" max="60" step="5">
@@ -448,9 +514,10 @@
 <div class="card balance-card">
   <div class="balance-header-row">
     <div class="balance-label">Saldo całkowite <button class="balance-eye" id="balanceEyeBtn" title="Ukryj/pokaż saldo">👁️</button></div>
-    <div class="currency-dd-wrap">
-      <button class="secondary currency-dd-btn" id="currencyDdBtn"><span id="currencyDdLabel">EUR</span> ▾</button>
-      <div class="currency-dropdown" id="currencyDropdown"></div>
+    <div class="currency-picker" id="currencyPicker" title="Stuknij lub przesuń, aby zmienić walutę">
+      <div class="currency-picker-window" id="currencyPickerWindow">
+        <span class="currency-picker-label" id="currencyPickerLabel0">EUR</span>
+      </div>
     </div>
   </div>
   <div class="balance-value" id="balanceMain">0,00 €</div>
@@ -645,10 +712,11 @@ function loadState() {
       if (!parsed.bgAnimSpeed) parsed.bgAnimSpeed = 'normal';
       if (typeof parsed.txListCollapsed !== 'boolean') parsed.txListCollapsed = false;
       if (typeof parsed.debtListCollapsed !== 'boolean') parsed.debtListCollapsed = false;
+      if (!parsed.customPalette) parsed.customPalette = null;
       return parsed;
     }
   } catch (e) {}
-  return { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: 'EUR', theme: 'auto', panelOrder: { add: 1, stats: 2, debts: 3, settings: 4 }, panelHidden: { add: false, debts: false, stats: false, settings: false }, balanceHidden: false, bgTheme: 'forest', glassIntensity: 70, bgBlobOpacity: 35, bgAnimSpeed: 'normal', txListCollapsed: false, debtListCollapsed: false };
+  return { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: 'EUR', theme: 'auto', panelOrder: { add: 1, stats: 2, debts: 3, settings: 4 }, panelHidden: { add: false, debts: false, stats: false, settings: false }, balanceHidden: false, bgTheme: 'forest', glassIntensity: 70, bgBlobOpacity: 35, bgAnimSpeed: 'normal', txListCollapsed: false, debtListCollapsed: false, customPalette: null };
 }
 function saveState() {
   try { localStorage.setItem('portfel_state', JSON.stringify(state)); } catch (e) {}
@@ -713,6 +781,7 @@ function applyTheme() {
   else html.removeAttribute('data-theme');
   const icons = { auto: '🌓', light: '☀️', dark: '🌙' };
   document.getElementById('themeToggle').textContent = icons[state.theme] || '🌓';
+  if (document.getElementById('stylePresetRow')) renderStylePresetRow();
 }
 
 function applyPanelOrder() {
@@ -916,21 +985,38 @@ function populateCurrencySelect() {
   sel.innerHTML = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join('');
   const debtSel = document.getElementById('debtCurrency');
   debtSel.innerHTML = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join('');
-  const ddList = document.getElementById('currencyDropdown');
-  ddList.innerHTML = CURRENCIES.map(c =>
-    '<div class="currency-dd-option' + (c === (state.displayCurrency || 'EUR') ? ' active' : '') + '" data-cur="' + c + '">' + c + '</div>'
-  ).join('');
-  document.getElementById('currencyDdLabel').textContent = state.displayCurrency || 'EUR';
-  ddList.querySelectorAll('.currency-dd-option').forEach(opt => {
-    opt.addEventListener('click', (e) => {
-      e.stopPropagation();
-      state.displayCurrency = opt.dataset.cur;
-      saveState();
-      document.getElementById('currencyDropdown').classList.remove('open');
-      renderAll();
-      populateCurrencySelect();
+  const label = document.querySelector('#currencyPickerWindow .currency-picker-label');
+  if (label) label.textContent = state.displayCurrency || 'EUR';
+}
+
+let currencyLabelSeq = 1;
+function cycleCurrency(direction) {
+  const list = CURRENCIES;
+  const cur = state.displayCurrency || 'EUR';
+  let idx = list.indexOf(cur);
+  if (idx === -1) idx = 0;
+  idx = (idx + direction + list.length) % list.length;
+  const next = list[idx];
+
+  const win = document.getElementById('currencyPickerWindow');
+  const oldLabel = win.querySelector('.currency-picker-label');
+  const newLabel = document.createElement('span');
+  newLabel.id = 'currencyPickerLabel' + (++currencyLabelSeq);
+  newLabel.className = 'currency-picker-label ' + (direction > 0 ? 'slide-in-from-bottom' : 'slide-in-from-top');
+  newLabel.textContent = next;
+  win.appendChild(newLabel);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (oldLabel) oldLabel.classList.add(direction > 0 ? 'slide-out-up' : 'slide-out-down');
+      newLabel.classList.remove('slide-in-from-bottom', 'slide-in-from-top');
     });
   });
+  setTimeout(() => { if (oldLabel) oldLabel.remove(); }, 320);
+
+  state.displayCurrency = next;
+  saveState();
+  renderAll();
 }
 
 function daysUntil(dateStr) {
@@ -1409,13 +1495,23 @@ document.getElementById('themeToggle').addEventListener('click', (e) => {
   e.currentTarget.classList.add('spin');
 });
 
-document.getElementById('currencyDdBtn').addEventListener('click', (e) => {
-  e.stopPropagation();
-  document.getElementById('currencyDropdown').classList.toggle('open');
+let currencyTouchStartY = null;
+let currencyDidSwipe = false;
+const currencyPickerEl = document.getElementById('currencyPicker');
+currencyPickerEl.addEventListener('click', () => {
+  if (currencyDidSwipe) { currencyDidSwipe = false; return; }
+  cycleCurrency(1);
 });
-document.getElementById('currencyDropdown').addEventListener('click', (e) => e.stopPropagation());
-document.addEventListener('click', () => {
-  document.getElementById('currencyDropdown').classList.remove('open');
+currencyPickerEl.addEventListener('touchstart', (e) => {
+  currencyTouchStartY = e.touches[0].clientY;
+}, { passive: true });
+currencyPickerEl.addEventListener('touchend', (e) => {
+  if (currencyTouchStartY === null) return;
+  const dy = e.changedTouches[0].clientY - currencyTouchStartY;
+  currencyTouchStartY = null;
+  if (Math.abs(dy) < 18) return;
+  currencyDidSwipe = true;
+  if (dy < 0) cycleCurrency(1); else cycleCurrency(-1);
 });
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -1573,6 +1669,23 @@ document.querySelectorAll('#bgSpeedTabs .chart-type-btn').forEach(btn => {
     saveState();
     applyBgAnimSpeed();
   });
+});
+
+document.getElementById('autoLightDarkBtn').addEventListener('click', () => {
+  state.theme = 'auto';
+  saveState();
+  applyTheme();
+});
+
+document.getElementById('applyCustomPalette').addEventListener('click', () => {
+  const c1 = document.getElementById('customC1').value;
+  const c2 = document.getElementById('customC2').value;
+  const c3 = document.getElementById('customC3').value;
+  state.customPalette = { c1, c2, c3 };
+  state.bgTheme = 'custom';
+  saveState();
+  applyBgTheme();
+  renderPaletteRow();
 });
 
 function toggleListCollapse(kind) {
@@ -1831,6 +1944,8 @@ function applyBgTheme() {
   let p;
   if (state.bgTheme === 'auto') {
     p = detectedAccentColor ? deriveTriadFromAccent(detectedAccentColor) : BG_PALETTES.forest;
+  } else if (state.bgTheme === 'custom' && state.customPalette) {
+    p = state.customPalette;
   } else {
     p = BG_PALETTES[state.bgTheme] || BG_PALETTES.forest;
   }
@@ -1849,6 +1964,7 @@ function applyGlassIntensity() {
   const label = document.getElementById('glassSliderVal');
   if (slider) slider.value = v;
   if (label) label.textContent = v + '%';
+  if (document.getElementById('stylePresetRow')) renderStylePresetRow();
 }
 
 function applyBgBlobOpacity() {
@@ -1900,6 +2016,52 @@ function playFlipAnimation(beforeRects) {
     requestAnimationFrame(() => {
       p.style.transition = 'transform 0.38s cubic-bezier(.22,.85,.25,1)';
       p.style.transform = '';
+    });
+  });
+}
+
+const STYLE_PRESETS = {
+  light:     { name: 'Jasny', theme: 'light', glass: 15 },
+  dark:      { name: 'Ciemny', theme: 'dark', glass: 15 },
+  glass:     { name: 'Liquid Glass', theme: 'auto', glass: 92 },
+  darkglass: { name: 'Ciemne szk\u0142o', theme: 'dark', glass: 85 },
+  matte:     { name: 'Matowy', theme: 'auto', glass: 0 },
+  vivid:     { name: 'Ostry', theme: 'light', glass: 55 }
+};
+
+function currentStylePresetKey() {
+  for (const key of Object.keys(STYLE_PRESETS)) {
+    const p = STYLE_PRESETS[key];
+    if (p.theme === state.theme && Math.abs(p.glass - (state.glassIntensity || 0)) < 3) return key;
+  }
+  return null;
+}
+
+function renderStylePresetRow() {
+  const row = document.getElementById('stylePresetRow');
+  const activeKey = currentStylePresetKey();
+  row.innerHTML = Object.keys(STYLE_PRESETS).map(key => {
+    const p = STYLE_PRESETS[key];
+    const isDark = p.theme === 'dark';
+    const cardBg = isDark ? '#1c1e20' : '#ffffff';
+    const glassOpacity = 0.15 + (p.glass / 100) * 0.55;
+    const active = key === activeKey ? ' active' : '';
+    return '<div class="style-preset-card' + active + '" data-preset="' + key + '">' +
+      '<div class="style-preset-swatch" style="background: linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3))">' +
+        '<div class="glass-layer" style="background: color-mix(in srgb, ' + cardBg + ' ' + Math.round(glassOpacity*100) + '%, transparent); backdrop-filter: blur(' + (p.glass/100*6).toFixed(1) + 'px);"></div>' +
+      '</div>' +
+      '<span class="style-preset-label">' + p.name + '</span>' +
+    '</div>';
+  }).join('');
+  row.querySelectorAll('.style-preset-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const p = STYLE_PRESETS[card.dataset.preset];
+      state.theme = p.theme;
+      state.glassIntensity = p.glass;
+      saveState();
+      applyTheme();
+      applyGlassIntensity();
+      renderStylePresetRow();
     });
   });
 }
@@ -1986,6 +2148,7 @@ applyPanelOrder();
 applyPanelVisibility();
 renderHiddenBar();
 renderPaletteRow();
+renderStylePresetRow();
 wireDragAndDrop();
 wirePanelHideButtons();
 wireBackgroundParallax();
