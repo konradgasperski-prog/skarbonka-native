@@ -1,0 +1,9 @@
+{
+	"appId": "com.skarbonka.app",
+	"appName": "Stash",
+	"webDir": "www",
+	"server": {
+		"androidScheme": "https"
+	},
+	"packageClassList": []
+}
