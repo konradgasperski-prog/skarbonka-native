@@ -48,7 +48,7 @@ jobs:
             desktop/src-tauri/target/release/bundle/msi/*.msi
             desktop/src-tauri/target/release/bundle/nsis/*.exe
 
-  build-android:
+   build-android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,7 +59,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-            - name: Set up Gradle
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: 8.6
@@ -73,8 +73,8 @@ jobs:
         with:
           name: skarbonka-android
           path: android/app/build/outputs/apk/debug/*.apk
-
-  build-ios:
+          
+   build-ios:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
