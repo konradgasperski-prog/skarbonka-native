@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Stash</string>
+    <string name="widget_label">Stash balance</string>
+</resources>
