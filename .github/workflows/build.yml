@@ -59,14 +59,12 @@ jobs:
           distribution: temurin
           java-version: 17
 
-
-        
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
-        with :
-          grandle-version : 8.6
-          
+
       - name: Build debug APK
         working-directory: android
         run: gradle assembleDebug
@@ -76,3 +74,42 @@ jobs:
         with:
           name: skarbonka-android
           path: android/app/build/outputs/apk/debug/*.apk
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install npm dependencies
+        working-directory: ios
+        run: npm install
+
+      - name: Sync Capacitor iOS project
+        working-directory: ios
+        run: npx cap sync ios
+
+      - name: Install CocoaPods dependencies
+        working-directory: ios/App
+        run: pod install
+
+      - name: Build unsigned .app for the iOS Simulator
+        working-directory: ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace -scheme App \
+            -sdk iphonesimulator -configuration Debug \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO build
+
+      - name: Zip the built app
+        working-directory: ios/App/build/Build/Products/Debug-iphonesimulator
+        run: zip -r App-simulator.zip App.app
+
+      - name: Upload iOS Simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: skarbonka-ios-simulator
+          path: ios/App/build/Build/Products/Debug-iphonesimulator/App-simulator.zip
