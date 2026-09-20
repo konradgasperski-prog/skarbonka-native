@@ -6,7 +6,7 @@
     "distDir": "../dist"
   },
   "package": {
-    "productName": "Skarbonka",
+    "productName": "Stash",
     "version": "1.0.0"
   },
   "tauri": {
