@@ -281,6 +281,7 @@
   @keyframes eyePop { 0% { transform: scale(1); } 45% { transform: scale(0.6) rotate(-8deg); } 100% { transform: scale(1) rotate(0); } }
   .balance-value, #balanceOther { transition: filter 0.7s ease; }
   .balance-value.masked, .balance-sub.masked { filter: blur(10px); user-select: none; }
+  body.balance-masked .tx-amount, body.balance-masked .debt-amount { filter: blur(6px); user-select: none; transition: filter 0.7s ease; }
   .balance-value { transition: filter 0.7s ease; cursor: pointer; }
 
   /* --- Read-only rate rows --- */
@@ -452,7 +453,7 @@
       <div class="palette-row" id="paletteRow"></div>
       <div class="balance-sub" style="margin-top:4px;">⚙️ = <span data-i18n="settings.systemColorNote">kolor systemu (telefonu/komputera), gdy dostępny</span></div>
 
-      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.appIconAndroid">Ikona aplikacji (Android)</div>
+      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.appIconAndroid" id="iconModeSectionTitle">Ikona aplikacji (Android)</div>
       <div class="icon-mode-row" id="iconModeRow">
         <div class="icon-mode-opt" data-icon-mode="auto"><div class="icon-mode-thumb icon-mode-auto">🌓</div><span data-i18n="iconMode.auto">Auto</span></div>
         <div class="icon-mode-opt" data-icon-mode="light"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.light">Jasna</span></div>
@@ -546,7 +547,7 @@
 <div id="hiddenPanelsBar" class="hidden-panels-bar"></div>
 <div id="panelsContainer">
 <div id="tab-add" class="panel" data-panel="add" style="order:1">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.add">Dodaj</span><button class="panel-hide-btn" data-hide="add" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
+  <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.add">Dodaj</span><button class="panel-hide-btn" data-hide="add" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
   <div class="card">
     <div class="type-toggle">
       <div class="type-btn active income" id="btnIncome">➕ <span data-i18n="type.income">Przychód</span></div>
@@ -577,7 +578,7 @@
 </div>
 
 <div id="tab-debts" class="panel hidden" data-panel="debts" style="order:3">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.debts">Długi</span><button class="panel-hide-btn" data-hide="debts" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
+  <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.debts">Długi</span><button class="panel-hide-btn" data-hide="debts" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
   <div class="card">
     <div class="stats-grid">
       <div class="stat-box">
@@ -625,7 +626,7 @@
 </div>
 
 <div id="tab-stats" class="panel hidden" data-panel="stats" style="order:2">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.stats">Statystyki</span><button class="panel-hide-btn" data-hide="stats" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
+  <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.stats">Statystyki</span><button class="panel-hide-btn" data-hide="stats" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
   <div class="card">
     <div class="stats-grid">
       <div class="stat-box">
@@ -667,7 +668,7 @@
 </div>
 
 <div id="tab-settings" class="panel hidden" data-panel="settings" style="order:4">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.settings">Kursy</span><button class="panel-hide-btn" data-hide="settings" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
+  <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.settings">Kursy</span><button class="panel-hide-btn" data-hide="settings" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
 
   <div class="card">
     <div class="section-title">
@@ -979,49 +980,60 @@ function applyPanelOrder() {
 }
 
 let dragSourceId = null;
+function swapPanels(sourceId, targetId) {
+  if (!sourceId || !targetId || sourceId === targetId) return;
+  const before = captureGridRects();
+  const tmp = panelOrder[sourceId];
+  panelOrder[sourceId] = panelOrder[targetId];
+  panelOrder[targetId] = tmp;
+  state.panelOrder = panelOrder;
+  saveState();
+  applyPanelOrder();
+  playFlipAnimation(before);
+}
+
+// Panel reordering is driven by Pointer Events rather than the native HTML5
+// drag-and-drop API: WKWebView (macOS) and WebView2 (Windows), used by the
+// Tauri desktop build, don't reliably fire dragover/drop the way a normal
+// browser does, so native DnD silently fails to reorder tiles there. Pointer
+// events work the same everywhere (browser, Android WebView, Tauri WebView).
 function wireDragAndDrop() {
-  document.querySelectorAll('.panel-header').forEach(header => {
-    header.addEventListener('dragstart', (e) => {
-      dragSourceId = header.closest('.panel').dataset.panel;
-      header.closest('.panel').classList.add('dragging');
-      try {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', dragSourceId);
-      } catch (err) {}
-    });
-    header.addEventListener('dragend', () => {
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over','dragging'));
-      dragSourceId = null;
+  let activePointerId = null;
+
+  document.querySelectorAll('.panel-header .drag-handle').forEach(handle => {
+    handle.style.touchAction = 'none';
+    handle.addEventListener('pointerdown', (e) => {
+      const panel = handle.closest('.panel');
+      if (!panel) return;
+      dragSourceId = panel.dataset.panel;
+      activePointerId = e.pointerId;
+      panel.classList.add('dragging');
+      try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
     });
   });
-  document.querySelectorAll('.panel').forEach(panel => {
-    panel.addEventListener('dragenter', (e) => {
-      e.preventDefault();
-      if (dragSourceId && dragSourceId !== panel.dataset.panel) panel.classList.add('drag-over');
-    });
-    panel.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-    });
-    panel.addEventListener('dragleave', (e) => {
-      if (!panel.contains(e.relatedTarget)) panel.classList.remove('drag-over');
-    });
-    panel.addEventListener('drop', (e) => {
-      e.preventDefault();
-      panel.classList.remove('drag-over');
-      const targetId = panel.dataset.panel;
-      if (!dragSourceId || dragSourceId === targetId) return;
-      const before = captureGridRects();
-      const tmp = panelOrder[dragSourceId];
-      panelOrder[dragSourceId] = panelOrder[targetId];
-      panelOrder[targetId] = tmp;
-      state.panelOrder = panelOrder;
-      saveState();
-      applyPanelOrder();
-      playFlipAnimation(before);
-      dragSourceId = null;
-    });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!dragSourceId || e.pointerId !== activePointerId) return;
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over'));
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const overPanel = el && el.closest && el.closest('.panel');
+    if (overPanel && overPanel.dataset.panel !== dragSourceId) {
+      overPanel.classList.add('drag-over');
+    }
   });
+
+  const finishDrag = (e) => {
+    if (!dragSourceId || e.pointerId !== activePointerId) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const overPanel = el && el.closest && el.closest('.panel');
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over','dragging'));
+    if (overPanel) swapPanels(dragSourceId, overPanel.dataset.panel);
+    dragSourceId = null;
+    activePointerId = null;
+  };
+  document.addEventListener('pointerup', finishDrag);
+  document.addEventListener('pointercancel', finishDrag);
 }
 
 let currentFullscreenKind = null;
@@ -1333,6 +1345,7 @@ function renderBalance() {
   otherEl.textContent = otherLines.join('   ·   ');
   mainEl.classList.toggle('masked', !!state.balanceHidden);
   otherEl.classList.toggle('masked', !!state.balanceHidden);
+  document.body.classList.toggle('balance-masked', !!state.balanceHidden);
   const eyeBtn = document.getElementById('balanceEyeBtn');
   if (eyeBtn) eyeBtn.textContent = state.balanceHidden ? '\u{1F648}' : '\u{1F441}️';
 }
@@ -1981,6 +1994,23 @@ function pushToCloud() {
 }
 
 function startCloudSync(user) {
+  // If this is a different account than whichever one's data is currently
+  // loaded locally, wipe the local transactions/debts right away so nothing
+  // from the previous account lingers on screen (or gets pushed into the
+  // new account's cloud document) while we wait for its own data to arrive.
+  const switchingAccount = !!(state.lastSyncedUid && state.lastSyncedUid !== user.uid);
+  if (switchingAccount) {
+    applyingRemote = true;
+    state.transactions = [];
+    state.debts = [];
+    saveState();
+    populateCurrencySelect();
+    renderAll();
+    applyingRemote = false;
+  }
+  state.lastSyncedUid = user.uid;
+  saveState();
+
   currentUser = user;
   document.getElementById('popLoggedOut').classList.add('hidden');
   document.getElementById('popLoggedIn').classList.remove('hidden');
@@ -2009,6 +2039,8 @@ function startCloudSync(user) {
 function stopCloudSync() {
   if (fbUnsub) { fbUnsub(); fbUnsub = null; }
   currentUser = null;
+  state.lastSyncedUid = null;
+  saveState();
   document.getElementById('popLoggedOut').classList.remove('hidden');
   document.getElementById('popLoggedIn').classList.add('hidden');
 }
@@ -2219,12 +2251,19 @@ function playFlipAnimation(beforeRects) {
 function renderIconModeRow() {
   const row = document.getElementById('iconModeRow');
   const note = document.getElementById('iconModeNote');
+  const title = document.getElementById('iconModeSectionTitle');
   if (!row) return;
+  const hasBridge = !!(window.AndroidBridge && window.AndroidBridge.setIconMode);
+  // Desktop (Mac/Windows) can't switch its own launcher/dock icon at runtime,
+  // so showing a picker there would be misleading — hide the whole section.
+  row.classList.toggle('hidden', !hasBridge);
+  if (title) title.classList.toggle('hidden', !hasBridge);
+  if (note) note.classList.toggle('hidden', !hasBridge);
+  if (!hasBridge) return;
   row.querySelectorAll('.icon-mode-opt').forEach(opt => {
     opt.classList.toggle('active', opt.dataset.iconMode === state.iconMode);
   });
-  const hasBridge = !!(window.AndroidBridge && window.AndroidBridge.setIconMode);
-  if (note) note.textContent = hasBridge ? '' : t('settings.androidOnly');
+  note.textContent = '';
 }
 
 function renderPaletteRow() {
