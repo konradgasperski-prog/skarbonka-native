@@ -312,23 +312,6 @@
   .account-popover .row { margin-top: 4px; }
   #appSettingsPopover.left-anchor { width: 290px; }
 
-  .style-preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
-  .style-preset-card {
-    width: 62px; cursor: pointer; border-radius: 12px; padding: 4px; text-align: center;
-    border: 2px solid transparent; transition: transform 0.15s ease, border-color 0.15s ease;
-  }
-  .style-preset-card:active { transform: scale(0.94); }
-  .style-preset-card.active { border-color: var(--accent); }
-  .style-preset-swatch {
-    width: 100%; height: 38px; border-radius: 8px; position: relative; overflow: hidden;
-    border: 1px solid color-mix(in srgb, white 20%, var(--border));
-  }
-  .style-preset-swatch .glass-layer {
-    position: absolute; inset: 4px; border-radius: 6px;
-    background: color-mix(in srgb, white 30%, transparent);
-    border: 1px solid color-mix(in srgb, white 40%, transparent);
-  }
-  .style-preset-label { font-size: 9.5px; color: var(--text-dim); margin-top: 3px; display: block; }
 
   .custom-color-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
   .custom-color-row input[type="color"] {
@@ -336,6 +319,20 @@
     border: 1px solid var(--border); cursor: pointer; background: none;
   }
   .custom-color-row button { width: auto; margin-bottom: 0; padding: 6px 10px; font-size: 12px; flex-shrink: 0; }
+
+  .icon-mode-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .icon-mode-opt {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer;
+    border-radius: 12px; padding: 4px; border: 2px solid transparent; transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+  .icon-mode-opt:active { transform: scale(0.94); }
+  .icon-mode-opt.active { border-color: var(--accent); }
+  .icon-mode-thumb { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; }
+  .icon-mode-auto {
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+    background: color-mix(in srgb, var(--bg1), var(--bg2)); border: 1px solid var(--border);
+  }
+  .icon-mode-opt span { font-size: 10px; color: var(--text-dim); }
   .account-popover.left-anchor { left: 0; right: auto; transform-origin: top left; width: 280px; }
 
   /* --- Panel hide/show/reorder animations --- */
@@ -445,65 +442,80 @@
 
 <div class="app-header">
   <div class="header-buttons">
-    <button class="theme-toggle" id="appSettingsToggle" title="Wygląd">⚙️</button>
+    <button class="theme-toggle" id="appSettingsToggle" title="Wygląd" data-i18n-title="settings.appearance">⚙️</button>
     <div class="account-popover left-anchor" id="appSettingsPopover">
-      <div class="section-title">Wygląd</div>
+      <div class="section-title" data-i18n="settings.appearance">Wygląd</div>
 
-      <div class="balance-sub">Style — szybki wybór</div>
-      <div class="style-preset-row" id="stylePresetRow"></div>
-      <button class="secondary" id="autoLightDarkBtn" style="width:100%; margin-top:8px;">🌓 Automatycznie jasny/ciemny (wg systemu)</button>
+      <button class="secondary" id="autoLightDarkBtn" style="width:100%; margin-top:8px;">🌓 <span data-i18n="settings.autoLightDark">Automatycznie jasny/ciemny (wg systemu)</span></button>
 
-      <div class="balance-sub" style="margin-top:12px;">Tło — zestaw kolorów</div>
+      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.bgPalette">Tło — zestaw kolorów</div>
       <div class="palette-row" id="paletteRow"></div>
-      <div class="balance-sub" style="margin-top:4px;">⚙️ = kolor systemu (telefonu/komputera), gdy dostępny</div>
+      <div class="balance-sub" style="margin-top:4px;">⚙️ = <span data-i18n="settings.systemColorNote">kolor systemu (telefonu/komputera), gdy dostępny</span></div>
 
-      <div class="balance-sub" style="margin-top:12px;">Własne kolory tła</div>
+      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.appIconAndroid">Ikona aplikacji (Android)</div>
+      <div class="icon-mode-row" id="iconModeRow">
+        <div class="icon-mode-opt" data-icon-mode="auto"><div class="icon-mode-thumb icon-mode-auto">🌓</div><span data-i18n="iconMode.auto">Auto</span></div>
+        <div class="icon-mode-opt" data-icon-mode="light"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.light">Jasna</span></div>
+        <div class="icon-mode-opt" data-icon-mode="dark"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.dark">Ciemna</span></div>
+        <div class="icon-mode-opt" data-icon-mode="glass"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.glass">Glass</span></div>
+      </div>
+      <div class="balance-sub" id="iconModeNote" style="margin-top:4px;"></div>
+
+      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.language">Język</div>
+      <div class="chart-type-tabs" id="languageRow">
+        <div class="chart-type-btn" data-lang="pl">PL</div>
+        <div class="chart-type-btn" data-lang="en">EN</div>
+        <div class="chart-type-btn" data-lang="ru">RU</div>
+        <div class="chart-type-btn" data-lang="lt">LT</div>
+      </div>
+
+      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.customBgColors">Własne kolory tła</div>
       <div class="custom-color-row">
-        <input type="color" id="customC1" value="#2f6f4f" title="Kolor 1">
-        <input type="color" id="customC2" value="#4fa8d8" title="Kolor 2">
-        <input type="color" id="customC3" value="#e0a458" title="Kolor 3">
-        <button class="secondary" id="applyCustomPalette">Użyj</button>
+        <input type="color" id="customC1" value="#2f6f4f" title="Kolor 1" data-i18n-title="settings.color1">
+        <input type="color" id="customC2" value="#4fa8d8" title="Kolor 2" data-i18n-title="settings.color2">
+        <input type="color" id="customC3" value="#e0a458" title="Kolor 3" data-i18n-title="settings.color3">
+        <button class="secondary" id="applyCustomPalette" data-i18n="settings.apply">Użyj</button>
       </div>
 
       <div class="glass-slider-row">
-        <div class="balance-sub">Intensywność tła</div>
+        <div class="balance-sub" data-i18n="settings.bgIntensity">Intensywność tła</div>
         <input type="range" id="bgOpacitySlider" min="10" max="60" step="5">
       </div>
       <div class="glass-slider-row">
-        <div class="balance-sub">Animacja tła</div>
+        <div class="balance-sub" data-i18n="settings.bgAnimation">Animacja tła</div>
         <div class="chart-type-tabs" id="bgSpeedTabs">
-          <div class="chart-type-btn" data-speed="slow">Wolna</div>
-          <div class="chart-type-btn active" data-speed="normal">Normalna</div>
-          <div class="chart-type-btn" data-speed="fast">Szybka</div>
-          <div class="chart-type-btn" data-speed="off">Wyłączona</div>
+          <div class="chart-type-btn" data-speed="slow" data-i18n="speed.slow">Wolna</div>
+          <div class="chart-type-btn active" data-speed="normal" data-i18n="speed.normal">Normalna</div>
+          <div class="chart-type-btn" data-speed="fast" data-i18n="speed.fast">Szybka</div>
+          <div class="chart-type-btn" data-speed="off" data-i18n="speed.off">Wyłączona</div>
         </div>
       </div>
       <div class="glass-slider-row">
-        <div class="balance-sub">Efekt szkła (liquid glass)</div>
+        <div class="balance-sub" data-i18n="settings.glassEffect">Efekt szkła (liquid glass)</div>
         <input type="range" id="glassSlider" min="0" max="100" step="5">
-        <div class="glass-slider-label"><span>Wyłączony</span><span id="glassSliderVal">70%</span><span>Maksymalny</span></div>
+        <div class="glass-slider-label"><span data-i18n="glass.off">Wyłączony</span><span id="glassSliderVal">70%</span><span data-i18n="glass.max">Maksymalny</span></div>
       </div>
     </div>
   </div>
   <div class="header-buttons">
-    <button class="theme-toggle" id="themeToggle" title="Zmień motyw"></button>
+    <button class="theme-toggle" id="themeToggle" title="Zmień motyw" data-i18n-title="theme.change"></button>
     <button class="account-toggle" id="accountToggle" title="Konto">👤</button>
     <div class="account-popover" id="accountPopover">
       <div id="popLoggedOut">
-        <label>E-mail</label>
-        <input type="email" id="authEmail" placeholder="ty@przyklad.pl" autocomplete="username">
-        <label>Hasło</label>
-        <input type="password" id="authPassword" placeholder="min. 6 znaków" autocomplete="current-password">
+        <label data-i18n="auth.email">E-mail</label>
+        <input type="email" id="authEmail" placeholder="ty@przyklad.pl" autocomplete="username" data-i18n-placeholder="auth.emailPlaceholder">
+        <label data-i18n="auth.password">Hasło</label>
+        <input type="password" id="authPassword" placeholder="min. 6 znaków" autocomplete="current-password" data-i18n-placeholder="auth.passwordPlaceholder">
         <div class="row">
-          <button class="secondary" id="loginBtn">Zaloguj</button>
-          <button class="secondary" id="registerBtn">Zarejestruj</button>
+          <button class="secondary" id="loginBtn" data-i18n="auth.login">Zaloguj</button>
+          <button class="secondary" id="registerBtn" data-i18n="auth.register">Zarejestruj</button>
         </div>
         <div class="balance-sub" id="authError"></div>
       </div>
       <div id="popLoggedIn" class="hidden">
         <div class="balance-sub" id="accountEmailLabel"></div>
-        <div class="balance-sub" id="syncStatus">Synchronizacja: aktywna ✓</div>
-        <button class="secondary" id="logoutBtn">Wyloguj</button>
+        <div class="balance-sub" id="syncStatus" data-i18n="auth.syncActive">Synchronizacja: aktywna ✓</div>
+        <button class="secondary" id="logoutBtn" data-i18n="auth.logout">Wyloguj</button>
       </div>
     </div>
   </div>
@@ -513,8 +525,8 @@
 
 <div class="card balance-card">
   <div class="balance-header-row">
-    <div class="balance-label">Saldo całkowite <button class="balance-eye" id="balanceEyeBtn" title="Ukryj/pokaż saldo">👁️</button></div>
-    <div class="currency-picker" id="currencyPicker" title="Stuknij lub przesuń, aby zmienić walutę">
+    <div class="balance-label"><span data-i18n="balance.total">Saldo całkowite</span> <button class="balance-eye" id="balanceEyeBtn" title="Ukryj/pokaż saldo" data-i18n-title="balance.toggleVisibility">👁️</button></div>
+    <div class="currency-picker" id="currencyPicker" title="Stuknij lub przesuń, aby zmienić walutę" data-i18n-title="currency.pickerTitle">
       <div class="currency-picker-window" id="currencyPickerWindow">
         <span class="currency-picker-label" id="currencyPickerLabel0">EUR</span>
       </div>
@@ -525,142 +537,142 @@
 </div>
 
 <div class="tabs">
-  <div class="tab active" data-tab="add">Dodaj</div>
-  <div class="tab" data-tab="debts">Długi</div>
-  <div class="tab" data-tab="stats">Statystyki</div>
-  <div class="tab" data-tab="settings">Kursy</div>
+  <div class="tab active" data-tab="add" data-i18n="tabs.add">Dodaj</div>
+  <div class="tab" data-tab="debts" data-i18n="tabs.debts">Długi</div>
+  <div class="tab" data-tab="stats" data-i18n="tabs.stats">Statystyki</div>
+  <div class="tab" data-tab="settings" data-i18n="tabs.settings">Kursy</div>
 </div>
 
 <div id="hiddenPanelsBar" class="hidden-panels-bar"></div>
 <div id="panelsContainer">
 <div id="tab-add" class="panel" data-panel="add" style="order:1">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> Dodaj<button class="panel-hide-btn" data-hide="add" title="Ukryj panel">✕</button></div>
+  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.add">Dodaj</span><button class="panel-hide-btn" data-hide="add" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
   <div class="card">
     <div class="type-toggle">
-      <div class="type-btn active income" id="btnIncome">➕ Przychód</div>
-      <div class="type-btn expense" id="btnExpense">➖ Wydatek</div>
+      <div class="type-btn active income" id="btnIncome">➕ <span data-i18n="type.income">Przychód</span></div>
+      <div class="type-btn expense" id="btnExpense">➖ <span data-i18n="type.expense">Wydatek</span></div>
     </div>
-    <label>Kwota</label>
+    <label data-i18n="amount.label">Kwota</label>
     <div class="row">
       <input type="number" id="amount" placeholder="0.00" step="0.01">
       <select id="currency"></select>
     </div>
-    <label>Opis (opcjonalnie)</label>
-    <input type="text" id="desc" placeholder="np. wypłata, zakupy...">
-    <button class="primary" id="addBtn">Dodaj</button>
+    <label data-i18n="desc.label">Opis (opcjonalnie)</label>
+    <input type="text" id="desc" placeholder="np. wypłata, zakupy..." data-i18n-placeholder="desc.placeholder">
+    <button class="primary" id="addBtn" data-i18n="action.add">Dodaj</button>
   </div>
 
   <div class="card">
     <div class="section-title collapsible-header" id="txListHeader">
-      <span>Ostatnie transakcje</span>
+      <span data-i18n="section.recentTx">Ostatnie transakcje</span>
       <div class="section-actions">
-        <button class="icon-btn" id="txExpandBtn" title="Pełny ekran">⛶</button>
-        <button class="icon-btn" id="txCollapseBtn" title="Zwiń/rozwiń">▾</button>
+        <button class="icon-btn" id="txExpandBtn" title="Pełny ekran" data-i18n-title="action.fullscreen">⛶</button>
+        <button class="icon-btn" id="txCollapseBtn" title="Zwiń/rozwiń" data-i18n-title="action.toggle">▾</button>
       </div>
     </div>
     <div class="collapsible-body" id="txListWrap">
-      <div id="txList"><div class="empty">Brak transakcji</div></div>
+      <div id="txList"><div class="empty" data-i18n="empty.noTx">Brak transakcji</div></div>
     </div>
   </div>
 </div>
 
 <div id="tab-debts" class="panel hidden" data-panel="debts" style="order:3">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> Długi<button class="panel-hide-btn" data-hide="debts" title="Ukryj panel">✕</button></div>
+  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.debts">Długi</span><button class="panel-hide-btn" data-hide="debts" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
   <div class="card">
     <div class="stats-grid">
       <div class="stat-box">
         <div class="val owe-color" id="statIOwe">0,00 €</div>
-        <div class="lbl">Ja muszę oddać</div>
+        <div class="lbl" data-i18n="debt.iOwe">Ja muszę oddać</div>
       </div>
       <div class="stat-box">
         <div class="val owed-color" id="statOwedToMe">0,00 €</div>
-        <div class="lbl">Mnie muszą oddać</div>
+        <div class="lbl" data-i18n="debt.owedToMe">Mnie muszą oddać</div>
       </div>
     </div>
   </div>
 
   <div class="card">
     <div class="type-toggle">
-      <div class="type-btn active owe" id="btnOwe">🔴 Ja oddaję</div>
-      <div class="type-btn owed" id="btnOwed">🟢 Mi oddają</div>
+      <div class="type-btn active owe" id="btnOwe">🔴 <span data-i18n="debt.type.owe">Ja oddaję</span></div>
+      <div class="type-btn owed" id="btnOwed">🟢 <span data-i18n="debt.type.owed">Mi oddają</span></div>
     </div>
-    <label>Osoba</label>
-    <input type="text" id="debtPerson" placeholder="np. Kasia">
-    <label>Kwota</label>
+    <label data-i18n="debt.person">Osoba</label>
+    <input type="text" id="debtPerson" placeholder="np. Kasia" data-i18n-placeholder="debt.personPlaceholder">
+    <label data-i18n="amount.label">Kwota</label>
     <div class="row">
       <input type="number" id="debtAmount" placeholder="0.00" step="0.01">
       <select id="debtCurrency"></select>
     </div>
-    <label>Termin zwrotu (opcjonalnie)</label>
+    <label data-i18n="debt.dueDate">Termin zwrotu (opcjonalnie)</label>
     <input type="date" id="debtDate">
-    <label>Opis (opcjonalnie)</label>
-    <input type="text" id="debtDesc" placeholder="np. za bilety">
-    <button class="primary" id="addDebtBtn">Dodaj</button>
+    <label data-i18n="desc.label">Opis (opcjonalnie)</label>
+    <input type="text" id="debtDesc" placeholder="np. za bilety" data-i18n-placeholder="debt.descPlaceholder">
+    <button class="primary" id="addDebtBtn" data-i18n="action.add">Dodaj</button>
   </div>
 
   <div class="card">
     <div class="section-title collapsible-header" id="debtListHeader">
-      <span>Lista długów</span>
+      <span data-i18n="section.debtList">Lista długów</span>
       <div class="section-actions">
-        <button class="icon-btn" id="debtExpandBtn" title="Pełny ekran">⛶</button>
-        <button class="icon-btn" id="debtCollapseBtn" title="Zwiń/rozwiń">▾</button>
+        <button class="icon-btn" id="debtExpandBtn" title="Pełny ekran" data-i18n-title="action.fullscreen">⛶</button>
+        <button class="icon-btn" id="debtCollapseBtn" title="Zwiń/rozwiń" data-i18n-title="action.toggle">▾</button>
       </div>
     </div>
     <div class="collapsible-body" id="debtListWrap">
-      <div id="debtList"><div class="empty">Brak długów</div></div>
+      <div id="debtList"><div class="empty" data-i18n="empty.noDebts">Brak długów</div></div>
     </div>
   </div>
 </div>
 
 <div id="tab-stats" class="panel hidden" data-panel="stats" style="order:2">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> Statystyki<button class="panel-hide-btn" data-hide="stats" title="Ukryj panel">✕</button></div>
+  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.stats">Statystyki</span><button class="panel-hide-btn" data-hide="stats" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
   <div class="card">
     <div class="stats-grid">
       <div class="stat-box">
         <div class="val income-color" id="statIncome">0,00 €</div>
-        <div class="lbl">Suma przychodów</div>
+        <div class="lbl" data-i18n="stats.totalIncome">Suma przychodów</div>
       </div>
       <div class="stat-box">
         <div class="val expense-color" id="statExpense">0,00 €</div>
-        <div class="lbl">Suma wydatków</div>
+        <div class="lbl" data-i18n="stats.totalExpense">Suma wydatków</div>
       </div>
     </div>
   </div>
   <div class="card">
-    <div class="section-title">Okres</div>
+    <div class="section-title" data-i18n="stats.period">Okres</div>
     <div class="chart-type-tabs" id="granTabs">
-      <div class="chart-type-btn active" data-gran="day">Dni</div>
-      <div class="chart-type-btn" data-gran="week">Tygodnie</div>
-      <div class="chart-type-btn" data-gran="month">Miesiące</div>
-      <div class="chart-type-btn" data-gran="year">Kwartały</div>
+      <div class="chart-type-btn active" data-gran="day" data-i18n="period.day">Dni</div>
+      <div class="chart-type-btn" data-gran="week" data-i18n="period.week">Tygodnie</div>
+      <div class="chart-type-btn" data-gran="month" data-i18n="period.month">Miesiące</div>
+      <div class="chart-type-btn" data-gran="year" data-i18n="period.year">Kwartały</div>
     </div>
     <div class="period-search">
-      <label id="periodSearchLabel">Przejdź do dnia</label>
+      <label id="periodSearchLabel" data-i18n="period.searchDay">Przejdź do dnia</label>
       <input type="date" id="periodSearchDay">
       <input type="week" id="periodSearchWeek" class="hidden">
       <input type="month" id="periodSearchMonth" class="hidden">
-      <input type="number" id="periodSearchYear" class="hidden" placeholder="np. 2026" min="2000" max="2100" step="1">
+      <input type="number" id="periodSearchYear" class="hidden" placeholder="np. 2026" min="2000" max="2100" step="1" data-i18n-placeholder="period.yearPlaceholder">
     </div>
   </div>
   <div class="card">
     <div class="chart-type-tabs">
-      <div class="chart-type-btn active" data-chart="bar">Słupkowy</div>
-      <div class="chart-type-btn" data-chart="line">Liniowy</div>
-      <div class="chart-type-btn" data-chart="pie">Kołowy</div>
-      <div class="chart-type-btn" data-chart="percent">Procentowy</div>
+      <div class="chart-type-btn active" data-chart="bar" data-i18n="chart.bar">Słupkowy</div>
+      <div class="chart-type-btn" data-chart="line" data-i18n="chart.line">Liniowy</div>
+      <div class="chart-type-btn" data-chart="pie" data-i18n="chart.pie">Kołowy</div>
+      <div class="chart-type-btn" data-chart="percent" data-i18n="chart.percent">Procentowy</div>
     </div>
-    <div class="section-title" id="chartTitle">Podgląd</div>
+    <div class="section-title" id="chartTitle" data-i18n="chart.preview">Podgląd</div>
     <svg id="chart" viewBox="0 0 340 170" width="100%" height="170"></svg>
   </div>
 </div>
 
 <div id="tab-settings" class="panel hidden" data-panel="settings" style="order:4">
-  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> Kursy<button class="panel-hide-btn" data-hide="settings" title="Ukryj panel">✕</button></div>
+  <div class="panel-header" draggable="true"><span class="drag-handle">⣿</span> <span data-i18n="tabs.settings">Kursy</span><button class="panel-hide-btn" data-hide="settings" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
 
   <div class="card">
     <div class="section-title">
-      <span>Kursy walut (1 EUR =)</span>
-      <button class="secondary" id="confirmRates">🔄 Odśwież teraz</button>
+      <span data-i18n="rates.title">Kursy walut (1 EUR =)</span>
+      <button class="secondary" id="confirmRates">🔄 <span data-i18n="rates.refreshNow">Odśwież teraz</span></button>
     </div>
     <div id="rateRows"></div>
     <div class="balance-sub" id="lastUpdated"></div>
@@ -668,8 +680,8 @@
   </div>
 
   <div class="card">
-    <div class="section-title">Dane</div>
-    <button class="secondary" id="resetBtn">Wyczyść wszystkie dane</button>
+    <div class="section-title" data-i18n="data.title">Dane</div>
+    <button class="secondary" id="resetBtn" data-i18n="data.resetAll">Wyczyść wszystkie dane</button>
   </div>
 </div>
 </div>
@@ -677,8 +689,8 @@
 <div class="fullscreen-modal" id="fullscreenModal">
   <div class="fullscreen-modal-content">
     <div class="section-title">
-      <span id="fullscreenModalTitle">Lista</span>
-      <button class="icon-btn" id="fullscreenCloseBtn" title="Zamknij">✕</button>
+      <span id="fullscreenModalTitle" data-i18n="fullscreen.listDefault">Lista</span>
+      <button class="icon-btn" id="fullscreenCloseBtn" title="Zamknij" data-i18n-title="action.close">✕</button>
     </div>
     <div id="fullscreenModalBody"></div>
   </div>
@@ -693,6 +705,179 @@ const CURRENCIES = ["EUR", "USD", "GBP", "CHF", "PLN", "JPY"];
 const MONTH_SHORT = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'];
 const PLOT_X0 = 36, PLOT_X1 = 336;
 const PLOT_W = PLOT_X1 - PLOT_X0;
+
+const TRANSLATIONS = {
+  pl: {
+    settings: { appearance:'Wygląd', autoLightDark:'Automatycznie jasny/ciemny (wg systemu)', bgPalette:'Tło — zestaw kolorów', systemColorNote:'kolor systemu (telefonu/komputera), gdy dostępny', appIconAndroid:'Ikona aplikacji (Android)', language:'Język', customBgColors:'Własne kolory tła', color1:'Kolor 1', color2:'Kolor 2', color3:'Kolor 3', apply:'Użyj', bgIntensity:'Intensywność tła', bgAnimation:'Animacja tła', glassEffect:'Efekt szkła (liquid glass)', androidOnly:'Dostępne tylko w aplikacji na Androida.', autoSystemColor:'Automatyczny (kolor systemu)' },
+    speed: { slow:'Wolna', normal:'Normalna', fast:'Szybka', off:'Wyłączona' },
+    glass: { off:'Wyłączony', max:'Maksymalny' },
+    theme: { change:'Zmień motyw' },
+    auth: { email:'E-mail', emailPlaceholder:'ty@przyklad.pl', password:'Hasło', passwordPlaceholder:'min. 6 znaków', login:'Zaloguj', register:'Zarejestruj', syncActive:'Synchronizacja: aktywna ✓', logout:'Wyloguj', syncUnavailable:'Synchronizacja niedostępna.',
+      err: { emailInUse:'Ten e-mail jest już zarejestrowany.', invalidEmail:'Nieprawidłowy adres e-mail.', weakPassword:'Hasło musi mieć min. 6 znaków.', wrongPassword:'Błędne hasło.', userNotFound:'Nie znaleziono konta z tym e-mailem.', invalidCredential:'Błędny e-mail lub hasło.', generic:'Błąd: ' } },
+    balance: { total:'Saldo całkowite', toggleVisibility:'Ukryj/pokaż saldo' },
+    currency: { pickerTitle:'Stuknij lub przesuń, aby zmienić walutę' },
+    tabs: { add:'Dodaj', debts:'Długi', stats:'Statystyki', settings:'Kursy' },
+    panel: { hide:'Ukryj panel' },
+    type: { income:'Przychód', expense:'Wydatek' },
+    amount: { label:'Kwota' },
+    desc: { label:'Opis (opcjonalnie)', placeholder:'np. wypłata, zakupy...' },
+    action: { add:'Dodaj', fullscreen:'Pełny ekran', toggle:'Zwiń/rozwiń', close:'Zamknij' },
+    section: { recentTx:'Ostatnie transakcje', debtList:'Lista długów' },
+    empty: { noTx:'Brak transakcji', noDebts:'Brak długów' },
+    debt: { iOwe:'Ja muszę oddać', owedToMe:'Mnie muszą oddać', type: { owe:'Ja oddaję', owed:'Mi oddają' }, person:'Osoba', personPlaceholder:'np. Kasia', dueDate:'Termin zwrotu (opcjonalnie)', descPlaceholder:'np. za bilety' },
+    stats: { totalIncome:'Suma przychodów', totalExpense:'Suma wydatków', period:'Okres' },
+    period: { day:'Dni', week:'Tygodnie', month:'Miesiące', year:'Kwartały', searchDay:'Przejdź do dnia', searchWeek:'Przejdź do tygodnia', searchMonth:'Przejdź do miesiąca', searchYear:'Przejdź do roku', yearPlaceholder:'np. 2026', weekLabel:'Tydzień {week}, {year} ({from}–{to})' },
+    chart: { bar:'Słupkowy', line:'Liniowy', pie:'Kołowy', percent:'Procentowy', preview:'Podgląd', incomeVsExpense:'Przychody vs wydatki (wybrany okres)', percentShare:'Udział %' },
+    rates: { title:'Kursy walut (1 EUR =)', refreshNow:'Odśwież teraz', lastSync:'Ostatnia synchronizacja: ', fetchFailed:'Nie udało się pobrać aktualnych kursów (brak połączenia) — używane są zapisane wcześniej.', newDayBanner:'Nowy dzień — sprawdź i zaktualizuj kursy walut.' },
+    data: { title:'Dane', resetAll:'Wyczyść wszystkie dane' },
+    confirm: { resetAll:'Na pewno chcesz usunąć wszystkie dane?' },
+    fullscreen: { listDefault:'Lista', allTx:'Wszystkie transakcje', allDebts:'Wszystkie długi' },
+    due: { none:'bez terminu', inDays:'za {n} dni', tomorrow:'termin: jutro', today:'termin: dziś', overdueYesterday:'termin minął wczoraj', overdueDays:'termin minął {n} dni temu' },
+    palette: { forest:'Leśna', revolut:'Revolut', sunset:'Zachód', ocean:'Ocean', midnight:'Północ', rose:'Różana', lime:'Limonka', aurora:'Zorza', coral:'Koral', mono:'Minimal' },
+    iconMode: { auto:'Auto', light:'Jasna', dark:'Ciemna', glass:'Glass' },
+    months: { short:['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'] }
+  },
+  en: {
+    settings: { appearance:'Appearance', autoLightDark:'Automatically light/dark (system)', bgPalette:'Background — color set', systemColorNote:'system color (phone/computer), when available', appIconAndroid:'App icon (Android)', language:'Language', customBgColors:'Custom background colors', color1:'Color 1', color2:'Color 2', color3:'Color 3', apply:'Apply', bgIntensity:'Background intensity', bgAnimation:'Background animation', glassEffect:'Glass effect (liquid glass)', androidOnly:'Available only in the Android app.', autoSystemColor:'Automatic (system color)' },
+    speed: { slow:'Slow', normal:'Normal', fast:'Fast', off:'Off' },
+    glass: { off:'Off', max:'Maximum' },
+    theme: { change:'Change theme' },
+    auth: { email:'Email', emailPlaceholder:'you@example.com', password:'Password', passwordPlaceholder:'min. 6 characters', login:'Log in', register:'Register', syncActive:'Sync: active ✓', logout:'Log out', syncUnavailable:'Sync unavailable.',
+      err: { emailInUse:'This email is already registered.', invalidEmail:'Invalid email address.', weakPassword:'Password must be at least 6 characters.', wrongPassword:'Incorrect password.', userNotFound:'No account found with this email.', invalidCredential:'Incorrect email or password.', generic:'Error: ' } },
+    balance: { total:'Total balance', toggleVisibility:'Show/hide balance' },
+    currency: { pickerTitle:'Tap or swipe to change currency' },
+    tabs: { add:'Add', debts:'Debts', stats:'Stats', settings:'Rates' },
+    panel: { hide:'Hide panel' },
+    type: { income:'Income', expense:'Expense' },
+    amount: { label:'Amount' },
+    desc: { label:'Description (optional)', placeholder:'e.g. salary, groceries...' },
+    action: { add:'Add', fullscreen:'Full screen', toggle:'Collapse/expand', close:'Close' },
+    section: { recentTx:'Recent transactions', debtList:'Debts list' },
+    empty: { noTx:'No transactions', noDebts:'No debts' },
+    debt: { iOwe:'I owe', owedToMe:'Owed to me', type: { owe:'I owe', owed:'Owed to me' }, person:'Person', personPlaceholder:'e.g. Kate', dueDate:'Due date (optional)', descPlaceholder:'e.g. for tickets' },
+    stats: { totalIncome:'Total income', totalExpense:'Total expenses', period:'Period' },
+    period: { day:'Days', week:'Weeks', month:'Months', year:'Quarters', searchDay:'Go to day', searchWeek:'Go to week', searchMonth:'Go to month', searchYear:'Go to year', yearPlaceholder:'e.g. 2026', weekLabel:'Week {week}, {year} ({from}–{to})' },
+    chart: { bar:'Bar', line:'Line', pie:'Pie', percent:'Percent', preview:'Preview', incomeVsExpense:'Income vs expenses (selected period)', percentShare:'Share %' },
+    rates: { title:'Exchange rates (1 EUR =)', refreshNow:'Refresh now', lastSync:'Last sync: ', fetchFailed:"Couldn't fetch current rates (no connection) — using previously saved ones.", newDayBanner:'New day — check and update exchange rates.' },
+    data: { title:'Data', resetAll:'Clear all data' },
+    confirm: { resetAll:'Are you sure you want to delete all data?' },
+    fullscreen: { listDefault:'List', allTx:'All transactions', allDebts:'All debts' },
+    due: { none:'no due date', inDays:'in {n} days', tomorrow:'due: tomorrow', today:'due: today', overdueYesterday:'overdue since yesterday', overdueDays:'overdue {n} days ago' },
+    palette: { forest:'Forest', revolut:'Revolut', sunset:'Sunset', ocean:'Ocean', midnight:'Midnight', rose:'Rose', lime:'Lime', aurora:'Aurora', coral:'Coral', mono:'Minimal' },
+    iconMode: { auto:'Auto', light:'Light', dark:'Dark', glass:'Glass' },
+    months: { short:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] }
+  },
+  ru: {
+    settings: { appearance:'Внешний вид', autoLightDark:'Автоматически светлая/тёмная (по системе)', bgPalette:'Фон — набор цветов', systemColorNote:'системный цвет (телефона/компьютера), если доступен', appIconAndroid:'Значок приложения (Android)', language:'Язык', customBgColors:'Свои цвета фона', color1:'Цвет 1', color2:'Цвет 2', color3:'Цвет 3', apply:'Применить', bgIntensity:'Интенсивность фона', bgAnimation:'Анимация фона', glassEffect:'Эффект стекла (liquid glass)', androidOnly:'Доступно только в приложении для Android.', autoSystemColor:'Автоматически (системный цвет)' },
+    speed: { slow:'Медленная', normal:'Обычная', fast:'Быстрая', off:'Выключена' },
+    glass: { off:'Выключен', max:'Максимальный' },
+    theme: { change:'Сменить тему' },
+    auth: { email:'Эл. почта', emailPlaceholder:'you@example.com', password:'Пароль', passwordPlaceholder:'минимум 6 символов', login:'Войти', register:'Зарегистрироваться', syncActive:'Синхронизация: активна ✓', logout:'Выйти', syncUnavailable:'Синхронизация недоступна.',
+      err: { emailInUse:'Этот адрес уже зарегистрирован.', invalidEmail:'Неверный адрес эл. почты.', weakPassword:'Пароль должен содержать не менее 6 символов.', wrongPassword:'Неверный пароль.', userNotFound:'Аккаунт с этим адресом не найден.', invalidCredential:'Неверный адрес эл. почты или пароль.', generic:'Ошибка: ' } },
+    balance: { total:'Общий баланс', toggleVisibility:'Показать/скрыть баланс' },
+    currency: { pickerTitle:'Нажмите или проведите, чтобы изменить валюту' },
+    tabs: { add:'Добавить', debts:'Долги', stats:'Статистика', settings:'Курсы' },
+    panel: { hide:'Скрыть панель' },
+    type: { income:'Доход', expense:'Расход' },
+    amount: { label:'Сумма' },
+    desc: { label:'Описание (необязательно)', placeholder:'напр. зарплата, покупки...' },
+    action: { add:'Добавить', fullscreen:'Полный экран', toggle:'Свернуть/развернуть', close:'Закрыть' },
+    section: { recentTx:'Последние операции', debtList:'Список долгов' },
+    empty: { noTx:'Нет операций', noDebts:'Нет долгов' },
+    debt: { iOwe:'Я должен(на)', owedToMe:'Мне должны', type: { owe:'Я отдаю', owed:'Мне отдают' }, person:'Человек', personPlaceholder:'напр. Катя', dueDate:'Срок возврата (необязательно)', descPlaceholder:'напр. за билеты' },
+    stats: { totalIncome:'Сумма доходов', totalExpense:'Сумма расходов', period:'Период' },
+    period: { day:'Дни', week:'Недели', month:'Месяцы', year:'Кварталы', searchDay:'Перейти к дню', searchWeek:'Перейти к неделе', searchMonth:'Перейти к месяцу', searchYear:'Перейти к году', yearPlaceholder:'напр. 2026', weekLabel:'Неделя {week}, {year} ({from}–{to})' },
+    chart: { bar:'Столбчатый', line:'Линейный', pie:'Круговой', percent:'Процентный', preview:'Просмотр', incomeVsExpense:'Доходы и расходы (выбранный период)', percentShare:'Доля %' },
+    rates: { title:'Курсы валют (1 EUR =)', refreshNow:'Обновить сейчас', lastSync:'Последняя синхронизация: ', fetchFailed:'Не удалось получить текущие курсы (нет соединения) — используются ранее сохранённые.', newDayBanner:'Новый день — проверьте и обновите курсы валют.' },
+    data: { title:'Данные', resetAll:'Очистить все данные' },
+    confirm: { resetAll:'Вы уверены, что хотите удалить все данные?' },
+    fullscreen: { listDefault:'Список', allTx:'Все операции', allDebts:'Все долги' },
+    due: { none:'без срока', inDays:'через {n} дн.', tomorrow:'срок: завтра', today:'срок: сегодня', overdueYesterday:'просрочено со вчера', overdueDays:'просрочено {n} дн. назад' },
+    palette: { forest:'Лесная', revolut:'Revolut', sunset:'Закат', ocean:'Океан', midnight:'Полночь', rose:'Розовая', lime:'Лайм', aurora:'Аврора', coral:'Коралл', mono:'Минимал' },
+    iconMode: { auto:'Авто', light:'Светлая', dark:'Тёмная', glass:'Glass' },
+    months: { short:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'] }
+  },
+  lt: {
+    settings: { appearance:'Išvaizda', autoLightDark:'Automatiškai šviesi/tamsi (pagal sistemą)', bgPalette:'Fonas — spalvų rinkinys', systemColorNote:'sistemos spalva (telefono/kompiuterio), kai pasiekiama', appIconAndroid:'Programėlės piktograma (Android)', language:'Kalba', customBgColors:'Pasirinktinės fono spalvos', color1:'Spalva 1', color2:'Spalva 2', color3:'Spalva 3', apply:'Taikyti', bgIntensity:'Fono intensyvumas', bgAnimation:'Fono animacija', glassEffect:'Stiklo efektas (liquid glass)', androidOnly:'Pasiekiama tik Android programėlėje.', autoSystemColor:'Automatinis (sistemos spalva)' },
+    speed: { slow:'Lėta', normal:'Normali', fast:'Greita', off:'Išjungta' },
+    glass: { off:'Išjungtas', max:'Maksimalus' },
+    theme: { change:'Keisti temą' },
+    auth: { email:'El. paštas', emailPlaceholder:'tu@pavyzdys.lt', password:'Slaptažodis', passwordPlaceholder:'bent 6 simboliai', login:'Prisijungti', register:'Registruotis', syncActive:'Sinchronizavimas: aktyvus ✓', logout:'Atsijungti', syncUnavailable:'Sinchronizavimas nepasiekiamas.',
+      err: { emailInUse:'Šis el. paštas jau užregistruotas.', invalidEmail:'Neteisingas el. pašto adresas.', weakPassword:'Slaptažodis turi būti bent 6 simbolių.', wrongPassword:'Neteisingas slaptažodis.', userNotFound:'Paskyra su šiuo el. paštu nerasta.', invalidCredential:'Neteisingas el. paštas arba slaptažodis.', generic:'Klaida: ' } },
+    balance: { total:'Bendras balansas', toggleVisibility:'Rodyti/slėpti balansą' },
+    currency: { pickerTitle:'Bakstelėkite arba perbraukite, kad pakeistumėte valiutą' },
+    tabs: { add:'Pridėti', debts:'Skolos', stats:'Statistika', settings:'Kursai' },
+    panel: { hide:'Slėpti skydelį' },
+    type: { income:'Pajamos', expense:'Išlaidos' },
+    amount: { label:'Suma' },
+    desc: { label:'Aprašymas (neprivaloma)', placeholder:'pvz. atlyginimas, pirkiniai...' },
+    action: { add:'Pridėti', fullscreen:'Visas ekranas', toggle:'Suskleisti/išskleisti', close:'Uždaryti' },
+    section: { recentTx:'Naujausios operacijos', debtList:'Skolų sąrašas' },
+    empty: { noTx:'Nėra operacijų', noDebts:'Nėra skolų' },
+    debt: { iOwe:'Aš skolingas(-a)', owedToMe:'Man skolingi', type: { owe:'Aš grąžinu', owed:'Man grąžina' }, person:'Asmuo', personPlaceholder:'pvz. Kotryna', dueDate:'Grąžinimo terminas (neprivaloma)', descPlaceholder:'pvz. už bilietus' },
+    stats: { totalIncome:'Pajamų suma', totalExpense:'Išlaidų suma', period:'Laikotarpis' },
+    period: { day:'Dienos', week:'Savaitės', month:'Mėnesiai', year:'Ketvirčiai', searchDay:'Eiti į dieną', searchWeek:'Eiti į savaitę', searchMonth:'Eiti į mėnesį', searchYear:'Eiti į metus', yearPlaceholder:'pvz. 2026', weekLabel:'{week} savaitė, {year} ({from}–{to})' },
+    chart: { bar:'Stulpelinė', line:'Linijinė', pie:'Skritulinė', percent:'Procentinė', preview:'Peržiūra', incomeVsExpense:'Pajamos ir išlaidos (pasirinktas laikotarpis)', percentShare:'Dalis %' },
+    rates: { title:'Valiutų kursai (1 EUR =)', refreshNow:'Atnaujinti dabar', lastSync:'Paskutinis sinchronizavimas: ', fetchFailed:'Nepavyko gauti naujausių kursų (nėra ryšio) — naudojami anksčiau išsaugoti.', newDayBanner:'Nauja diena — patikrinkite ir atnaujinkite valiutų kursus.' },
+    data: { title:'Duomenys', resetAll:'Išvalyti visus duomenis' },
+    confirm: { resetAll:'Ar tikrai norite ištrinti visus duomenis?' },
+    fullscreen: { listDefault:'Sąrašas', allTx:'Visos operacijos', allDebts:'Visos skolos' },
+    due: { none:'be termino', inDays:'po {n} d.', tomorrow:'terminas: rytoj', today:'terminas: šiandien', overdueYesterday:'terminas praėjo vakar', overdueDays:'terminas praėjo prieš {n} d.' },
+    palette: { forest:'Miško', revolut:'Revolut', sunset:'Saulėlydis', ocean:'Vandenynas', midnight:'Vidurnaktis', rose:'Rožinė', lime:'Žalioji', aurora:'Aušra', coral:'Koralas', mono:'Minimalus' },
+    iconMode: { auto:'Auto', light:'Šviesi', dark:'Tamsi', glass:'Glass' },
+    months: { short:['Sau','Vas','Kov','Bal','Geg','Bir','Lie','Rgp','Rgs','Spa','Lap','Grd'] }
+  }
+};
+
+const TRANSLATIONS_LANGS = Object.keys(TRANSLATIONS);
+function t(key, vars) {
+  const dict = TRANSLATIONS[state.language] || TRANSLATIONS.pl;
+  let val = key.split('.').reduce((o,k) => (o && o[k] !== undefined) ? o[k] : undefined, dict);
+  if (val === undefined) val = key.split('.').reduce((o,k) => (o && o[k] !== undefined) ? o[k] : undefined, TRANSLATIONS.pl);
+  if (val === undefined) return key;
+  if (typeof val === 'string' && vars) {
+    Object.keys(vars).forEach(k => { val = val.replace('{' + k + '}', vars[k]); });
+  }
+  return val;
+}
+
+const tr = (...args) => t(...args);
+function applyStaticI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    const val = t(key);
+    if (typeof val === 'string') el.textContent = val;
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    el.title = t(el.getAttribute('data-i18n-title'));
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+  });
+}
+
+function renderLanguageRow() {
+  const row = document.getElementById('languageRow');
+  if (!row) return;
+  row.querySelectorAll('[data-lang]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === state.language);
+  });
+}
+
+function applyLanguage(lang) {
+  if (!TRANSLATIONS[lang]) lang = 'pl';
+  state.language = lang;
+  saveState();
+  applyStaticI18n();
+  renderLanguageRow();
+  renderPaletteRow();
+  renderIconModeRow();
+  renderHiddenBar();
+  renderRateRows();
+  renderRateBanner();
+  renderChart();
+  renderAll();
+}
 
 function loadState() {
   try {
@@ -713,10 +898,13 @@ function loadState() {
       if (typeof parsed.txListCollapsed !== 'boolean') parsed.txListCollapsed = false;
       if (typeof parsed.debtListCollapsed !== 'boolean') parsed.debtListCollapsed = false;
       if (!parsed.customPalette) parsed.customPalette = null;
+      if (!parsed.iconMode) parsed.iconMode = 'auto';
+      if (!parsed.language) parsed.language = (navigator.language || 'pl').slice(0,2).toLowerCase();
+      if (!TRANSLATIONS_LANGS.includes(parsed.language)) parsed.language = 'pl';
       return parsed;
     }
   } catch (e) {}
-  return { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: 'EUR', theme: 'auto', panelOrder: { add: 1, stats: 2, debts: 3, settings: 4 }, panelHidden: { add: false, debts: false, stats: false, settings: false }, balanceHidden: false, bgTheme: 'forest', glassIntensity: 70, bgBlobOpacity: 35, bgAnimSpeed: 'normal', txListCollapsed: false, debtListCollapsed: false, customPalette: null };
+  return { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: 'EUR', theme: 'auto', panelOrder: { add: 1, stats: 2, debts: 3, settings: 4 }, panelHidden: { add: false, debts: false, stats: false, settings: false }, balanceHidden: false, bgTheme: 'forest', glassIntensity: 70, bgBlobOpacity: 35, bgAnimSpeed: 'normal', txListCollapsed: false, debtListCollapsed: false, customPalette: null, iconMode: 'auto', language: (TRANSLATIONS_LANGS.includes((navigator.language||'pl').slice(0,2).toLowerCase()) ? (navigator.language||'pl').slice(0,2).toLowerCase() : 'pl') };
 }
 function saveState() {
   try { localStorage.setItem('portfel_state', JSON.stringify(state)); } catch (e) {}
@@ -781,7 +969,6 @@ function applyTheme() {
   else html.removeAttribute('data-theme');
   const icons = { auto: '🌓', light: '☀️', dark: '🌙' };
   document.getElementById('themeToggle').textContent = icons[state.theme] || '🌓';
-  if (document.getElementById('stylePresetRow')) renderStylePresetRow();
 }
 
 function applyPanelOrder() {
@@ -872,7 +1059,7 @@ function refreshFullscreenList() {
 
 function openFullscreenList(kind) {
   currentFullscreenKind = kind;
-  document.getElementById('fullscreenModalTitle').textContent = kind === 'tx' ? 'Wszystkie transakcje' : 'Wszystkie długi';
+  document.getElementById('fullscreenModalTitle').textContent = kind === 'tx' ? t('fullscreen.allTx') : t('fullscreen.allDebts');
   refreshFullscreenList();
   document.getElementById('fullscreenModal').classList.add('open');
 }
@@ -891,7 +1078,7 @@ function applyPanelVisibility() {
 
 function renderHiddenBar() {
   const bar = document.getElementById('hiddenPanelsBar');
-  const labels = { add: 'Dodaj', debts: 'Długi', stats: 'Statystyki', settings: 'Kursy' };
+  const labels = { add: t('tabs.add'), debts: t('tabs.debts'), stats: t('tabs.stats'), settings: t('tabs.settings') };
   const hiddenIds = Object.keys(state.panelHidden || {}).filter(id => state.panelHidden[id]);
   if (hiddenIds.length === 0) {
     bar.innerHTML = '';
@@ -1027,16 +1214,16 @@ function daysUntil(dateStr) {
   return Math.round((target - now) / (1000*60*60*24));
 }
 function dueLabel(diff) {
-  if (diff === null) return 'bez terminu';
-  if (diff > 1) return `za ${diff} dni`;
-  if (diff === 1) return 'termin: jutro';
-  if (diff === 0) return 'termin: dziś';
-  if (diff === -1) return 'termin minął wczoraj';
-  return `termin minął ${Math.abs(diff)} dni temu`;
+  if (diff === null) return t('due.none');
+  if (diff > 1) return t('due.inDays', { n: diff });
+  if (diff === 1) return t('due.tomorrow');
+  if (diff === 0) return t('due.today');
+  if (diff === -1) return t('due.overdueYesterday');
+  return t('due.overdueDays', { n: Math.abs(diff) });
 }
 
 function buildDebtRowsHTML(items) {
-  if (items.length === 0) return '<div class="empty">Brak długów</div>';
+  if (items.length === 0) return '<div class="empty">' + t('empty.noDebts') + '</div>';
   return items.map(d => {
     const diff = daysUntil(d.dueDate);
     const urgent = diff !== null && diff <= 3;
@@ -1098,7 +1285,7 @@ function renderDebts() {
 function renderRateBanner() {
   const banner = document.getElementById('rateBanner');
   if (state.lastRateUpdate !== todayStr()) {
-    banner.innerHTML = `<div class="banner"><span>🔔 Nowy dzień — sprawdź i zaktualizuj kursy walut.</span><button class="secondary" id="bannerRatesBtn">Kursy</button></div>`;
+    banner.innerHTML = `<div class="banner"><span>🔔 ${t('rates.newDayBanner')}</span><button class="secondary" id="bannerRatesBtn">${t('tabs.settings')}</button></div>`;
     const btn = document.getElementById('bannerRatesBtn');
     if (btn) btn.addEventListener('click', () => document.querySelector('[data-tab="settings"]').click());
   } else {
@@ -1111,7 +1298,7 @@ function renderRateRows() {
   container.innerHTML = CURRENCIES.filter(c => c !== 'EUR').map(c => `
     <div class="rate-row-ro"><span>${c}</span><span>${state.rates[c].toFixed(4)}</span></div>
   `).join('');
-  document.getElementById('lastUpdated').textContent = 'Ostatnia synchronizacja: ' + state.lastRateUpdate;
+  document.getElementById('lastUpdated').textContent = t('rates.lastSync') + state.lastRateUpdate;
 }
 
 async function fetchExchangeRates() {
@@ -1130,7 +1317,7 @@ async function fetchExchangeRates() {
     renderAll();
     if (note) note.textContent = '';
   } catch (e) {
-    if (note) note.textContent = 'Nie udało się pobrać aktualnych kursów (brak połączenia) — używane są zapisane wcześniej.';
+    if (note) note.textContent = t('rates.fetchFailed');
     console.warn('fetchExchangeRates failed', e);
   }
 }
@@ -1151,11 +1338,11 @@ function renderBalance() {
 }
 
 function buildTxRowsHTML(items) {
-  if (items.length === 0) return '<div class="empty">Brak transakcji</div>';
+  if (items.length === 0) return '<div class="empty">' + t('empty.noTx') + '</div>';
   return items.map(t => `
     <div class="tx-item">
       <div>
-        <div class="tx-desc">${t.desc || (t.type === 'income' ? 'Przychód' : 'Wydatek')}</div>
+        <div class="tx-desc">${t.desc || (t.type === 'income' ? tr('type.income') : tr('type.expense'))}</div>
         <div class="tx-date">${t.date} · ${fmt(t.amount, t.currency)}</div>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -1253,7 +1440,7 @@ function getWeekData(anchorWeekStr) {
     const exp = state.transactions.filter(t => t.date >= mondayStr && t.date <= sundayStr && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
     out.push({
       key: info.year + '-W' + String(info.week).padStart(2,'0'),
-      label: `Tydzień ${info.week}, ${info.year} (${shortDayMonth(mondayStr)}–${shortDayMonth(sundayStr)})`,
+      label: t('period.weekLabel', { week: info.week, year: info.year, from: shortDayMonth(mondayStr), to: shortDayMonth(sundayStr) }),
       shortLabel: 'W' + info.week,
       inc, exp
     });
@@ -1272,7 +1459,8 @@ function getMonthData(anchorMonthStr) {
     const prefix = y + '-' + mm;
     const inc = state.transactions.filter(t => t.date.startsWith(prefix) && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
     const exp = state.transactions.filter(t => t.date.startsWith(prefix) && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
-    out.push({ key: prefix, label: MONTH_SHORT[m-1] + ' ' + y, shortLabel: MONTH_SHORT[m-1], inc, exp });
+    const monthShortArr = t('months.short');
+    out.push({ key: prefix, label: monthShortArr[m-1] + ' ' + y, shortLabel: monthShortArr[m-1], inc, exp });
   }
   return out;
 }
@@ -1452,18 +1640,18 @@ function renderChart() {
   const titleEl = document.getElementById('chartTitle');
   let content = '';
   if (chartType === 'bar') {
-    titleEl.textContent = 'Słupkowy';
+    titleEl.textContent = t('chart.bar');
     content = renderBarChart(periodData);
   } else if (chartType === 'line') {
-    titleEl.textContent = 'Liniowy';
+    titleEl.textContent = t('chart.line');
     content = renderLineChart(periodData);
   } else if (chartType === 'pie') {
-    titleEl.textContent = 'Przychody vs wydatki (wybrany okres)';
+    titleEl.textContent = t('chart.incomeVsExpense');
     const totalInc = periodData.reduce((s,d) => s + d.inc, 0);
     const totalExp = periodData.reduce((s,d) => s + d.exp, 0);
     content = renderPieChart(totalInc, totalExp);
   } else if (chartType === 'percent') {
-    titleEl.textContent = 'Udział %';
+    titleEl.textContent = t('chart.percentShare');
     content = renderPercentChart(periodData);
   }
   svg.innerHTML = content;
@@ -1602,12 +1790,12 @@ document.querySelectorAll('.chart-type-tabs [data-chart]').forEach(btn => {
   });
 });
 
-const granLabels = {
-  day: 'Przejdź do dnia',
-  week: 'Przejdź do tygodnia',
-  month: 'Przejdź do miesiąca',
-  year: 'Przejdź do roku'
-};
+function granLabels() { return {
+  day: t('period.searchDay'),
+  week: t('period.searchWeek'),
+  month: t('period.searchMonth'),
+  year: t('period.searchYear')
+}; }
 const granInputIds = {
   day: 'periodSearchDay',
   week: 'periodSearchWeek',
@@ -1621,7 +1809,7 @@ document.querySelectorAll('#granTabs [data-gran]').forEach(btn => {
     chartGranularity = btn.dataset.gran;
     Object.values(granInputIds).forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById(granInputIds[chartGranularity]).classList.remove('hidden');
-    document.getElementById('periodSearchLabel').textContent = granLabels[chartGranularity];
+    document.getElementById('periodSearchLabel').textContent = granLabels()[chartGranularity];
     renderChart();
   });
 });
@@ -1685,6 +1873,18 @@ document.getElementById('applyCustomPalette').addEventListener('click', () => {
   renderPaletteRow();
 });
 
+document.querySelectorAll('#iconModeRow .icon-mode-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    const mode = opt.dataset.iconMode;
+    state.iconMode = mode;
+    saveState();
+    if (window.AndroidBridge && window.AndroidBridge.setIconMode) {
+      try { window.AndroidBridge.setIconMode(mode); } catch (e) {}
+    }
+    renderIconModeRow();
+  });
+});
+
 function toggleListCollapse(kind) {
   if (kind === 'tx') state.txListCollapsed = !state.txListCollapsed;
   else state.debtListCollapsed = !state.debtListCollapsed;
@@ -1721,7 +1921,7 @@ document.getElementById('fullscreenModal').addEventListener('click', (e) => {
 });
 
 document.getElementById('resetBtn').addEventListener('click', () => {
-  if (confirm('Na pewno chcesz usunąć wszystkie dane?')) {
+  if (confirm(t('confirm.resetAll'))) {
     const rows = document.querySelectorAll('.tx-item, .debt-item');
     rows.forEach(r => r.classList.add('row-removing'));
     const finish = () => {
@@ -1815,14 +2015,14 @@ function stopCloudSync() {
 
 function tlumaczBladAuth(code) {
   const map = {
-    'auth/email-already-in-use': 'Ten e-mail jest już zarejestrowany.',
-    'auth/invalid-email': 'Nieprawidłowy adres e-mail.',
-    'auth/weak-password': 'Hasło musi mieć min. 6 znaków.',
-    'auth/wrong-password': 'Błędne hasło.',
-    'auth/user-not-found': 'Nie znaleziono konta z tym e-mailem.',
-    'auth/invalid-credential': 'Błędny e-mail lub hasło.'
+    'auth/email-already-in-use': t('auth.err.emailInUse'),
+    'auth/invalid-email': t('auth.err.invalidEmail'),
+    'auth/weak-password': t('auth.err.weakPassword'),
+    'auth/wrong-password': t('auth.err.wrongPassword'),
+    'auth/user-not-found': t('auth.err.userNotFound'),
+    'auth/invalid-credential': t('auth.err.invalidCredential')
   };
-  return map[code] || ('Błąd: ' + code);
+  return map[code] || (t('auth.err.generic') + code);
 }
 
 if (fbAuth) {
@@ -1835,7 +2035,7 @@ document.getElementById('loginBtn').addEventListener('click', () => {
   const email = document.getElementById('authEmail').value.trim();
   const pass = document.getElementById('authPassword').value;
   document.getElementById('authError').textContent = '';
-  if (!fbAuth) { document.getElementById('authError').textContent = 'Synchronizacja niedostępna.'; return; }
+  if (!fbAuth) { document.getElementById('authError').textContent = t('auth.syncUnavailable'); return; }
   fbAuth.signInWithEmailAndPassword(email, pass).catch((e) => {
     document.getElementById('authError').textContent = tlumaczBladAuth(e.code);
   });
@@ -1844,7 +2044,7 @@ document.getElementById('registerBtn').addEventListener('click', () => {
   const email = document.getElementById('authEmail').value.trim();
   const pass = document.getElementById('authPassword').value;
   document.getElementById('authError').textContent = '';
-  if (!fbAuth) { document.getElementById('authError').textContent = 'Synchronizacja niedostępna.'; return; }
+  if (!fbAuth) { document.getElementById('authError').textContent = t('auth.syncUnavailable'); return; }
   fbAuth.createUserWithEmailAndPassword(email, pass).then(() => {
     pushToCloud();
   }).catch((e) => {
@@ -1961,7 +2161,6 @@ function applyGlassIntensity() {
   const label = document.getElementById('glassSliderVal');
   if (slider) slider.value = v;
   if (label) label.textContent = v + '%';
-  if (document.getElementById('stylePresetRow')) renderStylePresetRow();
 }
 
 function applyBgBlobOpacity() {
@@ -2017,61 +2216,27 @@ function playFlipAnimation(beforeRects) {
   });
 }
 
-const STYLE_PRESETS = {
-  light:     { name: 'Jasny', theme: 'light', glass: 15 },
-  dark:      { name: 'Ciemny', theme: 'dark', glass: 15 },
-  glass:     { name: 'Liquid Glass', theme: 'auto', glass: 92 },
-  darkglass: { name: 'Ciemne szk\u0142o', theme: 'dark', glass: 85 },
-  matte:     { name: 'Matowy', theme: 'auto', glass: 0 },
-  vivid:     { name: 'Ostry', theme: 'light', glass: 55 }
-};
-
-function currentStylePresetKey() {
-  for (const key of Object.keys(STYLE_PRESETS)) {
-    const p = STYLE_PRESETS[key];
-    if (p.theme === state.theme && Math.abs(p.glass - (state.glassIntensity || 0)) < 3) return key;
-  }
-  return null;
-}
-
-function renderStylePresetRow() {
-  const row = document.getElementById('stylePresetRow');
-  const activeKey = currentStylePresetKey();
-  row.innerHTML = Object.keys(STYLE_PRESETS).map(key => {
-    const p = STYLE_PRESETS[key];
-    const isDark = p.theme === 'dark';
-    const cardBg = isDark ? '#1c1e20' : '#ffffff';
-    const glassOpacity = 0.15 + (p.glass / 100) * 0.55;
-    const active = key === activeKey ? ' active' : '';
-    return '<div class="style-preset-card' + active + '" data-preset="' + key + '">' +
-      '<div class="style-preset-swatch" style="background: linear-gradient(135deg, var(--bg1), var(--bg2) 50%, var(--bg3))">' +
-        '<div class="glass-layer" style="background: color-mix(in srgb, ' + cardBg + ' ' + Math.round(glassOpacity*100) + '%, transparent); backdrop-filter: blur(' + (p.glass/100*6).toFixed(1) + 'px);"></div>' +
-      '</div>' +
-      '<span class="style-preset-label">' + p.name + '</span>' +
-    '</div>';
-  }).join('');
-  row.querySelectorAll('.style-preset-card').forEach(card => {
-    card.addEventListener('click', () => {
-      const p = STYLE_PRESETS[card.dataset.preset];
-      state.theme = p.theme;
-      state.glassIntensity = p.glass;
-      saveState();
-      applyTheme();
-      applyGlassIntensity();
-      renderStylePresetRow();
-    });
+function renderIconModeRow() {
+  const row = document.getElementById('iconModeRow');
+  const note = document.getElementById('iconModeNote');
+  if (!row) return;
+  row.querySelectorAll('.icon-mode-opt').forEach(opt => {
+    opt.classList.toggle('active', opt.dataset.iconMode === state.iconMode);
   });
+  const hasBridge = !!(window.AndroidBridge && window.AndroidBridge.setIconMode);
+  if (note) note.textContent = hasBridge ? '' : t('settings.androidOnly');
 }
 
 function renderPaletteRow() {
   const row = document.getElementById('paletteRow');
   const autoActive = state.bgTheme === 'auto' ? ' active' : '';
   const autoPreview = detectedAccentColor ? deriveTriadFromAccent(detectedAccentColor) : BG_PALETTES.forest;
-  let html = '<div class="palette-swatch' + autoActive + '" data-palette="auto" title="Automatyczny (kolor systemu)" style="background: linear-gradient(135deg,' + autoPreview.c1 + ',' + autoPreview.c2 + ' 50%,' + autoPreview.c3 + '); display:flex; align-items:center; justify-content:center; font-size:14px;">⚙️</div>';
+  let html = '<div class="palette-swatch' + autoActive + '" data-palette="auto" title="' + t('settings.autoSystemColor') + '" style="background: linear-gradient(135deg,' + autoPreview.c1 + ',' + autoPreview.c2 + ' 50%,' + autoPreview.c3 + '); display:flex; align-items:center; justify-content:center; font-size:14px;">⚙️</div>';
   html += Object.keys(BG_PALETTES).map(key => {
     const p = BG_PALETTES[key];
     const active = state.bgTheme === key ? ' active' : '';
-    return '<div class="palette-swatch' + active + '" data-palette="' + key + '" title="' + p.name + '" style="background: linear-gradient(135deg,' + p.c1 + ',' + p.c2 + ' 50%,' + p.c3 + ')"></div>';
+    const pname = t('palette.' + key);
+    return '<div class="palette-swatch' + active + '" data-palette="' + key + '" title="' + pname + '" style="background: linear-gradient(135deg,' + p.c1 + ',' + p.c2 + ' 50%,' + p.c3 + ')"></div>';
   }).join('');
   row.innerHTML = html;
   row.querySelectorAll('.palette-swatch').forEach(sw => {
@@ -2134,6 +2299,11 @@ document.addEventListener('click', () => {
   document.getElementById('appSettingsPopover').classList.remove('open');
 });
 
+applyStaticI18n();
+document.querySelectorAll('#languageRow [data-lang]').forEach(btn => {
+  btn.addEventListener('click', () => applyLanguage(btn.dataset.lang));
+});
+renderLanguageRow();
 applyTheme();
 detectWindowsAccentColor();
 applyBgTheme();
@@ -2145,7 +2315,10 @@ applyPanelOrder();
 applyPanelVisibility();
 renderHiddenBar();
 renderPaletteRow();
-renderStylePresetRow();
+if (window.AndroidBridge && window.AndroidBridge.getIconMode) {
+  try { state.iconMode = window.AndroidBridge.getIconMode() || state.iconMode; } catch (e) {}
+}
+renderIconModeRow();
 wireDragAndDrop();
 wirePanelHideButtons();
 wireBackgroundParallax();
