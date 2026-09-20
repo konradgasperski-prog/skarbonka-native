@@ -281,7 +281,7 @@
   @keyframes eyePop { 0% { transform: scale(1); } 45% { transform: scale(0.6) rotate(-8deg); } 100% { transform: scale(1) rotate(0); } }
   .balance-value, #balanceOther { transition: filter 0.7s ease; }
   .balance-value.masked, .balance-sub.masked { filter: blur(10px); user-select: none; }
-  body.balance-masked .tx-amount, body.balance-masked .debt-amount { filter: blur(6px); user-select: none; transition: filter 0.7s ease; }
+  body.balance-masked .tx-amount, body.balance-masked .debt-amount, body.balance-masked .stat-box .val { filter: blur(10px); user-select: none; transition: filter 0.7s ease; }
   .balance-value { transition: filter 0.7s ease; cursor: pointer; }
 
   /* --- Read-only rate rows --- */
@@ -2040,7 +2040,16 @@ function stopCloudSync() {
   if (fbUnsub) { fbUnsub(); fbUnsub = null; }
   currentUser = null;
   state.lastSyncedUid = null;
+  // Clear the locally-visible transactions/debts on logout too, so a
+  // logged-out session (or the next account that logs in before this one)
+  // never shows a previous account's financial data.
+  applyingRemote = true;
+  state.transactions = [];
+  state.debts = [];
   saveState();
+  populateCurrencySelect();
+  renderAll();
+  applyingRemote = false;
   document.getElementById('popLoggedOut').classList.remove('hidden');
   document.getElementById('popLoggedIn').classList.add('hidden');
 }
