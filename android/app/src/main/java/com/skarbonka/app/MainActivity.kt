@@ -36,7 +36,17 @@ class MainActivity : Activity() {
         settings.domStorageEnabled = true
         settings.allowFileAccess = true
 
-        webView.webViewClient = WebViewClient()
+        webView.webViewClient = object : WebViewClient() {
+            // Linki do stron w internecie (np. VMI) otwieraja sie w przegladarce, nie w apce
+            override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?): Boolean {
+                val url = request?.url ?: return false
+                if (url.scheme == "http" || url.scheme == "https") {
+                    try { startActivity(Intent(Intent.ACTION_VIEW, url)) } catch (e: Exception) { }
+                    return true
+                }
+                return false
+            }
+        }
         webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
         webView.loadUrl("file:///android_asset/index.html")
 
@@ -148,7 +158,16 @@ class MainActivity : Activity() {
             return prefs.getString("icon_mode", "auto") ?: "auto"
         }
 
-        // Otwiera skaner paragonow na zywo; wynik wraca przez onActivityResult
+        // Otwiera strone (np. paragon w VMI) w przegladarce telefonu
+        @JavascriptInterface
+        fun openUrl(url: String) {
+            if (!url.startsWith("https://")) return
+            runOnUiThread {
+                try { startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) } catch (e: Exception) { }
+            }
+        }
+
+        // Otwiera skaner paragonow; wynik wraca przez onActivityResult
         @JavascriptInterface
         fun scanReceipt(lang: String) {
             runOnUiThread {

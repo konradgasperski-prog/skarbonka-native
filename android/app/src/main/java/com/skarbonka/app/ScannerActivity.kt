@@ -1,6 +1,7 @@
 package com.skarbonka.app
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -9,11 +10,15 @@ import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +34,10 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
+import com.google.android.gms.tasks.Tasks
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
@@ -55,6 +64,12 @@ class ScannerActivity : AppCompatActivity() {
     private lateinit var status: TextView
     private lateinit var shutter: View
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    private val qrScanner by lazy {
+        BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
+    }
+    private lateinit var root: FrameLayout
+    private var vmiWeb: WebView? = null
+    private val handler = Handler(Looper.getMainLooper())
     private var imageCapture: ImageCapture? = null
     private var camera: Camera? = null
     private var torchOn = false
@@ -62,16 +77,16 @@ class ScannerActivity : AppCompatActivity() {
     private var lang = "pl"
 
     private val strings = mapOf(
-        "pl" to mapOf("aim" to "Ustaw cały paragon w ramce i zrób zdjęcie", "reading" to "Odczytuję paragon…",
+        "pl" to mapOf("vmi" to "Pobieram dane z VMI…", "aim" to "Ustaw cały paragon w ramce i zrób zdjęcie", "reading" to "Odczytuję paragon…",
             "got" to "Gotowe ✓ — zdjęcie usunięte", "gallery" to "Galeria", "fail" to "Nie udało się odczytać tekstu — spróbuj jeszcze raz, bliżej i przy lepszym świetle",
             "noCam" to "Brak dostępu do aparatu — możesz wybrać zdjęcie z galerii"),
-        "en" to mapOf("aim" to "Fit the whole receipt in the frame and take a photo", "reading" to "Reading the receipt…",
+        "en" to mapOf("vmi" to "Fetching data from VMI…", "aim" to "Fit the whole receipt in the frame and take a photo", "reading" to "Reading the receipt…",
             "got" to "Done ✓ — photo deleted", "gallery" to "Gallery", "fail" to "Couldn't read the text — try again, closer and with better light",
             "noCam" to "No camera access — you can pick a photo from the gallery"),
-        "ru" to mapOf("aim" to "Поместите весь чек в рамку и сделайте фото", "reading" to "Читаю чек…",
+        "ru" to mapOf("vmi" to "Загружаю данные из VMI…", "aim" to "Поместите весь чек в рамку и сделайте фото", "reading" to "Читаю чек…",
             "got" to "Готово ✓ — фото удалено", "gallery" to "Галерея", "fail" to "Не удалось прочитать текст — попробуйте ещё раз, ближе и при лучшем свете",
             "noCam" to "Нет доступа к камере — выберите фото из галереи"),
-        "lt" to mapOf("aim" to "Sutalpinkite visą kvitą rėmelyje ir nufotografuokite", "reading" to "Skaitau kvitą…",
+        "lt" to mapOf("vmi" to "Gaunu duomenis iš VMI…", "aim" to "Sutalpinkite visą kvitą rėmelyje ir nufotografuokite", "reading" to "Skaitau kvitą…",
             "got" to "Atlikta ✓ — nuotrauka ištrinta", "gallery" to "Galerija", "fail" to "Nepavyko nuskaityti teksto — bandykite dar kartą, arčiau ir šviesiau",
             "noCam" to "Nėra prieigos prie kameros — pasirinkite nuotrauką iš galerijos")
     )
@@ -89,7 +104,7 @@ class ScannerActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         lang = (intent.getStringExtra(EXTRA_LANG) ?: "pl").take(2).lowercase(Locale.ROOT)
 
-        val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+        root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         previewView = PreviewView(this).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
         root.addView(previewView, FrameLayout.LayoutParams(MATCH, MATCH))
 
@@ -213,10 +228,7 @@ class ScannerActivity : AppCompatActivity() {
                     try { InputImage.fromBitmap(image.toBitmap(), rotation) } catch (e2: Exception) { null }
                 }
                 if (input == null) { image.close(); fail(); return }
-                recognizer.process(input)
-                    .addOnSuccessListener { text -> handleText(text) }
-                    .addOnFailureListener { fail() }
-                    .addOnCompleteListener { image.close() }   // zdjecie usuniete z pamieci
+                readTextAndQr(input) { image.close() }   // zdjecie usuniete z pamieci
             }
 
             override fun onError(exception: ImageCaptureException) { fail() }
@@ -230,19 +242,81 @@ class ScannerActivity : AppCompatActivity() {
         status.text = s("reading")
         try {
             val input = InputImage.fromFilePath(this, uri)
-            recognizer.process(input)
-                .addOnSuccessListener { text -> handleText(text) }
-                .addOnFailureListener { fail() }
+            readTextAndQr(input) { }
         } catch (e: Exception) {
             fail()
         }
     }
 
-    private fun handleText(text: Text) {
-        if (text.text.isBlank()) { fail(); return }
-        val r = ReceiptParser.parse(text)
-        if (r.total == null && r.items.isEmpty()) { fail(); return }
-        finishWith(r)
+    // Tekst i kod QR odczytywane rownolegle z tego samego obrazu
+    private fun readTextAndQr(input: InputImage, release: () -> Unit) {
+        val textTask = recognizer.process(input)
+        val qrTask = qrScanner.process(input)
+        Tasks.whenAllComplete(textTask, qrTask).addOnCompleteListener {
+            release()
+            val text: Text? = if (textTask.isSuccessful) textTask.result else null
+            val codes: List<Barcode> = if (qrTask.isSuccessful) (qrTask.result ?: emptyList()) else emptyList()
+            handleResults(text, codes)
+        }
+    }
+
+    private fun handleResults(text: Text?, codes: List<Barcode>) {
+        val vmiUrl = codes.mapNotNull { it.rawValue }.firstOrNull { it.startsWith("https://kvitas.vmi.lt/") }
+        val r = if (text != null && text.text.isNotBlank()) ReceiptParser.parse(text) else null
+        if (vmiUrl == null && (r == null || (r.total == null && r.items.isEmpty()))) { fail(); return }
+        val result = r ?: ReceiptResult("", null, null, emptyList(), "")
+        if (vmiUrl == null) { finishWith(result, null); return }
+
+        // Paragon z kodem VMI: od razu pobieramy oficjalne dane (sklep, adres, sumy, PVM)
+        val vmi = JSONObject()
+        val u = Uri.parse(vmiUrl)
+        vmi.put("url", vmiUrl)
+        vmi.put("nr", u.getQueryParameter("NR") ?: "")
+        vmi.put("sm", u.getQueryParameter("SM") ?: "")
+        vmi.put("dt", u.getQueryParameter("DT") ?: "")
+        status.text = s("vmi")
+        fetchVmiText(vmiUrl) { pageText ->
+            vmi.put("text", pageText ?: JSONObject.NULL)   // null = brak internetu / strona nie odpowiedziala
+            finishWith(result, vmi)
+        }
+    }
+
+    /**
+     * Strona VMI laduje dane skryptem, wiec otwieramy ja w ukrytym WebView i czytamy wyswietlony tekst.
+     * Limit 15 s - bez internetu po prostu wracamy z samym kodem QR.
+     */
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun fetchVmiText(url: String, done: (String?) -> Unit) {
+        val wv = WebView(this)
+        vmiWeb = wv
+        wv.settings.javaScriptEnabled = true
+        wv.settings.domStorageEnabled = true
+        wv.webViewClient = WebViewClient()
+        wv.alpha = 0f
+        root.addView(wv, 0, FrameLayout.LayoutParams(MATCH, MATCH))   // pod podgladem aparatu, niewidoczne
+        val started = System.currentTimeMillis()
+        var finished = false
+        fun end(v: String?) {
+            if (finished) return
+            finished = true
+            try { wv.stopLoading(); root.removeView(wv); wv.destroy() } catch (e: Exception) { }
+            vmiWeb = null
+            done(v)
+        }
+        val poll = object : Runnable {
+            override fun run() {
+                if (finished) return
+                if (System.currentTimeMillis() - started > 15000) { end(null); return }
+                wv.evaluateJavascript("(function(){var b=document.body;return b?(b.innerText||b.textContent||''):'';})()") { res ->
+                    val txt = try { org.json.JSONArray("[$res]").optString(0, "") } catch (e: Exception) { "" }
+                    val n = ReceiptParser.norm(txt)
+                    val loaded = txt.length > 60 && (Regex("\\d+[.,]\\d{2}").containsMatchIn(txt) || n.contains("nerast"))
+                    if (loaded) end(txt.take(4000)) else handler.postDelayed(this, 600)
+                }
+            }
+        }
+        wv.loadUrl(url)
+        handler.postDelayed(poll, 1200)
     }
 
     private fun fail() {
@@ -250,7 +324,7 @@ class ScannerActivity : AppCompatActivity() {
         status.text = s("fail")
     }
 
-    private fun finishWith(r: ReceiptResult) {
+    private fun finishWith(r: ReceiptResult, vmi: JSONObject?) {
         status.text = s("got")
         vibrate()
         val items = JSONArray()
@@ -263,6 +337,7 @@ class ScannerActivity : AppCompatActivity() {
         json.put("date", r.date ?: JSONObject.NULL)
         json.put("items", items)
         json.put("text", r.rawText.take(6000))
+        if (vmi != null) json.put("vmi", vmi)
         setResult(RESULT_OK, Intent().putExtra(EXTRA_RESULT, json.toString()))
         status.postDelayed({ finish() }, 450)
     }
@@ -280,7 +355,10 @@ class ScannerActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
+        try { vmiWeb?.destroy() } catch (e: Exception) { }
         super.onDestroy()
         try { recognizer.close() } catch (e: Exception) { }
+        try { qrScanner.close() } catch (e: Exception) { }
     }
 }
