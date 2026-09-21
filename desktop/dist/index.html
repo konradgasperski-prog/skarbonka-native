@@ -66,8 +66,9 @@
     max-width: 480px;
     margin: 0 auto;
     min-height: 100vh;
+    position: relative;
   }
-  .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .app-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; position: relative; z-index: 31; }
   h1 { font-size: 20px; margin: 4px 0; }
   .theme-toggle {
     width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border);
@@ -83,7 +84,7 @@
     border: 1px solid var(--border);
   }
   .balance-card { text-align: center; }
-  .balance-header-row { display: flex; justify-content: space-between; align-items: center; text-align: left; }
+  .balance-header-row { display: flex; justify-content: space-between; align-items: center; text-align: left; position: relative; }
   .balance-label { color: var(--text-dim); font-size: 13px; }
   .currency-mini { width: auto; padding: 5px 8px; margin-bottom: 0; font-size: 12px; border-radius: 8px; }
   .balance-value { font-size: 36px; font-weight: 700; margin: 6px 0; }
@@ -133,6 +134,9 @@
   .tx-amount { font-weight: 700; font-size: 14px; }
   .empty { color: var(--text-dim); font-size: 13px; text-align: center; padding: 12px 0; }
   .section-title { font-size: 14px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .settings-group { padding-top: 12px; margin-top: 12px; border-top: 1px solid var(--border); }
+  .settings-group:first-child { padding-top: 0; margin-top: 0; border-top: none; }
+  .settings-group .section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-dim); margin-bottom: 8px; }
   .rate-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .rate-row span { width: 46px; font-size: 13px; font-weight: 600; }
   .rate-row input { margin-bottom: 0; }
@@ -178,8 +182,11 @@
   .panel-header {
     display: none;
     font-size: 15px; font-weight: 700; margin-bottom: 10px; cursor: grab;
-    align-items: center; gap: 8px; user-select: none; color: var(--text);
+    align-items: center; gap: 8px; color: var(--text);
+    -webkit-user-select: none; -moz-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
   }
+  .panel-header * { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
   .panel.drag-over { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: var(--radius); }
   .panel.dragging { opacity: 0.45; }
   .panel-hide-btn {
@@ -194,8 +201,9 @@
   @media (min-width: 900px) {
     body { max-width: 1100px; }
     .tabs { display: none; }
+    .cards-tabs-always { display: flex !important; }
     .panel-header { display: flex; }
-    #panelsContainer {
+    #panelsContainer, #panelsContainer2 {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 16px;
@@ -205,6 +213,39 @@
     .panel.panel-desktop-hidden { display: none !important; }
     .hidden-panels-bar.show { display: flex; }
   }
+
+  /* --- Two side-by-side pages (like macOS Spaces): page 1 = main tiles,
+     page 2 = receipts + AI assistant. Swipe/scroll sideways, or use dots. --- */
+  /* Pages are moved with a GPU transform (not native scrolling), so both pages are always
+     fully rendered — text is there the moment the next page slides in — and the slide can
+     follow the finger and finish with a soft spring. */
+  .pages-wrap {
+    display: flex; align-items: flex-start; overflow: hidden; touch-action: pan-y;
+  }
+  /* Clip only sideways (the other page), so things like the currency wheel can
+     stick out a bit above the balance card without being cut off. */
+  @supports (overflow: clip) { .pages-wrap { overflow-x: clip; overflow-y: visible; } }
+  .app-page {
+    transition: transform 0.5s cubic-bezier(.22,1,.36,1);
+    will-change: transform; backface-visibility: hidden;
+  }
+  .pages-wrap.pager-dragging .app-page { transition: none; }
+  .pages-wrap::-webkit-scrollbar { display: none; }
+  /* When the cards drawer opens, the pages slide down (same spring curve as the
+     drawer) so the drawer gets its full height without ever covering the balance. */
+  .pages-wrap { transition: transform 0.46s cubic-bezier(.4,0,.2,1); }
+  body.cards-drawer-open .pages-wrap { transition: transform 0.55s cubic-bezier(.32,1.1,.4,1); }
+  body.cards-drawer-anim .pages-wrap { will-change: transform; }
+  .app-page {
+    min-width: 100%; max-width: 100%; width: 100%; flex-shrink: 0;
+    box-sizing: border-box;
+  }
+  .page-dots { display: flex; justify-content: center; gap: 7px; padding: 14px 0 4px; }
+  .page-dots .dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--border); cursor: pointer;
+    transition: background 0.2s ease, width 0.2s ease; border: none; padding: 0;
+  }
+  .page-dots .dot.active { background: var(--accent); width: 20px; border-radius: 4px; }
 
   /* --- Animated interactive background --- */
   :root {
@@ -221,9 +262,11 @@
     filter: blur(70px); opacity: var(--bg-blob-opacity, 0.35); will-change: transform;
     transition: background 0.6s ease, opacity 0.4s ease;
   }
-  .app-bg .b1 { background: var(--bg1); top: -20%; left: -15%; animation: floatA var(--bg-dur1, 22s) ease-in-out infinite; }
-  .app-bg .b2 { background: var(--bg2); bottom: -25%; right: -15%; animation: floatB var(--bg-dur2, 26s) ease-in-out infinite; }
-  .app-bg .b3 { background: var(--bg3); top: 30%; right: 10%; animation: floatC var(--bg-dur3, 30s) ease-in-out infinite; }
+  /* Movement is driven from JS (wireBackgroundDrift): each blob wanders on its own
+     smooth, never-repeating path. It does not react to the cursor or finger. */
+  .app-bg .b1 { background: var(--bg1); top: -20%; left: -15%; }
+  .app-bg .b2 { background: var(--bg2); bottom: -25%; right: -15%; }
+  .app-bg .b3 { background: var(--bg3); top: 30%; right: 10%; }
   .app-bg.paused .blob { animation-play-state: paused; }
   @keyframes floatA { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vw,8vh) scale(1.1); } }
   @keyframes floatB { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-7vw,-6vh) scale(1.15); } }
@@ -264,6 +307,15 @@
   .tx-item, .debt-item { animation: rowIn 0.25s ease; }
   @keyframes rowIn { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; transform: translateX(0); } }
 
+  /* --- Cross-fade when switching the active card: old numbers/rows fade out, new ones fade in --- */
+  #txList { transition: opacity 0.18s ease; }
+  #activeCardChip { transition: opacity 0.18s ease, filter 0.45s ease; }
+  /* Balance lines: same filter timing for both, so hiding/revealing happens together */
+  #balanceMain, #balanceOther {
+    transition: opacity 0.18s ease, filter 0.45s ease;
+  }
+  .card-switch-fade { opacity: 0 !important; }
+
   /* --- Header buttons row --- */
   .header-buttons { display: flex; gap: 8px; }
   .account-toggle {
@@ -279,10 +331,12 @@
   }
   .balance-eye.pop { animation: eyePop 0.3s ease; }
   @keyframes eyePop { 0% { transform: scale(1); } 45% { transform: scale(0.6) rotate(-8deg); } 100% { transform: scale(1) rotate(0); } }
-  .balance-value, #balanceOther { transition: filter 0.7s ease; }
-  .balance-value.masked, .balance-sub.masked { filter: blur(10px); user-select: none; }
-  body.balance-masked .tx-amount, body.balance-masked .debt-amount, body.balance-masked .stat-box .val { filter: blur(10px); user-select: none; transition: filter 0.7s ease; }
-  .balance-value { transition: filter 0.7s ease; cursor: pointer; }
+  #balanceMain, #balanceOther { filter: blur(0); }
+  #balanceMain.masked, #balanceOther.masked { filter: blur(10px); user-select: none; }
+  /* Hiding the balance also hides which card is in use — only inside the total-balance card */
+  #activeCardChip { filter: blur(0); }
+  body.balance-masked #activeCardChip { filter: blur(7px); }
+  .balance-value { cursor: pointer; }
 
   /* --- Read-only rate rows --- */
   .rate-row-ro { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
@@ -349,7 +403,7 @@
   .currency-dd-wrap { position: relative; }
   .currency-picker {
     position: relative; width: 76px; height: 32px; border-radius: 10px; overflow: hidden;
-    cursor: pointer; user-select: none; touch-action: pan-y; flex-shrink: 0;
+    cursor: pointer; user-select: none; touch-action: none; flex-shrink: 0;
     background: color-mix(in srgb, var(--card) var(--glass-opacity), transparent);
     border: 1px solid color-mix(in srgb, white 26%, var(--border));
     box-shadow: inset 0 1px 0 color-mix(in srgb, white 30%, transparent);
@@ -368,6 +422,36 @@
   .currency-picker-label.slide-out-down { transform: translateY(130%); opacity: 0; }
   .currency-picker-label.slide-in-from-bottom { transform: translateY(130%); opacity: 0; }
   .currency-picker-label.slide-in-from-top { transform: translateY(-130%); opacity: 0; }
+  /* --- Currency wheel: press the currency and the neighbours roll out above and below --- */
+  .currency-wheel {
+    position: absolute; z-index: 20; height: 96px; overflow: hidden; touch-action: none;
+    cursor: grab; user-select: none; -webkit-user-select: none;
+    background: color-mix(in srgb, var(--card) calc(var(--glass-opacity) + 15%), transparent);
+    border: 1px solid color-mix(in srgb, white 26%, var(--border));
+    box-shadow: 0 10px 30px rgba(0,0,0,0.18), inset 0 1px 0 color-mix(in srgb, white 30%, transparent);
+    backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+    border-radius: 12px;
+    clip-path: inset(32px 0px 32px 0px round 10px);
+    transition: clip-path 0.26s cubic-bezier(.4,0,.2,1), opacity 0.12s ease 0.2s;
+  }
+  .currency-wheel.open { clip-path: inset(0px 0px 0px 0px round 12px); transition: clip-path 0.34s cubic-bezier(.32,1.2,.4,1); }
+  .currency-wheel.closing { opacity: 0; }
+  /* While the wheel is open the button's own label hides — the wheel takes its place */
+  .currency-picker .currency-picker-window { transition: opacity 0.12s ease 0.2s; }
+  .currency-picker.wheel-open .currency-picker-window { transition: opacity 0.1s ease; }
+  .currency-picker.wheel-open .currency-picker-window { opacity: 0; }
+  .currency-wheel.dragging { cursor: grabbing; }
+  .currency-wheel-sel {
+    position: absolute; left: 4px; right: 4px; top: 34px; height: 28px; border-radius: 8px;
+    background: var(--accent-soft); pointer-events: none;
+  }
+  .currency-wheel-item {
+    position: absolute; left: 0; right: 0; top: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: var(--text); pointer-events: none;
+    will-change: transform, opacity;
+  }
   .currency-dd-btn {
     width: auto; padding: 5px 10px; margin-bottom: 0; font-size: 12px; border-radius: 8px;
     cursor: pointer; display: flex; align-items: center; gap: 4px;
@@ -435,6 +519,209 @@
     transform: scale(0.92) translateY(10px); transition: transform 0.28s cubic-bezier(.2,.85,.25,1.2);
   }
   .fullscreen-modal.open .fullscreen-modal-content { transform: scale(1) translateY(0); }
+
+  /* --- Cards drawer: pops open from the header like an iOS Dynamic Island,
+     down to the top of the balance card. While it's open, the header icons
+     (settings/cards/theme/account) hide — the drawer itself becomes the top bar. --- */
+  /* Icons come back only as the shrinking pill reaches them, not while the drawer is still big */
+  .app-header .header-buttons {
+    transition: opacity 0.2s ease 0.26s, transform 0.3s cubic-bezier(.2,.8,.3,1) 0.26s;
+  }
+  body.cards-drawer-open .app-header { pointer-events: none; }
+  body.cards-drawer-open .app-header .header-buttons {
+    opacity: 0; transform: translateY(-8px) scale(0.9); pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .cards-drawer {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 30;
+    overflow: hidden; height: 150px; pointer-events: none;
+    background: color-mix(in srgb, var(--card) var(--glass-opacity), transparent);
+    border: none;
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(190%);
+    border-radius: 26px;
+    /* Closed: clipped down to a small pill exactly over the 💳 icon (vars set in JS).
+       Only clip-path animates — no layout and no squashing of the content — so it
+       grows out of the icon like the iOS Dynamic Island and shrinks back into it. */
+    --ci-t: 0px; --ci-r: 0px; --ci-b: 100%; --ci-l: 100%;
+    clip-path: inset(var(--ci-t) var(--ci-r) var(--ci-b) var(--ci-l) round 19px);
+    opacity: 0;
+    /* Same curve both ways; when closing, the pill fades out only at the very end. */
+    /* Closing: smooth deceleration without bounce, so the pill lands evenly on the icon */
+    transition: clip-path 0.46s cubic-bezier(.4,0,.2,1),
+                opacity 0.16s ease 0.32s;
+  }
+  .cards-drawer.open {
+    pointer-events: auto; opacity: 1;
+    clip-path: inset(0px 0px 0px 0px round 26px);
+    transition: clip-path 0.55s cubic-bezier(.32,1.12,.4,1), opacity 0.12s ease 0s;
+  }
+  /* Content fades in once the shape has mostly grown, and out right away on close */
+  .cards-drawer-inner { opacity: 0; transform: translateY(-4px); transition: opacity 0.14s ease, transform 0.2s ease; }
+  .cards-drawer.open .cards-drawer-inner { opacity: 1; transform: none; transition: opacity 0.26s ease 0.14s, transform 0.4s cubic-bezier(.2,.8,.3,1) 0.1s; }
+  @media (prefers-reduced-motion: reduce) {
+    .cards-drawer, .cards-drawer.open, .pages-wrap { transition-duration: 0.01s !important; }
+  }
+  .cards-drawer-inner { padding: 16px 16px 18px; box-sizing: border-box; }
+  .cards-drawer.open .cards-drawer-inner, .cards-drawer .cards-drawer-inner { will-change: opacity; }
+  .cards-drawer-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .cards-drawer-head .cards-drawer-title { font-size: 14px; font-weight: 700; }
+  .cards-drawer-close {
+    width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text-dim); font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+
+  /* --- Cards strip: horizontal, swipeable row of cards (like a wallet) --- */
+  .cards-strip {
+    display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden;
+    scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
+    padding: 2px 2px 6px; margin-top: -6px; scrollbar-width: none;
+  }
+  .cards-strip::-webkit-scrollbar { display: none; }
+  .cards-strip-item {
+    flex: 0 0 auto; scroll-snap-align: start; width: 130px; min-height: 76px;
+    border-radius: 14px; padding: 11px; cursor: pointer; position: relative; box-sizing: border-box;
+    background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow);
+    display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .cards-strip-item.all-item { background: var(--accent-soft); }
+  .cards-strip-item { transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
+  .cards-strip-item:active { transform: scale(0.97); }
+  .cards-strip-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .cards-strip-item .check.pop { animation: checkPop 0.18s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes checkPop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .cards-strip-item .name { font-size: 12.5px; font-weight: 700; line-height: 1.3; }
+  .cards-strip-item .bal { font-size: 14px; font-weight: 700; margin-top: 8px; }
+  .cards-strip-item .check {
+    position: absolute; top: 8px; right: 8px; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 10px; display: flex; align-items: center; justify-content: center;
+  }
+  .cards-strip-item .del {
+    position: absolute; top: 4px; right: 4px; background: none; border: none; color: var(--text-dim);
+    font-size: 12px; cursor: pointer; padding: 5px; line-height: 1;
+  }
+  .cards-strip-add {
+    flex: 0 0 auto; scroll-snap-align: start; width: 76px; min-height: 76px; box-sizing: border-box;
+    border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-direction: column;
+    gap: 3px; background: var(--accent-soft); border: 1px solid var(--border); cursor: pointer;
+    color: var(--accent); font-family: inherit;
+  }
+  .cards-strip-add span.plus { font-size: 18px; line-height: 1; }
+  .cards-strip-add span.lbl { font-size: 10.5px; font-weight: 700; }
+
+  /* --- Receipt scanner + purchase groups --- */
+  .receipt-view { display: none; }
+  .receipt-view.active { display: block; animation: panelIn 0.25s ease; }
+  .cards-view { display: none; }
+  .cards-view.active { display: block; animation: panelIn 0.25s ease; }
+  .group-card.card-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+  .group-card .check-badge {
+    position: absolute; top: 10px; right: 10px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; line-height: 1;
+  }
+  .group-card .bal { font-size: 15px; font-weight: 700; margin-top: 2px; }
+  .active-card-chip {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 600;
+    color: var(--text-dim); background: var(--accent-soft); border-radius: 999px; padding: 3px 10px;
+    cursor: pointer; border: none; font-family: inherit; margin-top: 4px;
+  }
+  .active-card-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--chip-c, var(--accent)); }
+  .field { margin-bottom: 12px; }
+  .field label { font-size: 12px; color: var(--text-dim); display: block; margin-bottom: 5px; font-weight: 600; }
+  .field input[type=text] {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 14.5px; font-family: inherit;
+  }
+  .receipt-scan-zone {
+    border: 1.5px dashed var(--border); border-radius: 14px; padding: 26px 16px; text-align: center;
+    cursor: pointer; transition: border-color 0.15s ease; background: var(--bg); display: block;
+  }
+  .receipt-scan-zone:hover { border-color: var(--accent); }
+  .receipt-scan-zone .icon { font-size: 32px; margin-bottom: 8px; display: block; }
+  .receipt-scan-zone .label { font-weight: 700; font-size: 14px; }
+  .receipt-scan-zone .sub { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+  .receipt-scan-zone input[type=file] { display: none; }
+  .receipt-spinner-row { display: flex; align-items: center; gap: 10px; padding: 16px 4px; }
+  .receipt-spinner {
+    width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--border);
+    border-top-color: var(--accent); animation: receiptSpin 0.8s linear infinite; flex-shrink: 0;
+  }
+  @keyframes receiptSpin { to { transform: rotate(360deg); } }
+  .receipt-spinner-row span { font-size: 13.5px; color: var(--text-dim); }
+  .receipt-preview {
+    display: flex; gap: 12px; align-items: center; margin-bottom: 14px; padding: 10px; border-radius: 12px;
+    background: var(--bg); border: 1px solid var(--border);
+  }
+  .receipt-thumb {
+    width: 46px; height: 58px; border-radius: 6px; flex-shrink: 0; object-fit: cover;
+    border: 1px solid var(--border); background: var(--card);
+  }
+  .receipt-preview .store { font-weight: 700; font-size: 14px; }
+  .receipt-preview .meta { font-size: 12px; color: var(--text-dim); }
+  .receipt-group-picker { display: flex; flex-wrap: wrap; gap: 7px; }
+  .receipt-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
+    font-size: 13px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--bg);
+    color: var(--text); user-select: none; transition: transform 0.1s ease;
+  }
+  .receipt-chip:active { transform: scale(0.96); }
+  .receipt-chip.selected { border-color: var(--chip-c, var(--accent)); background: color-mix(in srgb, var(--chip-c, var(--accent)) 16%, var(--card)); }
+  .receipt-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--chip-c, var(--accent)); }
+  .receipt-ai-note {
+    display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--text-dim);
+    background: var(--accent-soft); border-radius: 10px; padding: 10px 12px; margin-bottom: 14px; line-height: 1.5;
+  }
+  .receipt-ai-note b { color: var(--text); }
+  .row-btns { display: flex; gap: 8px; }
+  .row-btns button.secondary { flex: 1; }
+  .receipt-scan-item {
+    display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .receipt-scan-item:last-child { border-bottom: none; }
+  .receipt-scan-item .icon-wrap {
+    width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0; background: color-mix(in srgb, var(--chip-c, var(--accent)) 18%, var(--card));
+  }
+  .receipt-scan-item .info { flex: 1; min-width: 0; }
+  .receipt-scan-item .store { font-size: 13.5px; font-weight: 700; }
+  .receipt-scan-item .grp { font-size: 11.5px; color: var(--text-dim); }
+  .receipt-scan-item .amt { font-weight: 700; font-size: 14px; white-space: nowrap; }
+  .groups-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .group-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 12px;
+    box-shadow: var(--shadow); position: relative;
+  }
+  .group-card .top-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .group-card .emoji-badge {
+    width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; background: color-mix(in srgb, var(--gc, var(--accent)) 18%, var(--card));
+  }
+  .group-card .gname { font-size: 13.5px; font-weight: 700; margin: 6px 0 2px; }
+  .group-card .kw { font-size: 11px; color: var(--text-dim); line-height: 1.4; min-height: 30px; }
+  .group-card .auto-row { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 11px; color: var(--text-dim); }
+  .receipt-switch { position: relative; width: 32px; height: 18px; flex-shrink: 0; }
+  .receipt-switch input { opacity: 0; width: 0; height: 0; }
+  .receipt-switch .track { position: absolute; inset: 0; background: var(--border); border-radius: 999px; transition: background 0.2s ease; cursor: pointer; }
+  .receipt-switch .track::after {
+    content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; background: #fff;
+    top: 2px; left: 2px; transition: transform 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .receipt-switch input:checked + .track { background: var(--accent); }
+  .receipt-switch input:checked + .track::after { transform: translateX(14px); }
+  .add-group-card {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    border: 1.5px dashed var(--border); border-radius: 13px; padding: 12px; cursor: pointer; color: var(--text-dim);
+    min-height: 92px; background: none; font-family: inherit; width: 100%;
+  }
+  .add-group-card span.plus { font-size: 20px; line-height: 1; color: var(--accent); }
+  .add-group-card span.lbl { font-size: 12px; font-weight: 600; }
+  .field input.emoji-input[type=text] { font-size: 18px; }
+  .color-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .color-opt { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+  .color-opt.selected { border-color: var(--text); }
 </style>
 </head>
 <body>
@@ -445,32 +732,18 @@
   <div class="header-buttons">
     <button class="theme-toggle" id="appSettingsToggle" title="Wygląd" data-i18n-title="settings.appearance">⚙️</button>
     <div class="account-popover left-anchor" id="appSettingsPopover">
-      <div class="section-title" data-i18n="settings.appearance">Wygląd</div>
+      <div class="settings-group">
+      <div class="section-title" data-i18n="settings.personalization">Personalizacja</div>
 
       <button class="secondary" id="autoLightDarkBtn" style="width:100%; margin-top:8px;">🌓 <span data-i18n="settings.autoLightDark">Automatycznie jasny/ciemny (wg systemu)</span></button>
 
       <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.bgPalette">Tło — zestaw kolorów</div>
       <div class="palette-row" id="paletteRow"></div>
       <div class="balance-sub" style="margin-top:4px;">⚙️ = <span data-i18n="settings.systemColorNote">kolor systemu (telefonu/komputera), gdy dostępny</span></div>
-
-      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.appIconAndroid" id="iconModeSectionTitle">Ikona aplikacji (Android)</div>
-      <div class="icon-mode-row" id="iconModeRow">
-        <div class="icon-mode-opt" data-icon-mode="auto"><div class="icon-mode-thumb icon-mode-auto">🌓</div><span data-i18n="iconMode.auto">Auto</span></div>
-        <div class="icon-mode-opt" data-icon-mode="light"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.light">Jasna</span></div>
-        <div class="icon-mode-opt" data-icon-mode="dark"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.dark">Ciemna</span></div>
-        <div class="icon-mode-opt" data-icon-mode="glass"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.glass">Glass</span></div>
-      </div>
-      <div class="balance-sub" id="iconModeNote" style="margin-top:4px;"></div>
-
-      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.language">Język</div>
-      <div class="chart-type-tabs" id="languageRow">
-        <div class="chart-type-btn" data-lang="pl">PL</div>
-        <div class="chart-type-btn" data-lang="en">EN</div>
-        <div class="chart-type-btn" data-lang="ru">RU</div>
-        <div class="chart-type-btn" data-lang="lt">LT</div>
       </div>
 
-      <div class="balance-sub" style="margin-top:12px;" data-i18n="settings.customBgColors">Własne kolory tła</div>
+      <div class="settings-group">
+      <div class="balance-sub" data-i18n="settings.customBgColors">Własne kolory tła</div>
       <div class="custom-color-row">
         <input type="color" id="customC1" value="#2f6f4f" title="Kolor 1" data-i18n-title="settings.color1">
         <input type="color" id="customC2" value="#4fa8d8" title="Kolor 2" data-i18n-title="settings.color2">
@@ -496,9 +769,41 @@
         <input type="range" id="glassSlider" min="0" max="100" step="5">
         <div class="glass-slider-label"><span data-i18n="glass.off">Wyłączony</span><span id="glassSliderVal">70%</span><span data-i18n="glass.max">Maksymalny</span></div>
       </div>
+      </div>
+
+      <div class="settings-group" id="iconModeGroup">
+      <div class="section-title" data-i18n="settings.appIconAndroid" id="iconModeSectionTitle">Ikona aplikacji (Android)</div>
+      <div class="icon-mode-row" id="iconModeRow">
+        <div class="icon-mode-opt" data-icon-mode="auto"><div class="icon-mode-thumb icon-mode-auto">🌓</div><span data-i18n="iconMode.auto">Auto</span></div>
+        <div class="icon-mode-opt" data-icon-mode="light"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.light">Jasna</span></div>
+        <div class="icon-mode-opt" data-icon-mode="dark"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.dark">Ciemna</span></div>
+        <div class="icon-mode-opt" data-icon-mode="glass"><img class="icon-mode-thumb" src="data:image/png;base64,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"><span data-i18n="iconMode.glass">Glass</span></div>
+      </div>
+      <div class="balance-sub" id="iconModeNote" style="margin-top:4px;"></div>
+      </div>
+
+      <div class="settings-group">
+      <div class="section-title" data-i18n="settings.language">Język</div>
+      <div class="chart-type-tabs" id="languageRow">
+        <div class="chart-type-btn" data-lang="pl">PL</div>
+        <div class="chart-type-btn" data-lang="en">EN</div>
+        <div class="chart-type-btn" data-lang="ru">RU</div>
+        <div class="chart-type-btn" data-lang="lt">LT</div>
+      </div>
+      </div>
+
+      <div class="settings-group">
+      <div class="section-title" data-i18n="settings.wallpaperSync">Tło między urządzeniami</div>
+      <div class="chart-type-tabs" id="syncAppearanceTabs">
+        <div class="chart-type-btn" data-sync="same" data-i18n="settings.wallpaperSyncSame">Takie samo</div>
+        <div class="chart-type-btn" data-sync="different" data-i18n="settings.wallpaperSyncDifferent">Osobne</div>
+      </div>
+      <div class="balance-sub" style="margin-top:4px;" data-i18n="settings.wallpaperSyncNote">Dotyczy tła, palety kolorów i efektu szkła. Wymaga zalogowania.</div>
+      </div>
     </div>
   </div>
   <div class="header-buttons">
+    <button class="theme-toggle" id="cardsToggle" title="Karty" data-i18n-title="cards.myCards">💳</button>
     <button class="theme-toggle" id="themeToggle" title="Zmień motyw" data-i18n-title="theme.change"></button>
     <button class="account-toggle" id="accountToggle" title="Konto">👤</button>
     <div class="account-popover" id="accountPopover">
@@ -522,6 +827,23 @@
   </div>
 </div>
 
+<div class="cards-drawer" id="cardsDrawer">
+  <div class="cards-drawer-inner">
+
+    <div class="cards-drawer-head">
+      <div class="cards-drawer-title" data-i18n="cards.title">Karty bankowe</div>
+      <button class="cards-drawer-close" id="cardsDrawerClose" title="Zamknij" data-i18n-title="action.close">✕</button>
+    </div>
+
+    <div class="cards-strip" id="cardsStrip"></div>
+
+  </div>
+</div>
+
+<div id="pagesWrap" class="pages-wrap">
+
+<div class="app-page" id="appPage1">
+
 <div id="rateBanner"></div>
 
 <div class="card balance-card">
@@ -535,6 +857,7 @@
   </div>
   <div class="balance-value" id="balanceMain">0,00 €</div>
   <div class="balance-sub" id="balanceOther"></div>
+  <button class="active-card-chip hidden" id="activeCardChip"></button>
 </div>
 
 <div class="tabs">
@@ -687,6 +1010,162 @@
 </div>
 </div>
 
+</div><!-- /appPage1 -->
+
+<div class="app-page" id="appPage2">
+
+<div class="tabs">
+  <div class="tab active" data-tab2="receipts" data-i18n="tabs.receipts">Paragony</div>
+  <div class="tab" data-tab2="ai" data-i18n="tabs.aiAssistant">Asystent AI</div>
+</div>
+
+<div id="hiddenPanelsBar2" class="hidden-panels-bar"></div>
+<div id="panelsContainer2">
+<div id="tab-receipts" class="panel" data-panel="receipts" style="order:1">
+  <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.receipts">Paragony</span><button class="panel-hide-btn" data-hide="receipts" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
+
+  <div class="chart-type-tabs" id="receiptSubTabs">
+    <div class="chart-type-btn active" data-rtab="scan" data-i18n="receipts.scanTab">📷 Skanuj</div>
+    <div class="chart-type-btn" data-rtab="groups" data-i18n="receipts.groupsTab">🗂️ Grupy</div>
+  </div>
+
+  <!-- SCAN VIEW -->
+  <div class="receipt-view active" id="rview-scan">
+    <div class="card" id="receiptScanCard">
+      <div class="section-title" data-i18n="receipts.scanTitle">Zdjęcie paragonu</div>
+      <div class="balance-sub" style="margin-bottom:12px;" data-i18n="receipts.scanHint">Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę.</div>
+      <label class="receipt-scan-zone" id="receiptScanZone">
+        <span class="icon">🧾</span>
+        <span class="label" data-i18n="receipts.scanCta">Zrób zdjęcie paragonu</span>
+        <span class="sub" data-i18n="receipts.scanSub">albo wybierz z galerii</span>
+        <input type="file" id="receiptFileInput" accept="image/*" capture="environment">
+      </label>
+    </div>
+
+    <div class="card hidden" id="receiptResultCard">
+      <div class="section-title" data-i18n="receipts.recognized">Rozpoznano paragon</div>
+      <div class="receipt-preview">
+        <img class="receipt-thumb" id="receiptThumb" alt="">
+        <div>
+          <div class="store" id="receiptResStore">—</div>
+          <div class="meta" id="receiptResMeta">—</div>
+        </div>
+      </div>
+      <div class="field">
+        <label data-i18n="receipts.storeLabel">Sklep / opis</label>
+        <input type="text" id="receiptResStoreInput">
+      </div>
+      <div class="field">
+        <label data-i18n="receipts.amountLabel">Kwota (EUR)</label>
+        <input type="number" id="receiptResAmountInput" step="0.01">
+      </div>
+      <div class="field">
+        <label data-i18n="receipts.groupLabel">Grupa zakupów</label>
+        <div class="receipt-group-picker" id="receiptResGroupPicker"></div>
+      </div>
+      <div class="receipt-ai-note" id="receiptAiExplainNote">🤖 <span></span></div>
+      <div class="row-btns">
+        <button class="secondary" id="receiptDiscardBtn" data-i18n="receipts.discard">Odrzuć</button>
+        <button class="primary" id="receiptSaveBtn" style="flex:2" data-i18n="receipts.saveAsTx">💾 Zapisz jako transakcję</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" data-i18n="receipts.recentScans">Ostatnio zeskanowane</div>
+      <div id="receiptRecentList"><div class="empty" data-i18n="receipts.emptyRecent">Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.</div></div>
+    </div>
+  </div>
+
+  <!-- GROUPS VIEW -->
+  <div class="receipt-view" id="rview-groups">
+    <div class="card">
+      <div class="section-title" data-i18n="receipts.groupsTitle">Grupy zakupów</div>
+      <div class="balance-sub" data-i18n="receipts.groupsHint">AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.</div>
+    </div>
+    <div class="groups-grid" id="receiptGroupsGrid"></div>
+    <button class="add-group-card" id="receiptAddGroupBtn">
+      <span class="plus">+</span>
+      <span class="lbl" data-i18n="receipts.newGroup">Nowa grupa</span>
+    </button>
+  </div>
+</div>
+
+<div id="tab-ai" class="panel hidden" data-panel="ai" style="order:2">
+  <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.aiAssistant">Asystent AI</span><button class="panel-hide-btn" data-hide="ai" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
+  <div class="card" id="aiCard">
+    <div class="section-title" data-i18n="ai.title">Asystent AI (lokalnie, offline)</div>
+    <div class="balance-sub" id="aiIntro" data-i18n="ai.intro">Analizuje Twoje dane bezpośrednio na tym urządzeniu — nic nie wysyłamy do internetu. Pierwsze uruchomienie pobiera mały model AI (ok. 600 MB–1 GB), potem działa offline.</div>
+    <button class="secondary" id="aiAnalyzeBtn" style="width:100%; margin-top:10px;" data-i18n="ai.analyzeBtn">🤖 Analizuj moje finanse</button>
+    <div class="balance-sub" id="aiStatus" style="margin-top:8px;"></div>
+    <div id="aiProgressWrap" class="hidden" style="margin-top:8px;">
+      <div style="height:6px; border-radius:4px; background:var(--border); overflow:hidden;">
+        <div id="aiProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width 0.3s ease;"></div>
+      </div>
+    </div>
+    <div id="aiResultBox" class="hidden" style="margin-top:12px; padding:12px; border-radius:10px; background:var(--accent-soft); font-size:14px; line-height:1.5; white-space:pre-wrap;"></div>
+  </div>
+</div>
+</div><!-- /panelsContainer2 -->
+
+</div><!-- /appPage2 -->
+
+</div><!-- /pagesWrap -->
+
+<div class="page-dots" id="pageDots">
+  <span class="dot active" data-page="0"></span>
+  <span class="dot" data-page="1"></span>
+</div>
+
+<div class="fullscreen-modal" id="cardModal">
+  <div class="fullscreen-modal-content" style="max-width:400px;">
+    <div class="section-title" data-i18n="cards.newCardTitle">Nowa karta</div>
+    <div class="field">
+      <label data-i18n="cards.cardName">Nazwa karty</label>
+      <input type="text" id="newCardName" placeholder="np. Revolut">
+    </div>
+    <div class="field">
+      <label data-i18n="receipts.color">Kolor</label>
+      <div class="color-row" id="cardColorRow"></div>
+    </div>
+    <div class="row-btns" style="margin-top:16px;">
+      <button class="secondary" id="cancelCardBtn" data-i18n="action.close">Anuluj</button>
+      <button class="primary" id="saveCardBtn" style="flex:2" data-i18n="cards.createCard">Utwórz kartę</button>
+    </div>
+  </div>
+</div>
+
+<div class="fullscreen-modal" id="groupModal">
+  <div class="fullscreen-modal-content" style="max-width:440px;">
+    <div class="section-title" data-i18n="receipts.newGroupTitle">Nowa grupa zakupów</div>
+    <div class="field">
+      <label data-i18n="receipts.groupName">Nazwa grupy</label>
+      <input type="text" id="newGroupName" placeholder="np. Apteka">
+    </div>
+    <div class="field">
+      <label data-i18n="receipts.icon">Ikona</label>
+      <input type="text" id="newGroupEmojiInput" class="emoji-input" maxlength="8" data-i18n-placeholder="receipts.emojiHint" placeholder="Wpisz dowolne emoji">
+    </div>
+    <div class="field">
+      <label data-i18n="receipts.color">Kolor</label>
+      <div class="color-row" id="colorRow"></div>
+    </div>
+    <div class="field">
+      <label data-i18n="receipts.keywords">Słowa kluczowe do rozpoznawania (po przecinku)</label>
+      <input type="text" id="newGroupKeywords" placeholder="np. apteka, pharmacy, gemma">
+    </div>
+    <div class="field">
+      <label style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0;">
+        <span data-i18n="receipts.autoAdd">AI dodaje wydatek automatycznie, bez pytania</span>
+        <span class="receipt-switch"><input type="checkbox" id="newGroupAuto" checked><span class="track"></span></span>
+      </label>
+    </div>
+    <div class="row-btns" style="margin-top:16px;">
+      <button class="secondary" id="cancelGroupBtn" data-i18n="action.close">Anuluj</button>
+      <button class="primary" id="saveGroupBtn" style="flex:2" data-i18n="receipts.createGroup">Utwórz grupę</button>
+    </div>
+  </div>
+</div>
+
 <div class="fullscreen-modal" id="fullscreenModal">
   <div class="fullscreen-modal-content">
     <div class="section-title">
@@ -709,7 +1188,7 @@ const PLOT_W = PLOT_X1 - PLOT_X0;
 
 const TRANSLATIONS = {
   pl: {
-    settings: { appearance:'Wygląd', autoLightDark:'Automatycznie jasny/ciemny (wg systemu)', bgPalette:'Tło — zestaw kolorów', systemColorNote:'kolor systemu (telefonu/komputera), gdy dostępny', appIconAndroid:'Ikona aplikacji (Android)', language:'Język', customBgColors:'Własne kolory tła', color1:'Kolor 1', color2:'Kolor 2', color3:'Kolor 3', apply:'Użyj', bgIntensity:'Intensywność tła', bgAnimation:'Animacja tła', glassEffect:'Efekt szkła (liquid glass)', androidOnly:'Dostępne tylko w aplikacji na Androida.', autoSystemColor:'Automatyczny (kolor systemu)' },
+    settings: { appearance:'Wygląd', personalization:'Personalizacja', wallpaperSync:'Tło między urządzeniami', wallpaperSyncSame:'Takie samo', wallpaperSyncDifferent:'Osobne', wallpaperSyncNote:'Dotyczy tła, palety kolorów i efektu szkła. Wymaga zalogowania.', autoLightDark:'Automatycznie jasny/ciemny (wg systemu)', bgPalette:'Tło — zestaw kolorów', systemColorNote:'kolor systemu (telefonu/komputera), gdy dostępny', appIconAndroid:'Ikona aplikacji (Android)', language:'Język', customBgColors:'Własne kolory tła', color1:'Kolor 1', color2:'Kolor 2', color3:'Kolor 3', apply:'Użyj', bgIntensity:'Intensywność tła', bgAnimation:'Animacja tła', glassEffect:'Efekt szkła (liquid glass)', androidOnly:'Dostępne tylko w aplikacji na Androida.', autoSystemColor:'Automatyczny (kolor systemu)' },
     speed: { slow:'Wolna', normal:'Normalna', fast:'Szybka', off:'Wyłączona' },
     glass: { off:'Wyłączony', max:'Maksymalny' },
     theme: { change:'Zmień motyw' },
@@ -717,7 +1196,7 @@ const TRANSLATIONS = {
       err: { emailInUse:'Ten e-mail jest już zarejestrowany.', invalidEmail:'Nieprawidłowy adres e-mail.', weakPassword:'Hasło musi mieć min. 6 znaków.', wrongPassword:'Błędne hasło.', userNotFound:'Nie znaleziono konta z tym e-mailem.', invalidCredential:'Błędny e-mail lub hasło.', generic:'Błąd: ' } },
     balance: { total:'Saldo całkowite', toggleVisibility:'Ukryj/pokaż saldo' },
     currency: { pickerTitle:'Stuknij lub przesuń, aby zmienić walutę' },
-    tabs: { add:'Dodaj', debts:'Długi', stats:'Statystyki', settings:'Kursy' },
+    tabs: { add:'Dodaj', debts:'Długi', stats:'Statystyki', settings:'Kursy', receipts:'Paragony', aiAssistant:'Asystent AI' },
     panel: { hide:'Ukryj panel' },
     type: { income:'Przychód', expense:'Wydatek' },
     amount: { label:'Kwota' },
@@ -729,6 +1208,9 @@ const TRANSLATIONS = {
     stats: { totalIncome:'Suma przychodów', totalExpense:'Suma wydatków', period:'Okres' },
     period: { day:'Dni', week:'Tygodnie', month:'Miesiące', year:'Kwartały', searchDay:'Przejdź do dnia', searchWeek:'Przejdź do tygodnia', searchMonth:'Przejdź do miesiąca', searchYear:'Przejdź do roku', yearPlaceholder:'np. 2026', weekLabel:'Tydzień {week}, {year} ({from}–{to})' },
     chart: { bar:'Słupkowy', line:'Liniowy', pie:'Kołowy', percent:'Procentowy', preview:'Podgląd', incomeVsExpense:'Przychody vs wydatki (wybrany okres)', percentShare:'Udział %' },
+    ai: { title:'Asystent AI (lokalnie, offline)', intro:'Analizuje Twoje dane bezpośrednio na tym urządzeniu — nic nie wysyłamy do internetu. Pierwsze uruchomienie pobiera mały model AI (ok. 600 MB–1 GB), potem działa offline.', analyzeBtn:'🤖 Analizuj moje finanse', downloading:'Pobieranie modelu AI...', loading:'Uruchamianie modelu...', thinking:'Analizuję...', unsupported:'To urządzenie/przeglądarka nie obsługuje lokalnego AI (brak WebGPU). Spróbuj na nowszym komputerze lub telefonie.', error:'Coś poszło nie tak przy uruchamianiu AI: ', noData:'Dodaj kilka transakcji, żeby AI mogło je przeanalizować.', ready:'Model gotowy ✓' },
+    receipts: { scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
+    cards: { myCards:'Karty', allTogether:'Wszystkie', title:'Karty bankowe', hint:'Dodaj swoje karty i wybierz jedną — nowe transakcje będą zapisywać się tylko do wybranej karty. Zakładka „Wszystkie” pokaże sumę ze wszystkich kart naraz.', newCard:'Nowa karta', newCardTitle:'Nowa karta', cardName:'Nazwa karty', createCard:'Utwórz kartę', needName:'Podaj nazwę karty', createdToast:'Utworzono kartę', showing:'Pokazuję:', showingAll:'Pokazuję: wszystkie karty', noCard:'bez karty', allBalanceLabel:'Saldo razem ze wszystkich kart' },
     rates: { title:'Kursy walut (1 EUR =)', refreshNow:'Odśwież teraz', lastSync:'Ostatnia synchronizacja: ', fetchFailed:'Nie udało się pobrać aktualnych kursów (brak połączenia) — używane są zapisane wcześniej.', newDayBanner:'Nowy dzień — sprawdź i zaktualizuj kursy walut.' },
     data: { title:'Dane', resetAll:'Wyczyść wszystkie dane' },
     confirm: { resetAll:'Na pewno chcesz usunąć wszystkie dane?' },
@@ -739,7 +1221,7 @@ const TRANSLATIONS = {
     months: { short:['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'] }
   },
   en: {
-    settings: { appearance:'Appearance', autoLightDark:'Automatically light/dark (system)', bgPalette:'Background — color set', systemColorNote:'system color (phone/computer), when available', appIconAndroid:'App icon (Android)', language:'Language', customBgColors:'Custom background colors', color1:'Color 1', color2:'Color 2', color3:'Color 3', apply:'Apply', bgIntensity:'Background intensity', bgAnimation:'Background animation', glassEffect:'Glass effect (liquid glass)', androidOnly:'Available only in the Android app.', autoSystemColor:'Automatic (system color)' },
+    settings: { appearance:'Appearance', personalization:'Personalization', wallpaperSync:'Background across devices', wallpaperSyncSame:'Same', wallpaperSyncDifferent:'Separate', wallpaperSyncNote:'Covers the background, color palette and glass effect. Requires being signed in.', autoLightDark:'Automatically light/dark (system)', bgPalette:'Background — color set', systemColorNote:'system color (phone/computer), when available', appIconAndroid:'App icon (Android)', language:'Language', customBgColors:'Custom background colors', color1:'Color 1', color2:'Color 2', color3:'Color 3', apply:'Apply', bgIntensity:'Background intensity', bgAnimation:'Background animation', glassEffect:'Glass effect (liquid glass)', androidOnly:'Available only in the Android app.', autoSystemColor:'Automatic (system color)' },
     speed: { slow:'Slow', normal:'Normal', fast:'Fast', off:'Off' },
     glass: { off:'Off', max:'Maximum' },
     theme: { change:'Change theme' },
@@ -747,7 +1229,7 @@ const TRANSLATIONS = {
       err: { emailInUse:'This email is already registered.', invalidEmail:'Invalid email address.', weakPassword:'Password must be at least 6 characters.', wrongPassword:'Incorrect password.', userNotFound:'No account found with this email.', invalidCredential:'Incorrect email or password.', generic:'Error: ' } },
     balance: { total:'Total balance', toggleVisibility:'Show/hide balance' },
     currency: { pickerTitle:'Tap or swipe to change currency' },
-    tabs: { add:'Add', debts:'Debts', stats:'Stats', settings:'Rates' },
+    tabs: { add:'Add', debts:'Debts', stats:'Stats', settings:'Rates', receipts:'Receipts', aiAssistant:'AI Assistant' },
     panel: { hide:'Hide panel' },
     type: { income:'Income', expense:'Expense' },
     amount: { label:'Amount' },
@@ -759,6 +1241,9 @@ const TRANSLATIONS = {
     stats: { totalIncome:'Total income', totalExpense:'Total expenses', period:'Period' },
     period: { day:'Days', week:'Weeks', month:'Months', year:'Quarters', searchDay:'Go to day', searchWeek:'Go to week', searchMonth:'Go to month', searchYear:'Go to year', yearPlaceholder:'e.g. 2026', weekLabel:'Week {week}, {year} ({from}–{to})' },
     chart: { bar:'Bar', line:'Line', pie:'Pie', percent:'Percent', preview:'Preview', incomeVsExpense:'Income vs expenses (selected period)', percentShare:'Share %' },
+    ai: { title:'AI Assistant (local, offline)', intro:'Analyzes your data directly on this device — nothing is sent to the internet. First run downloads a small AI model (~600 MB–1 GB), then it works offline.', analyzeBtn:'🤖 Analyze my finances', downloading:'Downloading AI model...', loading:'Starting model...', thinking:'Analyzing...', unsupported:'This device/browser does not support local AI (no WebGPU). Try a newer computer or phone.', error:'Something went wrong starting the AI: ', noData:'Add a few transactions so the AI has something to analyze.', ready:'Model ready ✓' },
+    receipts: { scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
+    cards: { myCards:'Cards', allTogether:'All', title:'Bank cards', hint:'Add your cards and pick one — new transactions will only be saved to the selected card. The "All" tab shows the total across every card at once.', newCard:'New card', newCardTitle:'New card', cardName:'Card name', createCard:'Create card', needName:'Enter a card name', createdToast:'Card created', showing:'Showing:', showingAll:'Showing: all cards', noCard:'no card', allBalanceLabel:'Combined balance across all cards' },
     rates: { title:'Exchange rates (1 EUR =)', refreshNow:'Refresh now', lastSync:'Last sync: ', fetchFailed:"Couldn't fetch current rates (no connection) — using previously saved ones.", newDayBanner:'New day — check and update exchange rates.' },
     data: { title:'Data', resetAll:'Clear all data' },
     confirm: { resetAll:'Are you sure you want to delete all data?' },
@@ -769,7 +1254,7 @@ const TRANSLATIONS = {
     months: { short:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] }
   },
   ru: {
-    settings: { appearance:'Внешний вид', autoLightDark:'Автоматически светлая/тёмная (по системе)', bgPalette:'Фон — набор цветов', systemColorNote:'системный цвет (телефона/компьютера), если доступен', appIconAndroid:'Значок приложения (Android)', language:'Язык', customBgColors:'Свои цвета фона', color1:'Цвет 1', color2:'Цвет 2', color3:'Цвет 3', apply:'Применить', bgIntensity:'Интенсивность фона', bgAnimation:'Анимация фона', glassEffect:'Эффект стекла (liquid glass)', androidOnly:'Доступно только в приложении для Android.', autoSystemColor:'Автоматически (системный цвет)' },
+    settings: { appearance:'Внешний вид', personalization:'Персонализация', wallpaperSync:'Фон на разных устройствах', wallpaperSyncSame:'Одинаковый', wallpaperSyncDifferent:'Раздельный', wallpaperSyncNote:'Касается фона, палитры цветов и эффекта стекла. Требуется вход в аккаунт.', autoLightDark:'Автоматически светлая/тёмная (по системе)', bgPalette:'Фон — набор цветов', systemColorNote:'системный цвет (телефона/компьютера), если доступен', appIconAndroid:'Значок приложения (Android)', language:'Язык', customBgColors:'Свои цвета фона', color1:'Цвет 1', color2:'Цвет 2', color3:'Цвет 3', apply:'Применить', bgIntensity:'Интенсивность фона', bgAnimation:'Анимация фона', glassEffect:'Эффект стекла (liquid glass)', androidOnly:'Доступно только в приложении для Android.', autoSystemColor:'Автоматически (системный цвет)' },
     speed: { slow:'Медленная', normal:'Обычная', fast:'Быстрая', off:'Выключена' },
     glass: { off:'Выключен', max:'Максимальный' },
     theme: { change:'Сменить тему' },
@@ -777,7 +1262,7 @@ const TRANSLATIONS = {
       err: { emailInUse:'Этот адрес уже зарегистрирован.', invalidEmail:'Неверный адрес эл. почты.', weakPassword:'Пароль должен содержать не менее 6 символов.', wrongPassword:'Неверный пароль.', userNotFound:'Аккаунт с этим адресом не найден.', invalidCredential:'Неверный адрес эл. почты или пароль.', generic:'Ошибка: ' } },
     balance: { total:'Общий баланс', toggleVisibility:'Показать/скрыть баланс' },
     currency: { pickerTitle:'Нажмите или проведите, чтобы изменить валюту' },
-    tabs: { add:'Добавить', debts:'Долги', stats:'Статистика', settings:'Курсы' },
+    tabs: { add:'Добавить', debts:'Долги', stats:'Статистика', settings:'Курсы', receipts:'Чеки', aiAssistant:'AI-ассистент' },
     panel: { hide:'Скрыть панель' },
     type: { income:'Доход', expense:'Расход' },
     amount: { label:'Сумма' },
@@ -789,6 +1274,9 @@ const TRANSLATIONS = {
     stats: { totalIncome:'Сумма доходов', totalExpense:'Сумма расходов', period:'Период' },
     period: { day:'Дни', week:'Недели', month:'Месяцы', year:'Кварталы', searchDay:'Перейти к дню', searchWeek:'Перейти к неделе', searchMonth:'Перейти к месяцу', searchYear:'Перейти к году', yearPlaceholder:'напр. 2026', weekLabel:'Неделя {week}, {year} ({from}–{to})' },
     chart: { bar:'Столбчатый', line:'Линейный', pie:'Круговой', percent:'Процентный', preview:'Просмотр', incomeVsExpense:'Доходы и расходы (выбранный период)', percentShare:'Доля %' },
+    ai: { title:'AI-ассистент (локально, офлайн)', intro:'Анализирует ваши данные прямо на этом устройстве — ничего не отправляется в интернет. При первом запуске загружается небольшая AI-модель (около 600 МБ–1 ГБ), затем работает офлайн.', analyzeBtn:'🤖 Проанализировать мои финансы', downloading:'Загрузка AI-модели...', loading:'Запуск модели...', thinking:'Анализирую...', unsupported:'Это устройство/браузер не поддерживает локальный AI (нет WebGPU). Попробуйте на более новом компьютере или телефоне.', error:'Не удалось запустить AI: ', noData:'Добавьте несколько транзакций, чтобы AI мог их проанализировать.', ready:'Модель готова ✓' },
+    receipts: { scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
+    cards: { myCards:'Карты', allTogether:'Все', title:'Банковские карты', hint:'Добавьте свои карты и выберите одну — новые операции будут сохраняться только на выбранную карту. Вкладка «Все» покажет сумму по всем картам сразу.', newCard:'Новая карта', newCardTitle:'Новая карта', cardName:'Название карты', createCard:'Создать карту', needName:'Укажите название карты', createdToast:'Карта создана', showing:'Показываю:', showingAll:'Показываю: все карты', noCard:'без карты', allBalanceLabel:'Общий баланс по всем картам' },
     rates: { title:'Курсы валют (1 EUR =)', refreshNow:'Обновить сейчас', lastSync:'Последняя синхронизация: ', fetchFailed:'Не удалось получить текущие курсы (нет соединения) — используются ранее сохранённые.', newDayBanner:'Новый день — проверьте и обновите курсы валют.' },
     data: { title:'Данные', resetAll:'Очистить все данные' },
     confirm: { resetAll:'Вы уверены, что хотите удалить все данные?' },
@@ -799,7 +1287,7 @@ const TRANSLATIONS = {
     months: { short:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'] }
   },
   lt: {
-    settings: { appearance:'Išvaizda', autoLightDark:'Automatiškai šviesi/tamsi (pagal sistemą)', bgPalette:'Fonas — spalvų rinkinys', systemColorNote:'sistemos spalva (telefono/kompiuterio), kai pasiekiama', appIconAndroid:'Programėlės piktograma (Android)', language:'Kalba', customBgColors:'Pasirinktinės fono spalvos', color1:'Spalva 1', color2:'Spalva 2', color3:'Spalva 3', apply:'Taikyti', bgIntensity:'Fono intensyvumas', bgAnimation:'Fono animacija', glassEffect:'Stiklo efektas (liquid glass)', androidOnly:'Pasiekiama tik Android programėlėje.', autoSystemColor:'Automatinis (sistemos spalva)' },
+    settings: { appearance:'Išvaizda', personalization:'Personalizavimas', wallpaperSync:'Fonas tarp įrenginių', wallpaperSyncSame:'Vienodas', wallpaperSyncDifferent:'Atskiras', wallpaperSyncNote:'Taikoma fonui, spalvų paletei ir stiklo efektui. Reikalingas prisijungimas.', autoLightDark:'Automatiškai šviesi/tamsi (pagal sistemą)', bgPalette:'Fonas — spalvų rinkinys', systemColorNote:'sistemos spalva (telefono/kompiuterio), kai pasiekiama', appIconAndroid:'Programėlės piktograma (Android)', language:'Kalba', customBgColors:'Pasirinktinės fono spalvos', color1:'Spalva 1', color2:'Spalva 2', color3:'Spalva 3', apply:'Taikyti', bgIntensity:'Fono intensyvumas', bgAnimation:'Fono animacija', glassEffect:'Stiklo efektas (liquid glass)', androidOnly:'Pasiekiama tik Android programėlėje.', autoSystemColor:'Automatinis (sistemos spalva)' },
     speed: { slow:'Lėta', normal:'Normali', fast:'Greita', off:'Išjungta' },
     glass: { off:'Išjungtas', max:'Maksimalus' },
     theme: { change:'Keisti temą' },
@@ -807,7 +1295,7 @@ const TRANSLATIONS = {
       err: { emailInUse:'Šis el. paštas jau užregistruotas.', invalidEmail:'Neteisingas el. pašto adresas.', weakPassword:'Slaptažodis turi būti bent 6 simbolių.', wrongPassword:'Neteisingas slaptažodis.', userNotFound:'Paskyra su šiuo el. paštu nerasta.', invalidCredential:'Neteisingas el. paštas arba slaptažodis.', generic:'Klaida: ' } },
     balance: { total:'Bendras balansas', toggleVisibility:'Rodyti/slėpti balansą' },
     currency: { pickerTitle:'Bakstelėkite arba perbraukite, kad pakeistumėte valiutą' },
-    tabs: { add:'Pridėti', debts:'Skolos', stats:'Statistika', settings:'Kursai' },
+    tabs: { add:'Pridėti', debts:'Skolos', stats:'Statistika', settings:'Kursai', receipts:'Kvitai', aiAssistant:'AI asistentas' },
     panel: { hide:'Slėpti skydelį' },
     type: { income:'Pajamos', expense:'Išlaidos' },
     amount: { label:'Suma' },
@@ -819,6 +1307,9 @@ const TRANSLATIONS = {
     stats: { totalIncome:'Pajamų suma', totalExpense:'Išlaidų suma', period:'Laikotarpis' },
     period: { day:'Dienos', week:'Savaitės', month:'Mėnesiai', year:'Ketvirčiai', searchDay:'Eiti į dieną', searchWeek:'Eiti į savaitę', searchMonth:'Eiti į mėnesį', searchYear:'Eiti į metus', yearPlaceholder:'pvz. 2026', weekLabel:'{week} savaitė, {year} ({from}–{to})' },
     chart: { bar:'Stulpelinė', line:'Linijinė', pie:'Skritulinė', percent:'Procentinė', preview:'Peržiūra', incomeVsExpense:'Pajamos ir išlaidos (pasirinktas laikotarpis)', percentShare:'Dalis %' },
+    ai: { title:'AI asistentas (vietoje, neprisijungus)', intro:'Analizuoja jūsų duomenis tiesiogiai šiame įrenginyje — niekas nesiunčiama į internetą. Pirmą kartą paleidus atsisiunčiamas mažas AI modelis (apie 600 MB–1 GB), vėliau veikia neprisijungus.', analyzeBtn:'🤖 Analizuoti mano finansus', downloading:'Atsisiunčiamas AI modelis...', loading:'Paleidžiamas modelis...', thinking:'Analizuoju...', unsupported:'Šis įrenginys/naršyklė nepalaiko vietinio AI (nėra WebGPU). Bandykite naujesniame kompiuteryje ar telefone.', error:'Nepavyko paleisti AI: ', noData:'Pridėkite kelias operacijas, kad AI turėtų ką analizuoti.', ready:'Modelis paruoštas ✓' },
+    receipts: { scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
+    cards: { myCards:'Kortelės', allTogether:'Visos', title:'Banko kortelės', hint:'Pridėkite savo korteles ir pasirinkite vieną — naujos operacijos bus išsaugomos tik pasirinktoje kortelėje. Skirtukas „Visos“ parodys visų kortelių sumą kartu.', newCard:'Nauja kortelė', newCardTitle:'Nauja kortelė', cardName:'Kortelės pavadinimas', createCard:'Sukurti kortelę', needName:'Įveskite kortelės pavadinimą', createdToast:'Kortelė sukurta', showing:'Rodoma:', showingAll:'Rodoma: visos kortelės', noCard:'be kortelės', allBalanceLabel:'Bendras balansas iš visų kortelių' },
     rates: { title:'Valiutų kursai (1 EUR =)', refreshNow:'Atnaujinti dabar', lastSync:'Paskutinis sinchronizavimas: ', fetchFailed:'Nepavyko gauti naujausių kursų (nėra ryšio) — naudojami anksčiau išsaugoti.', newDayBanner:'Nauja diena — patikrinkite ir atnaujinkite valiutų kursus.' },
     data: { title:'Duomenys', resetAll:'Išvalyti visus duomenis' },
     confirm: { resetAll:'Ar tikrai norite ištrinti visus duomenis?' },
@@ -865,12 +1356,22 @@ function renderLanguageRow() {
   });
 }
 
+function renderSyncAppearanceRow() {
+  const row = document.getElementById('syncAppearanceTabs');
+  if (!row) return;
+  row.querySelectorAll('[data-sync]').forEach(btn => {
+    const wantsSame = btn.dataset.sync === 'same';
+    btn.classList.toggle('active', !!state.syncAppearance === wantsSame);
+  });
+}
+
 function applyLanguage(lang) {
   if (!TRANSLATIONS[lang]) lang = 'pl';
   state.language = lang;
   saveState();
   applyStaticI18n();
   renderLanguageRow();
+  renderSyncAppearanceRow();
   renderPaletteRow();
   renderIconModeRow();
   renderHiddenBar();
@@ -889,8 +1390,26 @@ function loadState() {
       if (!parsed.rates) parsed.rates = { ...DEFAULT_RATES };
       if (!parsed.theme) parsed.theme = 'auto';
       if (!parsed.displayCurrency) parsed.displayCurrency = 'EUR';
-      if (!parsed.panelOrder) parsed.panelOrder = { add: 1, stats: 2, debts: 3, settings: 4 };
-      if (!parsed.panelHidden) parsed.panelHidden = { add: false, debts: false, stats: false, settings: false };
+      if (!parsed.panelOrder) parsed.panelOrder = { add: 1, settings: 2, stats: 3, debts: 4, receipts: 1, ai: 2 };
+      // One-time fixes for earlier default tile orders, upgrading only when the
+      // order still matches an old default exactly, so a manual drag-reorder is never touched.
+      if (parsed.panelOrder.add === 1 && parsed.panelOrder.stats === 2 && parsed.panelOrder.debts === 3 && parsed.panelOrder.settings === 4) {
+        parsed.panelOrder.debts = 2;
+        parsed.panelOrder.stats = 3;
+      }
+      if (parsed.panelOrder.add === 1 && parsed.panelOrder.debts === 2 && parsed.panelOrder.stats === 3 && parsed.panelOrder.settings === 4) {
+        parsed.panelOrder.settings = 2;
+        parsed.panelOrder.debts = 4;
+      }
+      if (typeof parsed.panelOrder.receipts !== 'number') parsed.panelOrder.receipts = 1;
+      if (typeof parsed.panelOrder.ai !== 'number') parsed.panelOrder.ai = 2;
+      if (!parsed.panelHidden) parsed.panelHidden = { add: false, debts: false, stats: false, settings: false, receipts: false, ai: false };
+      if (typeof parsed.panelHidden.receipts !== 'boolean') parsed.panelHidden.receipts = false;
+      if (typeof parsed.panelHidden.ai !== 'boolean') parsed.panelHidden.ai = false;
+      if (!parsed.receiptGroups) parsed.receiptGroups = null;
+      if (!parsed.recentScans) parsed.recentScans = [];
+      if (!parsed.cards) parsed.cards = [];
+      if (typeof parsed.activeCardId === 'undefined') parsed.activeCardId = null;
       if (typeof parsed.balanceHidden !== 'boolean') parsed.balanceHidden = false;
       if (!parsed.bgTheme) parsed.bgTheme = 'forest';
       if (typeof parsed.glassIntensity !== 'number') parsed.glassIntensity = 70;
@@ -902,10 +1421,11 @@ function loadState() {
       if (!parsed.iconMode) parsed.iconMode = 'auto';
       if (!parsed.language) parsed.language = (navigator.language || 'pl').slice(0,2).toLowerCase();
       if (!TRANSLATIONS_LANGS.includes(parsed.language)) parsed.language = 'pl';
+      if (typeof parsed.syncAppearance !== 'boolean') parsed.syncAppearance = false;
       return parsed;
     }
   } catch (e) {}
-  return { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: 'EUR', theme: 'auto', panelOrder: { add: 1, stats: 2, debts: 3, settings: 4 }, panelHidden: { add: false, debts: false, stats: false, settings: false }, balanceHidden: false, bgTheme: 'forest', glassIntensity: 70, bgBlobOpacity: 35, bgAnimSpeed: 'normal', txListCollapsed: false, debtListCollapsed: false, customPalette: null, iconMode: 'auto', language: (TRANSLATIONS_LANGS.includes((navigator.language||'pl').slice(0,2).toLowerCase()) ? (navigator.language||'pl').slice(0,2).toLowerCase() : 'pl') };
+  return { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: 'EUR', theme: 'auto', panelOrder: { add: 1, settings: 2, stats: 3, debts: 4, receipts: 1, ai: 2 }, panelHidden: { add: false, debts: false, stats: false, settings: false, receipts: false, ai: false }, balanceHidden: false, bgTheme: 'forest', glassIntensity: 70, bgBlobOpacity: 35, bgAnimSpeed: 'normal', txListCollapsed: false, debtListCollapsed: false, customPalette: null, iconMode: 'auto', language: (TRANSLATIONS_LANGS.includes((navigator.language||'pl').slice(0,2).toLowerCase()) ? (navigator.language||'pl').slice(0,2).toLowerCase() : 'pl'), syncAppearance: false, receiptGroups: null, recentScans: [], cards: [], activeCardId: null };
 }
 function saveState() {
   try { localStorage.setItem('portfel_state', JSON.stringify(state)); } catch (e) {}
@@ -961,7 +1481,17 @@ let debtType = 'i_owe';
 let chartType = 'bar';
 let chartGranularity = 'day';
 let periodAnchor = { day: todayStr(), week: '', month: '', year: new Date().getFullYear() };
-let panelOrder = state.panelOrder || { add: 1, stats: 2, debts: 3, settings: 4 };
+let panelOrder = state.panelOrder || { add: 1, settings: 2, stats: 3, debts: 4, receipts: 1, ai: 2 };
+
+// When a card is selected (state.activeCardId), the "home" views (balance,
+// transaction list, stats/chart) show only that card's transactions.
+// With no card selected (or none created yet) they show everything — the
+// same as before cards existed. The "Wszystkie" tab on the Karty page
+// always shows every card combined, regardless of this.
+function visibleTransactions() {
+  if (!state.activeCardId) return state.transactions;
+  return state.transactions.filter(t => t.cardId === state.activeCardId);
+}
 
 function applyTheme() {
   const html = document.documentElement;
@@ -1000,15 +1530,16 @@ function swapPanels(sourceId, targetId) {
 function wireDragAndDrop() {
   let activePointerId = null;
 
-  document.querySelectorAll('.panel-header .drag-handle').forEach(handle => {
-    handle.style.touchAction = 'none';
-    handle.addEventListener('pointerdown', (e) => {
-      const panel = handle.closest('.panel');
+  document.querySelectorAll('.panel-header').forEach(header => {
+    header.style.touchAction = 'none';
+    header.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.panel-hide-btn')) return;
+      const panel = header.closest('.panel');
       if (!panel) return;
       dragSourceId = panel.dataset.panel;
       activePointerId = e.pointerId;
       panel.classList.add('dragging');
-      try { handle.setPointerCapture(e.pointerId); } catch (err) {}
+      try { header.setPointerCapture(e.pointerId); } catch (err) {}
       e.preventDefault();
     });
   });
@@ -1043,7 +1574,7 @@ function applyListCollapse(kind) {
   const btn = document.getElementById(kind + 'CollapseBtn');
   const expandBtn = document.getElementById(kind + 'ExpandBtn');
   if (!wrap) return;
-  const isEmpty = kind === 'tx' ? state.transactions.length === 0 : state.debts.length === 0;
+  const isEmpty = kind === 'tx' ? visibleTransactions().length === 0 : state.debts.length === 0;
   if (isEmpty) {
     wrap.classList.add('collapsed');
     if (btn) btn.style.visibility = 'hidden';
@@ -1060,7 +1591,7 @@ function applyListCollapse(kind) {
 function refreshFullscreenList() {
   const body = document.getElementById('fullscreenModalBody');
   if (currentFullscreenKind === 'tx') {
-    const sorted = [...state.transactions].sort((a,b) => b.ts - a.ts);
+    const sorted = [...visibleTransactions()].sort((a,b) => b.ts - a.ts);
     body.innerHTML = buildTxRowsHTML(sorted);
     wireTxDelButtons(body);
   } else if (currentFullscreenKind === 'debt') {
@@ -1088,35 +1619,41 @@ function applyPanelVisibility() {
   });
 }
 
+const PAGE1_PANEL_IDS = ['add', 'debts', 'stats', 'settings'];
+const PAGE2_PANEL_IDS = ['receipts', 'ai'];
+
 function renderHiddenBar() {
-  const bar = document.getElementById('hiddenPanelsBar');
-  const labels = { add: t('tabs.add'), debts: t('tabs.debts'), stats: t('tabs.stats'), settings: t('tabs.settings') };
-  const hiddenIds = Object.keys(state.panelHidden || {}).filter(id => state.panelHidden[id]);
-  if (hiddenIds.length === 0) {
-    bar.innerHTML = '';
-    bar.classList.remove('show');
-    return;
-  }
-  bar.classList.add('show');
-  bar.innerHTML = '<span class="lbl">Ukryte:</span> ' + hiddenIds.map(id =>
-    '<button class="secondary" data-restore="' + id + '">' + labels[id] + ' +</button>'
-  ).join('');
-  bar.querySelectorAll('[data-restore]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.restore;
-      const before = captureGridRects();
-      state.panelHidden[id] = false;
-      saveState();
-      const panelEl = document.querySelector('.panel[data-panel="' + id + '"]');
-      if (panelEl) panelEl.classList.add('panel-appearing');
-      applyPanelVisibility();
-      playFlipAnimation(before);
-      if (panelEl) {
-        void panelEl.offsetWidth;
-        requestAnimationFrame(() => panelEl.classList.remove('panel-appearing'));
-      }
-      btn.classList.add('chip-fade-out');
-      setTimeout(renderHiddenBar, 200);
+  const labels = { add: t('tabs.add'), debts: t('tabs.debts'), stats: t('tabs.stats'), settings: t('tabs.settings'), receipts: t('tabs.receipts'), ai: t('tabs.aiAssistant') };
+  [{ barId: 'hiddenPanelsBar', ids: PAGE1_PANEL_IDS }, { barId: 'hiddenPanelsBar2', ids: PAGE2_PANEL_IDS }].forEach(({ barId, ids }) => {
+    const bar = document.getElementById(barId);
+    if (!bar) return;
+    const hiddenIds = ids.filter(id => state.panelHidden && state.panelHidden[id]);
+    if (hiddenIds.length === 0) {
+      bar.innerHTML = '';
+      bar.classList.remove('show');
+      return;
+    }
+    bar.classList.add('show');
+    bar.innerHTML = '<span class="lbl">Ukryte:</span> ' + hiddenIds.map(id =>
+      '<button class="secondary" data-restore="' + id + '">' + labels[id] + ' +</button>'
+    ).join('');
+    bar.querySelectorAll('[data-restore]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.restore;
+        const before = captureGridRects();
+        state.panelHidden[id] = false;
+        saveState();
+        const panelEl = document.querySelector('.panel[data-panel="' + id + '"]');
+        if (panelEl) panelEl.classList.add('panel-appearing');
+        applyPanelVisibility();
+        playFlipAnimation(before);
+        if (panelEl) {
+          void panelEl.offsetWidth;
+          requestAnimationFrame(() => panelEl.classList.remove('panel-appearing'));
+        }
+        btn.classList.add('chip-fade-out');
+        setTimeout(renderHiddenBar, 200);
+      });
     });
   });
 }
@@ -1198,7 +1735,12 @@ function cycleCurrency(direction) {
   const next = list[idx];
 
   const win = document.getElementById('currencyPickerWindow');
-  const oldLabel = win.querySelector('.currency-picker-label');
+  // Every label that is still visible (not already leaving) slides out — so fast
+  // switching never leaves two labels stacked on top of each other.
+  const oldLabels = Array.from(win.querySelectorAll('.currency-picker-label:not(.leaving)'));
+  oldLabels.forEach(l => l.classList.add('leaving'));
+  // Labels still leaving from an earlier switch are dropped right away.
+  win.querySelectorAll('.currency-picker-label.leaving').forEach(l => { if (!oldLabels.includes(l)) l.remove(); });
   const newLabel = document.createElement('span');
   newLabel.id = 'currencyPickerLabel' + (++currencyLabelSeq);
   newLabel.className = 'currency-picker-label ' + (direction > 0 ? 'slide-in-from-bottom' : 'slide-in-from-top');
@@ -1207,11 +1749,11 @@ function cycleCurrency(direction) {
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      if (oldLabel) oldLabel.classList.add(direction > 0 ? 'slide-out-up' : 'slide-out-down');
+      oldLabels.forEach(l => l.classList.add(direction > 0 ? 'slide-out-up' : 'slide-out-down'));
       newLabel.classList.remove('slide-in-from-bottom', 'slide-in-from-top');
     });
   });
-  setTimeout(() => { if (oldLabel) oldLabel.remove(); }, 320);
+  setTimeout(() => { oldLabels.forEach(l => l.remove()); }, 320);
 
   state.displayCurrency = next;
   saveState();
@@ -1335,7 +1877,7 @@ async function fetchExchangeRates() {
 }
 
 function renderBalance() {
-  const totalEUR = state.transactions.reduce((sum, t) => sum + (t.type === 'income' ? t.amountEUR : -t.amountEUR), 0);
+  const totalEUR = visibleTransactions().reduce((sum, t) => sum + (t.type === 'income' ? t.amountEUR : -t.amountEUR), 0);
   const cur = state.displayCurrency || 'EUR';
   const mainVal = cur === 'EUR' ? totalEUR : fromEUR(totalEUR, cur);
   const mainEl = document.getElementById('balanceMain');
@@ -1390,15 +1932,15 @@ function wireTxDelButtons(container) {
 }
 function renderTxList() {
   const list = document.getElementById('txList');
-  const sorted = [...state.transactions].sort((a,b) => b.ts - a.ts).slice(0, 20);
+  const sorted = [...visibleTransactions()].sort((a,b) => b.ts - a.ts).slice(0, 20);
   list.innerHTML = buildTxRowsHTML(sorted);
   wireTxDelButtons(list);
   applyListCollapse('tx');
 }
 
 function renderStats() {
-  const totalInc = state.transactions.filter(t => t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
-  const totalExp = state.transactions.filter(t => t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
+  const totalInc = visibleTransactions().filter(t => t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
+  const totalExp = visibleTransactions().filter(t => t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
   document.getElementById('statIncome').textContent = fmtDisplay(totalInc);
   document.getElementById('statExpense').textContent = fmtDisplay(totalExp);
 }
@@ -1412,8 +1954,8 @@ function getDayData(anchorDateStr) {
     const d = new Date(anchor);
     d.setDate(d.getDate() - i);
     const day = fmtDateObj(d);
-    const inc = state.transactions.filter(t => t.date === day && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
-    const exp = state.transactions.filter(t => t.date === day && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
+    const inc = visibleTransactions().filter(t => t.date === day && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
+    const exp = visibleTransactions().filter(t => t.date === day && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
     out.push({ key: day, label: formatFullDate(day), shortLabel: shortDayMonth(day), inc, exp });
   }
   return out;
@@ -1449,8 +1991,8 @@ function getWeekData(anchorWeekStr) {
     const info = getISOWeek(monday);
     const mondayStr = fmtDateUTC(monday);
     const sundayStr = fmtDateUTC(sunday);
-    const inc = state.transactions.filter(t => t.date >= mondayStr && t.date <= sundayStr && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
-    const exp = state.transactions.filter(t => t.date >= mondayStr && t.date <= sundayStr && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
+    const inc = visibleTransactions().filter(t => t.date >= mondayStr && t.date <= sundayStr && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
+    const exp = visibleTransactions().filter(t => t.date >= mondayStr && t.date <= sundayStr && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
     out.push({
       key: info.year + '-W' + String(info.week).padStart(2,'0'),
       label: t('period.weekLabel', { week: info.week, year: info.year, from: shortDayMonth(mondayStr), to: shortDayMonth(sundayStr) }),
@@ -1470,8 +2012,8 @@ function getMonthData(anchorMonthStr) {
     while (m <= 0) { m += 12; y -= 1; }
     const mm = String(m).padStart(2,'0');
     const prefix = y + '-' + mm;
-    const inc = state.transactions.filter(t => t.date.startsWith(prefix) && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
-    const exp = state.transactions.filter(t => t.date.startsWith(prefix) && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
+    const inc = visibleTransactions().filter(t => t.date.startsWith(prefix) && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
+    const exp = visibleTransactions().filter(t => t.date.startsWith(prefix) && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
     const monthShortArr = t('months.short');
     out.push({ key: prefix, label: monthShortArr[m-1] + ' ' + y, shortLabel: monthShortArr[m-1], inc, exp });
   }
@@ -1486,8 +2028,8 @@ function getQuarterData(anchorYear) {
     let inc = 0, exp = 0;
     [startMonth, startMonth+1, startMonth+2].forEach(m => {
       const prefix = y + '-' + String(m).padStart(2,'0');
-      inc += state.transactions.filter(t => t.date.startsWith(prefix) && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
-      exp += state.transactions.filter(t => t.date.startsWith(prefix) && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
+      inc += visibleTransactions().filter(t => t.date.startsWith(prefix) && t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
+      exp += visibleTransactions().filter(t => t.date.startsWith(prefix) && t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
     });
     out.push({ key: y + '-Q' + q, label: 'Q' + q + ' ' + y, shortLabel: 'Q' + q, inc, exp });
   }
@@ -1678,6 +2220,7 @@ function renderAll() {
   renderRateRows();
   renderStats();
   renderChart();
+  renderCards();
 }
 
 // --- Event wiring ---
@@ -1693,28 +2236,162 @@ document.getElementById('themeToggle').addEventListener('click', (e) => {
   e.currentTarget.classList.add('spin');
 });
 
-let currencyTouchStartY = null;
-let currencyDidSwipe = false;
+// ---- Currency wheel ----
+// Press the currency button: a small wheel rolls out with the previous currency above
+// and the next one below. Drag (finger or mouse) to spin it — release picks the one in
+// the middle. A plain tap leaves it open: tap a currency to pick it, or tap outside.
 const currencyPickerEl = document.getElementById('currencyPicker');
-currencyPickerEl.addEventListener('click', () => {
-  if (currencyDidSwipe) { currencyDidSwipe = false; return; }
-  cycleCurrency(1);
+const CUR_ROW = 32;
+let curWheel = null;
+function curMod(i) { const n = CURRENCIES.length; return ((i % n) + n) % n; }
+function setDisplayCurrency(code) {
+  const win = document.getElementById('currencyPickerWindow');
+  const labels = win ? win.querySelectorAll('.currency-picker-label') : [];
+  labels.forEach((l, i) => { if (i > 0) l.remove(); });
+  if (labels[0]) { labels[0].className = 'currency-picker-label'; labels[0].textContent = code; }
+  if (state.displayCurrency === code) return;
+  state.displayCurrency = code;
+  saveState();
+  renderAll();
+}
+function renderCurWheel() {
+  if (!curWheel) return;
+  const pos = curWheel.pos, base = Math.round(pos);
+  curWheel.items.forEach((item, k) => {
+    const idx = base + k - 2;
+    const dist = Math.abs(idx - pos);
+    item.textContent = CURRENCIES[curMod(idx)];
+    item.style.transform = 'translateY(' + ((idx - pos) * CUR_ROW) + 'px) scale(' + (1 - Math.min(dist, 2) * 0.1) + ')';
+    item.style.opacity = Math.max(0, 1 - dist * 0.45);
+  });
+  if (base !== curWheel.lastBase) {
+    curWheel.lastBase = base;
+    try { if (navigator.vibrate) navigator.vibrate(6); } catch (e) {}
+  }
+}
+function animateCurWheel(target, done) {
+  if (!curWheel) return;
+  cancelAnimationFrame(curWheel.raf);
+  const from = curWheel.pos, t0 = performance.now(), dur = 200;
+  const step = (now) => {
+    if (!curWheel) return;
+    const k = Math.min(1, (now - t0) / dur);
+    curWheel.pos = from + (target - from) * (1 - Math.pow(1 - k, 3));
+    renderCurWheel();
+    if (k < 1) curWheel.raf = requestAnimationFrame(step);
+    else if (done) done();
+  };
+  curWheel.raf = requestAnimationFrame(step);
+}
+function openCurWheel() {
+  if (curWheel) return;
+  // The wheel opens right in place, inside the balance card (not a floating layer),
+  // so it scrolls together with the page.
+  const host = currencyPickerEl.parentElement;
+  const el = document.createElement('div');
+  el.className = 'currency-wheel';
+  el.style.left = currencyPickerEl.offsetLeft + 'px';
+  el.style.width = currencyPickerEl.offsetWidth + 'px';
+  el.style.top = (currencyPickerEl.offsetTop + currencyPickerEl.offsetHeight / 2 - CUR_ROW * 1.5) + 'px';
+  el.innerHTML = '<div class="currency-wheel-sel"></div>';
+  const items = [];
+  for (let k = 0; k < 5; k++) {
+    const it = document.createElement('div');
+    it.className = 'currency-wheel-item';
+    el.appendChild(it); items.push(it);
+  }
+  host.appendChild(el);
+  currencyPickerEl.classList.add('wheel-open');
+  const start = Math.max(0, CURRENCIES.indexOf(state.displayCurrency || 'EUR'));
+  curWheel = { el, items, pos: start, lastBase: start, dragging: false, raf: 0 };
+  renderCurWheel();
+  void el.offsetWidth;
+  el.classList.add('open');
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); startCurDrag(e, el); });
+  el.addEventListener('pointermove', moveCurDrag);
+  el.addEventListener('pointerup', (e) => endCurDrag(e, true));
+  el.addEventListener('pointercancel', () => { if (curWheel) curWheel.dragging = false; });
+  el.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    if (!curWheel || Math.abs(e.deltaY) < 2) return;
+    const now = Date.now();
+    if (now < (curWheel.wheelLock || 0)) return;
+    curWheel.wheelLock = now + 120;
+    animateCurWheel(Math.round(curWheel.pos) + (e.deltaY > 0 ? 1 : -1));
+  }, { passive: false });
+}
+function closeCurWheel() {
+  if (!curWheel) return;
+  const w = curWheel;
+  cancelAnimationFrame(w.raf);
+  setDisplayCurrency(CURRENCIES[curMod(Math.round(w.pos))]);
+  curWheel = null;
+  currencyPickerEl.classList.remove('wheel-open');
+  w.el.classList.remove('open');
+  w.el.classList.add('closing');
+  w.el.style.pointerEvents = 'none';
+  setTimeout(() => w.el.remove(), 360);
+}
+function startCurDrag(e, target) {
+  if (!curWheel) return;
+  cancelAnimationFrame(curWheel.raf);
+  curWheel.dragging = true; curWheel.moved = false;
+  curWheel.startY = e.clientY; curWheel.startPos = curWheel.pos;
+  curWheel.el.classList.add('dragging');
+  try { target.setPointerCapture(e.pointerId); } catch (err) {}
+}
+function moveCurDrag(e) {
+  if (!curWheel || !curWheel.dragging) return;
+  const dy = e.clientY - curWheel.startY;
+  if (Math.abs(dy) > 5) curWheel.moved = true;
+  curWheel.pos = curWheel.startPos - dy / CUR_ROW;   // drag up = next, drag down = previous
+  renderCurWheel();
+}
+function endCurDrag(e, onWheel) {
+  if (!curWheel || !curWheel.dragging) return;
+  curWheel.dragging = false;
+  curWheel.el.classList.remove('dragging');
+  if (curWheel.moved) {
+    // Spun the wheel: settle on the nearest currency and close
+    animateCurWheel(Math.round(curWheel.pos), closeCurWheel);
+  } else if (onWheel) {
+    // Tap inside the open wheel: top row = previous, middle = keep, bottom row = next
+    const top = curWheel.el.getBoundingClientRect().top;
+    const row = Math.floor((e.clientY - top) / CUR_ROW) - 1;
+    animateCurWheel(Math.round(curWheel.pos) + Math.max(-1, Math.min(1, row)), closeCurWheel);
+  }
+  // Plain tap on the currency button: wheel stays open for picking
+}
+currencyPickerEl.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  if (curWheel) { closeCurWheel(); return; }
+  openCurWheel();
+  startCurDrag(e, currencyPickerEl);
 });
-currencyPickerEl.addEventListener('touchstart', (e) => {
-  currencyTouchStartY = e.touches[0].clientY;
-}, { passive: true });
-currencyPickerEl.addEventListener('touchend', (e) => {
-  if (currencyTouchStartY === null) return;
-  const dy = e.changedTouches[0].clientY - currencyTouchStartY;
-  currencyTouchStartY = null;
-  if (Math.abs(dy) < 18) return;
-  currencyDidSwipe = true;
-  if (dy < 0) cycleCurrency(1); else cycleCurrency(-1);
-});
+currencyPickerEl.addEventListener('pointermove', moveCurDrag);
+currencyPickerEl.addEventListener('pointerup', (e) => endCurDrag(e, false));
+currencyPickerEl.addEventListener('pointercancel', () => { if (curWheel) curWheel.dragging = false; });
+document.addEventListener('pointerdown', (e) => {
+  if (curWheel && !curWheel.el.contains(e.target) && !currencyPickerEl.contains(e.target)) closeCurWheel();
+}, true);
+window.addEventListener('resize', () => { if (curWheel) closeCurWheel(); });
+document.getElementById('pagesWrap').addEventListener('pagechange', () => { if (curWheel && !curWheel.dragging) closeCurWheel(); });
+// Mouse wheel / trackpad over the closed button still switches both ways
+let currencyWheelAcc = 0, currencyWheelLock = 0;
+currencyPickerEl.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  if (curWheel) return;
+  const now = Date.now();
+  currencyWheelAcc += e.deltaY;
+  if (now < currencyWheelLock || Math.abs(currencyWheelAcc) < 30) return;
+  cycleCurrency(currencyWheelAcc > 0 ? 1 : -1);
+  currencyWheelAcc = 0;
+  currencyWheelLock = now + 180;
+}, { passive: false });
 
-document.querySelectorAll('.tab').forEach(tab => {
+document.querySelectorAll('#appPage1 .tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#appPage1 .tab').forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     ['add','debts','stats','settings'].forEach(name => {
       document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab);
@@ -1722,6 +2399,152 @@ document.querySelectorAll('.tab').forEach(tab => {
     if (tab.dataset.tab === 'stats') renderChart();
   });
 });
+
+document.querySelectorAll('#appPage2 .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#appPage2 .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    ['receipts','ai'].forEach(name => {
+      document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab2);
+    });
+    if (tab.dataset.tab2 === 'receipts') renderReceiptGroups();
+  });
+});
+
+// ---- Page pager (page 0 = tiles, page 1 = Paragony + Asystent AI) ----
+// Transform-based (like macOS Spaces): the pages follow the finger/mouse 1:1, rubber-band
+// at the edges, and settle with a soft spring. A quick flick is enough to switch.
+(function wirePager() {
+  const wrap = document.getElementById('pagesWrap');
+  const dots = document.querySelectorAll('#pageDots .dot');
+  if (!wrap || !dots.length) return;
+  const pages = Array.from(wrap.querySelectorAll('.app-page'));
+  const N = pages.length;
+  let idx = 0;
+  const W = () => wrap.clientWidth || window.innerWidth;
+  // Transform goes straight onto the two pages (an inherited CSS variable made the browser
+  // recalculate the style of every element inside on each finger move — that was the jitter),
+  // and at most once per frame.
+  let pendingX = null, rafId = 0;
+  const writeX = (px) => { const v = 'translate3d(' + px + 'px,0,0)'; pages.forEach(pg => { pg.style.transform = v; }); };
+  const setX = (px) => {
+    pendingX = px;
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => { rafId = 0; if (pendingX !== null) writeX(pendingX); pendingX = null; });
+  };
+  const setXNow = (px) => { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } pendingX = null; writeX(px); };
+  function goTo(i, instant) {
+    idx = Math.max(0, Math.min(N - 1, i));
+    if (instant) wrap.classList.add('pager-dragging');
+    setXNow(-idx * W());
+    if (instant) { void wrap.offsetWidth; wrap.classList.remove('pager-dragging'); }
+    dots.forEach((d, k) => d.classList.toggle('active', k === idx));
+    wrap.dispatchEvent(new CustomEvent('pagechange', { detail: idx }));
+  }
+  window.goToAppPage = goTo;
+  goTo(0, true);
+  // overflow:hidden containers can still be scrolled by the browser (focus, scroll-into-view).
+  // Never let that happen — instead slide to the page that got focus.
+  wrap.addEventListener('scroll', () => { if (wrap.scrollLeft) wrap.scrollLeft = 0; });
+  wrap.addEventListener('focusin', (e) => {
+    const i = pages.findIndex(pg => pg.contains(e.target));
+    if (i !== -1 && i !== idx) goTo(i);
+  });
+
+  let drag = null, suppressClick = false;
+  const skip = (t) => t.closest && t.closest('input, textarea, select, button[draggable], .panel-header, .currency-picker, .currency-wheel, [data-no-swipe]');
+  wrap.addEventListener('pointerdown', (e) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    if (skip(e.target) || (typeof dragSourceId !== 'undefined' && dragSourceId)) return;
+    drag = { id: e.pointerId, x0: e.clientX, y0: e.clientY, dx: 0, decided: false, horizontal: false, hist: [[e.clientX, performance.now()]] };
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+    if (!drag.decided) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      drag.decided = true;
+      drag.horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
+      if (!drag.horizontal) { drag = null; return; }
+      wrap.classList.add('pager-dragging');
+      try { wrap.setPointerCapture(e.pointerId); } catch (err) {}
+      drag.x0 = e.clientX;   // start following from here, no jump
+    }
+    let d = e.clientX - drag.x0;
+    if ((idx === 0 && d > 0) || (idx === N - 1 && d < 0)) d *= 0.3;   // rubber band at the edges
+    drag.dx = d;
+    drag.hist.push([e.clientX, performance.now()]);
+    if (drag.hist.length > 6) drag.hist.shift();
+    setX(-idx * W() + d);
+  });
+  const finish = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dr = drag; drag = null;
+    if (!dr.horizontal) return;
+    wrap.classList.remove('pager-dragging');
+    const h = dr.hist, a = h[0], b = h[h.length - 1];
+    const v = (b[1] - a[1]) > 0 ? (b[0] - a[0]) / (b[1] - a[1]) : 0;   // px per ms
+    let target = idx;
+    if (dr.dx < -W() * 0.22 || v < -0.35) target = idx + 1;
+    else if (dr.dx > W() * 0.22 || v > 0.35) target = idx - 1;
+    suppressClick = Math.abs(dr.dx) > 6;
+    goTo(target);
+  };
+  window.addEventListener('pointerup', finish);
+  window.addEventListener('pointercancel', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const was = drag.horizontal; drag = null;
+    if (was) { wrap.classList.remove('pager-dragging'); goTo(idx); }
+  });
+  // A drag should not also count as a click on whatever was under the finger
+  wrap.addEventListener('click', (e) => {
+    if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
+
+  // Trackpad two-finger swipe: the pages follow the fingers 1:1 (like macOS Spaces),
+  // then settle with the same spring when the fingers (and the momentum) stop.
+  let wg = null, wLockUntil = 0, wIdle = null;
+  const finishWheel = () => {
+    if (!wg) return;
+    const g = wg; wg = null;
+    wrap.classList.remove('pager-dragging');
+    const s = g.samples, a = s[0], b = s[s.length - 1];
+    const v = (b[1] - a[1]) > 0 ? (b[0] - a[0]) / (b[1] - a[1]) : 0;
+    let target = idx;
+    if (g.dx < -W() * 0.22 || v < -0.6) target = idx + 1;
+    else if (g.dx > W() * 0.22 || v > 0.6) target = idx - 1;
+    goTo(target);
+    wLockUntil = performance.now() + 260;   // swallow the rest of the momentum
+  };
+  wrap.addEventListener('wheel', (e) => {
+    if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+    e.preventDefault();
+    const now = performance.now();
+    const dX = e.deltaX * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? W() : 1);
+    if (now < wLockUntil) { wLockUntil = now + 260; return; }
+    if (!wg) {
+      wg = { dx: 0, samples: [] };
+      wrap.classList.add('pager-dragging');
+      if (curWheel && !curWheel.dragging) closeCurWheel();
+    }
+    let raw = (wg.raw || 0) - dX;
+    wg.raw = raw;
+    let d = raw;
+    if ((idx === 0 && d > 0) || (idx === N - 1 && d < 0)) d *= 0.3;   // rubber band
+    d = Math.max(-W(), Math.min(W(), d));
+    wg.dx = d;
+    wg.samples.push([d, now]);
+    if (wg.samples.length > 6) wg.samples.shift();
+    setX(-idx * W() + d);
+    clearTimeout(wIdle);
+    // Past halfway: commit straight away (momentum would otherwise overshoot)
+    if (Math.abs(d) > W() * 0.5 && !((idx === 0 && d > 0) || (idx === N - 1 && d < 0))) { finishWheel(); return; }
+    wIdle = setTimeout(finishWheel, 150);
+  }, { passive: false });
+
+  dots.forEach(dot => dot.addEventListener('click', () => goTo(parseInt(dot.dataset.page, 10) || 0)));
+  window.addEventListener('resize', () => goTo(idx, true));
+})();
 
 document.getElementById('btnIncome').addEventListener('click', () => {
   txType = 'income';
@@ -1748,7 +2571,8 @@ document.getElementById('addBtn').addEventListener('click', () => {
     amountEUR,
     desc,
     date: todayStr(),
-    ts: Date.now()
+    ts: Date.now(),
+    cardId: state.activeCardId || null
   });
   saveState();
   document.getElementById('amount').value = '';
@@ -1913,7 +2737,7 @@ document.getElementById('debtCollapseBtn').addEventListener('click', (e) => {
   toggleListCollapse('debt');
 });
 document.getElementById('txListHeader').addEventListener('click', () => {
-  if (state.transactions.length === 0) return;
+  if (visibleTransactions().length === 0) return;
   toggleListCollapse('tx');
 });
 document.getElementById('debtListHeader').addEventListener('click', () => {
@@ -1938,13 +2762,715 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     const rows = document.querySelectorAll('.tx-item, .debt-item');
     rows.forEach(r => r.classList.add('row-removing'));
     const finish = () => {
-      state = { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: state.displayCurrency, theme: state.theme, panelOrder: state.panelOrder, panelHidden: state.panelHidden, balanceHidden: state.balanceHidden, bgTheme: state.bgTheme, glassIntensity: state.glassIntensity, bgBlobOpacity: state.bgBlobOpacity, bgAnimSpeed: state.bgAnimSpeed };
+      state = { transactions: [], debts: [], rates: { ...DEFAULT_RATES }, lastRateUpdate: todayStr(), displayCurrency: state.displayCurrency, theme: state.theme, panelOrder: state.panelOrder, panelHidden: state.panelHidden, balanceHidden: state.balanceHidden, bgTheme: state.bgTheme, glassIntensity: state.glassIntensity, bgBlobOpacity: state.bgBlobOpacity, bgAnimSpeed: state.bgAnimSpeed, receiptGroups: state.receiptGroups, recentScans: [], cards: state.cards, activeCardId: state.activeCardId };
       saveState();
       renderAll();
+      renderReceiptRecent();
+      renderCards();
     };
     if (rows.length) setTimeout(finish, 260); else finish();
   }
 });
+
+// ---- Local AI assistant (WebLLM: runs fully in-device, no data leaves the app) ----
+let aiEngine = null;
+let aiLoading = false;
+const AI_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC'; // small (~600MB) model, works on most desktops and modern phones
+
+function aiSetStatus(text) {
+  const el = document.getElementById('aiStatus');
+  if (el) el.textContent = text || '';
+}
+function aiSetProgress(pct) {
+  const wrap = document.getElementById('aiProgressWrap');
+  const bar = document.getElementById('aiProgressBar');
+  if (!wrap || !bar) return;
+  if (pct === null) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
+}
+
+function aiBuildFinanceSummary() {
+  const txs = state.transactions || [];
+  const debts = state.debts || [];
+  if (!txs.length && !debts.length) return null;
+
+  const totalInc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
+  const totalExp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
+
+  // Group by month (last 6 months present in data)
+  const byMonth = {};
+  txs.forEach(t => {
+    const m = (t.date || '').slice(0,7);
+    if (!m) return;
+    if (!byMonth[m]) byMonth[m] = { inc: 0, exp: 0 };
+    if (t.type === 'income') byMonth[m].inc += t.amountEUR; else byMonth[m].exp += t.amountEUR;
+  });
+  const months = Object.keys(byMonth).sort().slice(-6);
+
+  // Group expenses by description (rough "category" proxy) to surface biggest spending buckets
+  const byDesc = {};
+  txs.filter(t => t.type === 'expense').forEach(t => {
+    const key = (t.desc || '(bez opisu)').trim().toLowerCase() || '(bez opisu)';
+    byDesc[key] = (byDesc[key] || 0) + t.amountEUR;
+  });
+  const topExpenses = Object.entries(byDesc).sort((a,b) => b[1]-a[1]).slice(0, 8);
+
+  const iOwe = debts.filter(d => d.type === 'i_owe').reduce((s,d) => s + d.amountEUR, 0);
+  const owedToMe = debts.filter(d => d.type === 'owed_to_me').reduce((s,d) => s + d.amountEUR, 0);
+
+  let lines = [];
+  lines.push(`Waluta wewnętrzna: EUR. Łączne przychody (całość historii): ${totalInc.toFixed(2)} EUR. Łączne wydatki: ${totalExp.toFixed(2)} EUR. Saldo: ${(totalInc-totalExp).toFixed(2)} EUR.`);
+  if (months.length) {
+    lines.push('Przychody/wydatki wg miesięcy (ostatnie ' + months.length + '):');
+    months.forEach(m => lines.push(`- ${m}: przychody ${byMonth[m].inc.toFixed(2)} EUR, wydatki ${byMonth[m].exp.toFixed(2)} EUR`));
+  }
+  if (topExpenses.length) {
+    lines.push('Największe pozycje wydatków (wg opisu transakcji):');
+    topExpenses.forEach(([desc, sum]) => lines.push(`- ${desc}: ${sum.toFixed(2)} EUR`));
+  }
+  if (debts.length) {
+    lines.push(`Długi: jestem winien ${iOwe.toFixed(2)} EUR, winni mi są ${owedToMe.toFixed(2)} EUR.`);
+  }
+  return lines.join('\n');
+}
+
+async function aiEnsureEngine() {
+  if (aiEngine) return aiEngine;
+  if (!navigator.gpu) {
+    throw new Error('NO_WEBGPU');
+  }
+  const webllm = await import('https://esm.run/@mlc-ai/web-llm');
+  aiEngine = await webllm.CreateMLCEngine(AI_MODEL_ID, {
+    initProgressCallback: (report) => {
+      aiSetStatus(report.text || t('ai.loading'));
+      if (typeof report.progress === 'number') aiSetProgress(report.progress * 100);
+    }
+  });
+  return aiEngine;
+}
+
+document.getElementById('aiAnalyzeBtn').addEventListener('click', async () => {
+  const btn = document.getElementById('aiAnalyzeBtn');
+  const resultBox = document.getElementById('aiResultBox');
+  if (aiLoading) return;
+
+  const summary = aiBuildFinanceSummary();
+  if (!summary) {
+    aiSetStatus(t('ai.noData'));
+    return;
+  }
+
+  aiLoading = true;
+  btn.disabled = true;
+  resultBox.classList.add('hidden');
+  aiSetStatus(t('ai.downloading'));
+  aiSetProgress(0);
+
+  try {
+    const engine = await aiEnsureEngine();
+    aiSetProgress(null);
+    aiSetStatus(t('ai.thinking'));
+
+    const messages = [
+      { role: 'system', content: 'Jesteś pomocnym doradcą finansowym. Analizujesz dane budżetu domowego użytkownika i dajesz krótkie, konkretne porady po polsku (max 6-8 zdań, w punktach jeśli to pomaga). Nie wymyślaj liczb, których nie ma w danych.' },
+      { role: 'user', content: 'Oto moje dane finansowe:\n\n' + summary + '\n\nPrzeanalizuj je i daj mi praktyczne porady: na czym najbardziej tracę, czy oszczędzam wystarczająco, i co mogę poprawić.' }
+    ];
+
+    const reply = await engine.chat.completions.create({ messages, temperature: 0.6 });
+    const text = reply.choices[0].message.content;
+    resultBox.textContent = text;
+    resultBox.classList.remove('hidden');
+    aiSetStatus(t('ai.ready'));
+  } catch (e) {
+    aiSetProgress(null);
+    if (e && e.message === 'NO_WEBGPU') {
+      aiSetStatus(t('ai.unsupported'));
+    } else {
+      console.warn('AI error', e);
+      aiSetStatus(t('ai.error') + (e && e.message ? e.message : String(e)));
+    }
+  } finally {
+    aiLoading = false;
+    btn.disabled = false;
+  }
+});
+
+// ============================================================
+// Skanowanie paragonów + grupy zakupów
+// Rozpoznawanie paragonu jest na razie symulowane (losowy wynik z listy
+// demo) — prawdziwe odczytywanie zdjęcia (OCR/vision AI) to osobny etap.
+// ============================================================
+const RECEIPT_COLORS = ['#2f6f4f','#4fa8d8','#e0a458','#c1443c','#8a63d2','#d67ab8','#59a86f','#3f7fd1'];
+
+const DEFAULT_RECEIPT_GROUPS = [
+  { id:'lidl', name:'Lidl', emoji:'🛒', color:'#2f6f4f', keywords:['lidl'], auto:true },
+  { id:'maxima', name:'Maxima', emoji:'🧺', color:'#4fa8d8', keywords:['maxima'], auto:true },
+  { id:'iki', name:'IKI', emoji:'🧺', color:'#e0a458', keywords:['iki'], auto:true },
+  { id:'jedzenie', name:'Jedzenie', emoji:'🍔', color:'#c1443c', keywords:['restauracja','kawiarnia','bar','pizza','sushi'], auto:false },
+  { id:'zabawki', name:'Zabawki', emoji:'🧸', color:'#8a63d2', keywords:['zabawki','toy planet','smyk'], auto:false },
+  { id:'gry', name:'Gry', emoji:'🎮', color:'#3f7fd1', keywords:['gry','game','playstation','steam'], auto:false },
+];
+
+const DEMO_RECEIPTS = [
+  { store:'LIDL Vilnius, Ukmergės g.', amount:23.47, itemsCount:14, groupId:'lidl' },
+  { store:'MAXIMA XX, Ozo g.', amount:41.10, itemsCount:9, groupId:'maxima' },
+  { store:'IKI Express, Pilies g.', amount:8.90, itemsCount:3, groupId:'iki' },
+  { store:'Toy Planet', amount:15.00, itemsCount:1, groupId:'zabawki' },
+  { store:'PLAY sklep z grami', amount:59.99, itemsCount:1, groupId:'gry' },
+  { store:'Café Neringa', amount:12.30, itemsCount:2, groupId:'jedzenie' },
+];
+
+if (!state.receiptGroups || !state.receiptGroups.length) {
+  state.receiptGroups = DEFAULT_RECEIPT_GROUPS.map(g => ({ ...g }));
+}
+if (!state.recentScans) state.recentScans = [];
+
+let receiptScanIdx = 0;
+let receiptPendingResult = null;
+let newGroupEmoji = '';
+let newGroupColor = RECEIPT_COLORS[0];
+
+function receiptGroupById(id) {
+  return state.receiptGroups.find(g => g.id === id) || state.receiptGroups[0];
+}
+
+// ---- Receipts sub-tabs (Skanuj / Grupy) ----
+document.querySelectorAll('#receiptSubTabs .chart-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#receiptSubTabs .chart-type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.receipt-view').forEach(v => v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('rview-' + btn.dataset.rtab).classList.add('active');
+    if (btn.dataset.rtab === 'groups') renderReceiptGroups();
+  });
+});
+
+// ---- Scan flow (simulated AI recognition — see note above) ----
+function wireReceiptFileInput() {
+  const input = document.getElementById('receiptFileInput');
+  if (!input) return;
+  input.addEventListener('change', () => {
+    const file = input.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    runSimulatedReceiptScan(url);
+  });
+}
+
+function runSimulatedReceiptScan(thumbUrl) {
+  const scanCard = document.getElementById('receiptScanCard');
+  const zone = scanCard.querySelector('.receipt-scan-zone');
+  if (zone) {
+    zone.outerHTML = '<div class="receipt-spinner-row"><div class="receipt-spinner"></div><span>' + t('receipts.analyzing') + '</span></div>';
+  }
+  setTimeout(() => {
+    const demo = DEMO_RECEIPTS[receiptScanIdx % DEMO_RECEIPTS.length];
+    receiptScanIdx++;
+    receiptPendingResult = { ...demo };
+    showReceiptResult(receiptPendingResult, thumbUrl);
+    restoreReceiptScanZone();
+  }, 1100);
+}
+
+function restoreReceiptScanZone() {
+  const card = document.getElementById('receiptScanCard');
+  const spinner = card.querySelector('.receipt-spinner-row');
+  if (spinner) {
+    spinner.outerHTML =
+      '<label class="receipt-scan-zone" id="receiptScanZone"><span class="icon">🧾</span>' +
+      '<span class="label">' + t('receipts.scanCta') + '</span><span class="sub">' + t('receipts.scanSub') + '</span>' +
+      '<input type="file" id="receiptFileInput" accept="image/*" capture="environment"></label>';
+    wireReceiptFileInput();
+  }
+}
+
+function showReceiptResult(res, thumbUrl) {
+  document.getElementById('receiptThumb').src = thumbUrl;
+  document.getElementById('receiptResStore').textContent = res.store;
+  document.getElementById('receiptResMeta').textContent = res.itemsCount + ' poz. · ' + fmt(res.amount, 'EUR');
+  document.getElementById('receiptResStoreInput').value = res.store;
+  document.getElementById('receiptResAmountInput').value = res.amount.toFixed(2);
+  renderReceiptGroupPicker(res.groupId);
+  updateReceiptAiNote(res.groupId);
+  const card = document.getElementById('receiptResultCard');
+  card.classList.remove('hidden');
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function renderReceiptGroupPicker(selectedId) {
+  const wrap = document.getElementById('receiptResGroupPicker');
+  wrap.innerHTML = '';
+  state.receiptGroups.forEach(g => {
+    const chip = document.createElement('div');
+    chip.className = 'receipt-chip' + (g.id === selectedId ? ' selected' : '');
+    chip.style.setProperty('--chip-c', g.color);
+    chip.innerHTML = '<span class="dot"></span>' + g.emoji + ' ' + g.name;
+    chip.addEventListener('click', () => {
+      wrap.querySelectorAll('.receipt-chip').forEach(c => c.classList.remove('selected'));
+      chip.classList.add('selected');
+      receiptPendingResult.groupId = g.id;
+      updateReceiptAiNote(g.id);
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+function updateReceiptAiNote(groupId) {
+  const g = receiptGroupById(groupId);
+  const note = document.getElementById('receiptAiExplainNote').querySelector('span');
+  note.innerHTML = 'Rozpoznano „<b>' + (receiptPendingResult ? receiptPendingResult.store : '') + '</b>" i dopasowano do grupy <b>' + g.name + '</b> po słowie kluczowym. ' +
+    (g.auto ? 'Ta grupa ma włączone <b>auto-dodawanie</b> — w pełnej wersji AI zapisałoby to bez pytania.' : 'Ta grupa wymaga Twojego potwierdzenia przed zapisem.');
+}
+
+document.getElementById('receiptDiscardBtn').addEventListener('click', () => {
+  document.getElementById('receiptResultCard').classList.add('hidden');
+  receiptPendingResult = null;
+});
+
+document.getElementById('receiptSaveBtn').addEventListener('click', () => {
+  if (!receiptPendingResult) return;
+  const store = document.getElementById('receiptResStoreInput').value.trim() || receiptPendingResult.store;
+  const amount = parseFloat(document.getElementById('receiptResAmountInput').value) || receiptPendingResult.amount;
+  const g = receiptGroupById(receiptPendingResult.groupId);
+
+  state.transactions.push({
+    id: 'tx_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+    type: 'expense',
+    amount: amount,
+    currency: 'EUR',
+    amountEUR: amount,
+    desc: g.emoji + ' ' + store,
+    date: todayStr(),
+    ts: Date.now(),
+    cardId: state.activeCardId || null
+  });
+  state.recentScans.unshift({ store, amount, groupId: g.id, ts: Date.now() });
+  state.recentScans = state.recentScans.slice(0, 8);
+  saveState();
+  renderAll();
+  renderReceiptRecent();
+  document.getElementById('receiptResultCard').classList.add('hidden');
+  receiptPendingResult = null;
+  showReceiptToast(t('receipts.savedToast') + ' ' + store);
+});
+
+function renderReceiptRecent() {
+  const wrap = document.getElementById('receiptRecentList');
+  if (!wrap) return;
+  if (!state.recentScans.length) {
+    wrap.innerHTML = '<div class="empty">' + t('receipts.emptyRecent') + '</div>';
+    return;
+  }
+  wrap.innerHTML = '';
+  state.recentScans.forEach(r => {
+    const g = receiptGroupById(r.groupId);
+    const row = document.createElement('div');
+    row.className = 'receipt-scan-item';
+    row.style.setProperty('--chip-c', g.color);
+    row.innerHTML =
+      '<div class="icon-wrap">' + g.emoji + '</div>' +
+      '<div class="info"><div class="store">' + r.store + '</div><div class="grp">' + g.name + '</div></div>' +
+      '<div class="amt">-' + fmt(r.amount, 'EUR') + '</div>';
+    wrap.appendChild(row);
+  });
+}
+
+function showReceiptToast(msg) {
+  let el = document.getElementById('receiptToast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'receiptToast';
+    el.style.cssText = 'position:fixed; left:50%; bottom:22px; transform:translateX(-50%) translateY(80px); background:var(--text); color:var(--bg); padding:11px 18px; border-radius:999px; font-size:13px; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,0.25); opacity:0; transition:all 0.28s cubic-bezier(.2,.8,.2,1); pointer-events:none; z-index:200; max-width:calc(100% - 32px); text-align:center;';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  requestAnimationFrame(() => {
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    el.style.opacity = '1';
+  });
+  clearTimeout(showReceiptToast._t);
+  showReceiptToast._t = setTimeout(() => {
+    el.style.transform = 'translateX(-50%) translateY(80px)';
+    el.style.opacity = '0';
+  }, 2200);
+}
+
+// ---- Groups view ----
+function renderReceiptGroups() {
+  const grid = document.getElementById('receiptGroupsGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  state.receiptGroups.forEach(g => {
+    const card = document.createElement('div');
+    card.className = 'group-card';
+    card.style.setProperty('--gc', g.color);
+    card.innerHTML =
+      '<div class="top-row"><div class="emoji-badge">' + g.emoji + '</div>' +
+      '<button class="icon-btn" data-del="' + g.id + '">✕</button></div>' +
+      '<div class="gname">' + g.name + '</div>' +
+      '<div class="kw">' + (g.keywords.length ? g.keywords.join(', ') : t('receipts.noKeywords')) + '</div>' +
+      '<div class="auto-row"><span>' + t('receipts.autoAddShort') + '</span>' +
+      '<label class="receipt-switch"><input type="checkbox" data-auto="' + g.id + '" ' + (g.auto ? 'checked' : '') + '><span class="track"></span></label></div>';
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.receiptGroups = state.receiptGroups.filter(g => g.id !== btn.dataset.del);
+      saveState();
+      renderReceiptGroups();
+    });
+  });
+  grid.querySelectorAll('[data-auto]').forEach(input => {
+    input.addEventListener('change', () => {
+      const g = receiptGroupById(input.dataset.auto);
+      g.auto = input.checked;
+      saveState();
+    });
+  });
+}
+
+// ---- New group modal ----
+const groupModal = document.getElementById('groupModal');
+function openGroupModal() {
+  newGroupEmoji = '';
+  newGroupColor = RECEIPT_COLORS[0];
+  document.getElementById('newGroupName').value = '';
+  document.getElementById('newGroupEmojiInput').value = '';
+  document.getElementById('newGroupKeywords').value = '';
+  document.getElementById('newGroupAuto').checked = true;
+  renderColorRow();
+  groupModal.classList.add('open');
+}
+function closeGroupModal() { groupModal.classList.remove('open'); }
+
+function renderColorRow() {
+  const wrap = document.getElementById('colorRow');
+  wrap.innerHTML = '';
+  RECEIPT_COLORS.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'color-opt' + (c === newGroupColor ? ' selected' : '');
+    el.style.background = c;
+    el.addEventListener('click', () => { newGroupColor = c; renderColorRow(); });
+    wrap.appendChild(el);
+  });
+}
+
+// Proste pole na emoji: użytkownik po prostu wpisuje/wkleja dowolne emoji
+// natywną klawiaturą telefonu lub komputera (np. przytrzymanie spacji na
+// Androidzie, Win + . na Windows, Cmd+Ctrl+Spacja na Mac) — bez podpowiedzi.
+document.getElementById('newGroupEmojiInput').addEventListener('input', (e) => {
+  newGroupEmoji = e.target.value.trim();
+});
+
+document.getElementById('receiptAddGroupBtn').addEventListener('click', openGroupModal);
+document.getElementById('cancelGroupBtn').addEventListener('click', closeGroupModal);
+groupModal.addEventListener('click', (e) => { if (e.target === groupModal) closeGroupModal(); });
+
+document.getElementById('saveGroupBtn').addEventListener('click', () => {
+  const name = document.getElementById('newGroupName').value.trim();
+  if (!name) { showReceiptToast(t('receipts.needName')); return; }
+  const emojiVal = document.getElementById('newGroupEmojiInput').value.trim() || newGroupEmoji || '🛍️';
+  const keywords = document.getElementById('newGroupKeywords').value
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const auto = document.getElementById('newGroupAuto').checked;
+  state.receiptGroups.push({
+    id: 'g_' + Date.now(),
+    name, emoji: emojiVal, color: newGroupColor, keywords, auto
+  });
+  saveState();
+  renderReceiptGroups();
+  closeGroupModal();
+  showReceiptToast(t('receipts.createdToast') + ' „' + name + '"');
+});
+
+function wireReceiptFeature() {
+  wireReceiptFileInput();
+  renderReceiptRecent();
+  renderReceiptGroups();
+}
+
+// ============================================================
+// Karty bankowe (bank cards). A card can be "selected" (state.activeCardId):
+// while selected, the home page (balance/lista/statystyki) shows only that
+// card's transactions, and every new transaction gets tagged with it.
+// With no card selected, everything behaves as before cards existed.
+// The "Wszystkie" tab always shows every card's transactions combined.
+// ============================================================
+const CARD_COLORS = ['#2f6f4f','#4fa8d8','#e0a458','#c1443c','#8a63d2','#d67ab8','#59a86f','#3f7fd1'];
+let newCardColor = CARD_COLORS[0];
+
+function cardById(id) {
+  return state.cards.find(c => c.id === id) || null;
+}
+function cardBalanceEUR(cardId) {
+  return state.transactions
+    .filter(t => t.cardId === cardId)
+    .reduce((sum, t) => sum + (t.type === 'income' ? t.amountEUR : -t.amountEUR), 0);
+}
+
+function renderCards() {
+  const strip = document.getElementById('cardsStrip');
+  const chip = document.getElementById('activeCardChip');
+  if (!strip) return;
+
+  const keepScroll = strip.scrollLeft;
+  strip.innerHTML = '';
+
+  // Pinned first tile: all cards combined.
+  const totalAll = state.transactions.reduce((s, tx) => s + (tx.type === 'income' ? tx.amountEUR : -tx.amountEUR), 0);
+  const allTile = document.createElement('div');
+  allTile.className = 'cards-strip-item all-item' + (!state.activeCardId ? ' selected' : '');
+  allTile.dataset.cardTile = '';
+  allTile.innerHTML =
+    '<div class="name">' + t('cards.allTogether') + '</div>' +
+    '<div class="bal">' + fmtDisplay(totalAll) + '</div>' +
+    (!state.activeCardId ? '<div class="check">✓</div>' : '');
+  allTile.addEventListener('click', () => {
+    switchActiveCard(() => { state.activeCardId = null; });
+  });
+  strip.appendChild(allTile);
+
+  state.cards.forEach(c => {
+    const bal = cardBalanceEUR(c.id);
+    const isActive = c.id === state.activeCardId;
+    const item = document.createElement('div');
+    item.className = 'cards-strip-item' + (isActive ? ' selected' : '');
+    item.dataset.cardTile = c.id;
+    item.style.setProperty('--gc', c.color);
+    item.innerHTML =
+      '<button class="del" data-delcard="' + c.id + '">✕</button>' +
+      '<div class="name">' + c.name + '</div>' +
+      '<div class="bal">' + fmtDisplay(bal) + '</div>' +
+      (isActive ? '<div class="check">✓</div>' : '');
+    item.addEventListener('click', (e) => {
+      if (e.target.closest('[data-delcard]')) return;
+      selectCard(c.id);
+    });
+    strip.appendChild(item);
+  });
+
+  const addTile = document.createElement('button');
+  addTile.className = 'cards-strip-add';
+  addTile.innerHTML = '<span class="plus">+</span><span class="lbl">' + t('cards.newCard') + '</span>';
+  addTile.addEventListener('click', openCardModal);
+  strip.appendChild(addTile);
+  strip.scrollLeft = keepScroll;   // re-rendering must not throw the row back to the start
+
+  if (chip) {
+    if (state.cards.length === 0) {
+      chip.classList.add('hidden');
+    } else {
+      chip.classList.remove('hidden');
+      const active = cardById(state.activeCardId);
+      if (active) {
+        chip.style.setProperty('--chip-c', active.color);
+        chip.innerHTML = '<span class="dot"></span>' + t('cards.showing') + ' ' + active.name;
+      } else {
+        chip.style.removeProperty('--chip-c');
+        chip.innerHTML = '<span class="dot"></span>' + t('cards.showingAll');
+      }
+    }
+  }
+
+}
+
+function selectCard(id) {
+  switchActiveCard(() => {
+    state.activeCardId = (state.activeCardId === id) ? null : id;
+  });
+}
+
+// Switching which card is active changes the balance figures and the whole
+// transaction list at once — fade the old numbers/rows out, swap the data,
+// then fade the new ones in, instead of an abrupt pop.
+function switchActiveCard(applyFn) {
+  const targets = ['txList', 'balanceMain', 'balanceOther', 'activeCardChip']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  applyFn();
+  saveState();
+  // The tapped tile reacts right away, in place (no rebuild, the row doesn't move)
+  const strip = document.getElementById('cardsStrip');
+  if (strip) {
+    const activeKey = state.activeCardId || '';
+    strip.querySelectorAll('.cards-strip-item').forEach(tile => {
+      const on = tile.dataset.cardTile === String(activeKey);
+      tile.classList.toggle('selected', on);
+      const chk = tile.querySelector('.check');
+      if (on && !chk) {
+        const c = document.createElement('div');
+        c.className = 'check pop'; c.textContent = '\u2713';
+        tile.appendChild(c);
+      } else if (!on && chk) chk.remove();
+    });
+  }
+  // Old numbers fade out, new ones are swapped in while invisible, then fade back in
+  clearTimeout(switchActiveCard._t);
+  targets.forEach(el => el.classList.add('card-switch-fade'));
+  switchActiveCard._t = setTimeout(() => {
+    renderBalance();
+    renderTxList();
+    renderStats();
+    renderChart();
+    renderCards();
+    requestAnimationFrame(() => targets.forEach(el => el.classList.remove('card-switch-fade')));
+  }, 180);
+}
+
+// ---- Cards drawer (slides down from the header, edge to edge, down to the balance card) ----
+function cardsDrawerTargetHeight() {
+  // The drawer gets its full natural height; the balance is pushed down to make room.
+  const inner = document.querySelector('#cardsDrawer .cards-drawer-inner');
+  const natural = inner ? inner.scrollHeight : 130;
+  return Math.min(natural, 260);
+}
+// How far the pages must slide down so the balance card sits just below the open drawer.
+function cardsDrawerPush(drawerHeight) {
+  const wrap = document.getElementById('pagesWrap');
+  const drawer = document.getElementById('cardsDrawer');
+  const balanceCard = document.querySelector('#appPage1 .balance-card');
+  if (!wrap || !drawer || !balanceCard) return 0;
+  // Current (possibly mid-animation) offset is subtracted, so the base position is stable.
+  const tf = getComputedStyle(wrap).transform;
+  const currentPush = (tf && tf !== 'none') ? new DOMMatrixReadOnly(tf).m42 : 0;
+  const baseGap = balanceCard.getBoundingClientRect().top - drawer.getBoundingClientRect().top - currentPush;
+  return Math.max(0, Math.ceil(drawerHeight + 10 - baseGap));
+}
+function applyCardsDrawerLayout(open) {
+  const el = document.getElementById('cardsDrawer');
+  const wrap = document.getElementById('pagesWrap');
+  if (!el || !wrap) return;
+  document.body.classList.add('cards-drawer-anim');
+  clearTimeout(applyCardsDrawerLayout._t);
+  applyCardsDrawerLayout._t = setTimeout(() => {
+    document.body.classList.remove('cards-drawer-anim');
+    if (!open) wrap.style.transform = '';
+  }, 650);
+  const h = cardsDrawerTargetHeight();
+  el.style.height = h + 'px';
+  setCardsDrawerIconClip(el, h);
+  wrap.style.transform = 'translateY(' + (open ? cardsDrawerPush(h) : 0) + 'px)';
+}
+// The closed drawer is clipped to a pill sitting exactly over the 💳 header icon.
+function setCardsDrawerIconClip(el, h) {
+  const icon = document.getElementById('cardsToggle');
+  if (!icon) return;
+  // Layout offsets (not getBoundingClientRect), so the header icons' hide animation
+  // (shifted up + shrunk while the drawer is open) can't move the pill above the icon.
+  const base = el.offsetParent;
+  let x = 0, y = 0, n = icon;
+  while (n && n !== base) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+  if (n !== base) return;
+  const top = y - el.offsetTop, left = x - el.offsetLeft;
+  const w = el.offsetWidth;
+  el.style.setProperty('--ci-t', Math.max(0, top) + 'px');
+  el.style.setProperty('--ci-l', Math.max(0, left) + 'px');
+  el.style.setProperty('--ci-r', Math.max(0, w - (left + icon.offsetWidth)) + 'px');
+  el.style.setProperty('--ci-b', Math.max(0, h - (top + icon.offsetHeight)) + 'px');
+}
+function openCardsDrawer() {
+  const el = document.getElementById('cardsDrawer');
+  if (!el) return;
+  document.getElementById('appSettingsPopover').classList.remove('open');
+  document.getElementById('accountPopover').classList.remove('open');
+  renderCards();
+  applyCardsDrawerLayout(true);
+  el.classList.add('open');
+  document.body.classList.add('cards-drawer-open');
+}
+function closeCardsDrawer() {
+  const el = document.getElementById('cardsDrawer');
+  if (!el) return;
+  el.classList.remove('open');
+  applyCardsDrawerLayout(false);
+  document.body.classList.remove('cards-drawer-open');
+}
+function toggleCardsDrawer() {
+  const el = document.getElementById('cardsDrawer');
+  if (el && el.classList.contains('open')) closeCardsDrawer(); else openCardsDrawer();
+}
+document.getElementById('cardsToggle').addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleCardsDrawer();
+});
+document.getElementById('cardsDrawerClose').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeCardsDrawer();
+});
+document.getElementById('cardsDrawer').addEventListener('click', (e) => e.stopPropagation());
+window.addEventListener('resize', () => {
+  const el = document.getElementById('cardsDrawer');
+  if (!el) return;
+  if (el.classList.contains('open')) { const h = cardsDrawerTargetHeight(); el.style.height = h + 'px'; document.getElementById('pagesWrap').style.transform = 'translateY(' + cardsDrawerPush(h) + 'px)'; }
+  else if (!document.body.classList.contains('cards-drawer-anim')) { const h = cardsDrawerTargetHeight(); el.style.height = h + 'px'; setCardsDrawerIconClip(el, h); }
+});
+// Put the closed drawer's pill over the 💳 icon from the start, so the very first open grows out of it too.
+requestAnimationFrame(() => {
+  const el = document.getElementById('cardsDrawer');
+  if (!el) return;
+  const h = cardsDrawerTargetHeight();
+  el.style.height = h + 'px';
+  setCardsDrawerIconClip(el, h);
+});
+
+document.getElementById('activeCardChip').addEventListener('click', () => {
+  openCardsDrawer();
+});
+
+// ---- New card modal ----
+const cardModal = document.getElementById('cardModal');
+function openCardModal() {
+  newCardColor = CARD_COLORS[state.cards.length % CARD_COLORS.length];
+  document.getElementById('newCardName').value = '';
+  renderCardColorRow();
+  cardModal.classList.add('open');
+}
+function closeCardModal() { cardModal.classList.remove('open'); }
+function renderCardColorRow() {
+  const wrap = document.getElementById('cardColorRow');
+  wrap.innerHTML = '';
+  CARD_COLORS.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'color-opt' + (c === newCardColor ? ' selected' : '');
+    el.style.background = c;
+    el.addEventListener('click', () => { newCardColor = c; renderCardColorRow(); });
+    wrap.appendChild(el);
+  });
+}
+document.getElementById('cancelCardBtn').addEventListener('click', closeCardModal);
+cardModal.addEventListener('click', (e) => { if (e.target === cardModal) closeCardModal(); });
+
+document.getElementById('saveCardBtn').addEventListener('click', () => {
+  const name = document.getElementById('newCardName').value.trim();
+  if (!name) { showReceiptToast(t('cards.needName')); return; }
+  const id = 'card_' + Date.now();
+  state.cards.push({ id, name, color: newCardColor });
+  if (!state.activeCardId) state.activeCardId = id;
+  saveState();
+  renderCards();
+  renderAll();
+  closeCardModal();
+  showReceiptToast(t('cards.createdToast') + ' „' + name + '"');
+});
+
+document.getElementById('cardsStrip').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-delcard]');
+  if (!btn) return;
+  e.stopPropagation();
+  const id = btn.dataset.delcard;
+  state.cards = state.cards.filter(c => c.id !== id);
+  if (state.activeCardId === id) {
+    state.activeCardId = state.cards.length ? state.cards[0].id : null;
+  }
+  saveState();
+  renderCards();
+  renderAll();
+});
+
+function wireCardsFeature() {
+  renderCards();
+}
 
 // init defaults for period search inputs
 document.getElementById('periodSearchDay').value = periodAnchor.day;
@@ -1976,13 +3502,27 @@ try {
 } catch (e) { console.warn('Firebase init failed', e); }
 
 function syncableData() {
-  return {
+  const data = {
     transactions: state.transactions,
     debts: state.debts,
     rates: state.rates,
     lastRateUpdate: state.lastRateUpdate,
-    displayCurrency: state.displayCurrency
+    displayCurrency: state.displayCurrency,
+    syncAppearance: !!state.syncAppearance,
+    receiptGroups: state.receiptGroups,
+    cards: state.cards
   };
+  // Appearance (background theme, glass effect, animation speed) is only
+  // pushed to the cloud when the user opted in — otherwise each device
+  // keeps its own look, and we don't want to overwrite that silently.
+  if (state.syncAppearance) {
+    data.bgTheme = state.bgTheme;
+    data.customPalette = state.customPalette;
+    data.glassIntensity = state.glassIntensity;
+    data.bgBlobOpacity = state.bgBlobOpacity;
+    data.bgAnimSpeed = state.bgAnimSpeed;
+  }
+  return data;
 }
 
 function pushToCloud() {
@@ -2003,9 +3543,12 @@ function startCloudSync(user) {
     applyingRemote = true;
     state.transactions = [];
     state.debts = [];
+    state.cards = [];
+    state.activeCardId = null;
     saveState();
     populateCurrencySelect();
     renderAll();
+    renderCards();
     applyingRemote = false;
   }
   state.lastSyncedUid = user.uid;
@@ -2028,9 +3571,30 @@ function startCloudSync(user) {
       state.rates = parsed.rates || { ...DEFAULT_RATES };
       state.lastRateUpdate = parsed.lastRateUpdate || todayStr();
       state.displayCurrency = parsed.displayCurrency || state.displayCurrency;
+      if (parsed.receiptGroups && parsed.receiptGroups.length) state.receiptGroups = parsed.receiptGroups;
+      if (parsed.cards) state.cards = parsed.cards;
+      if (state.activeCardId && !state.cards.some(c => c.id === state.activeCardId)) state.activeCardId = null;
+      // Only take the appearance (background/theme/glass) from the cloud when
+      // THIS device has opted in to syncing it — otherwise every device keeps
+      // its own look, even if another device pushed appearance data.
+      if (state.syncAppearance && parsed.syncAppearance) {
+        if (parsed.bgTheme) state.bgTheme = parsed.bgTheme;
+        if (parsed.customPalette !== undefined) state.customPalette = parsed.customPalette;
+        if (typeof parsed.glassIntensity === 'number') state.glassIntensity = parsed.glassIntensity;
+        if (typeof parsed.bgBlobOpacity === 'number') state.bgBlobOpacity = parsed.bgBlobOpacity;
+        if (parsed.bgAnimSpeed) state.bgAnimSpeed = parsed.bgAnimSpeed;
+        applyBgTheme();
+        applyGlassIntensity();
+        applyBgBlobOpacity();
+        applyBgAnimSpeed();
+        renderPaletteRow();
+      }
       saveState();
       populateCurrencySelect();
       renderAll();
+      renderReceiptGroups();
+      renderReceiptRecent();
+      renderCards();
       applyingRemote = false;
     } catch (e) { console.warn('sync parse failed', e); applyingRemote = false; }
   }, (err) => console.warn('sync listen failed', err));
@@ -2046,9 +3610,12 @@ function stopCloudSync() {
   applyingRemote = true;
   state.transactions = [];
   state.debts = [];
+  state.cards = [];
+  state.activeCardId = null;
   saveState();
   populateCurrencySelect();
   renderAll();
+  renderCards();
   applyingRemote = false;
   document.getElementById('popLoggedOut').classList.remove('hidden');
   document.getElementById('popLoggedIn').classList.add('hidden');
@@ -2259,20 +3826,21 @@ function playFlipAnimation(beforeRects) {
 
 function renderIconModeRow() {
   const row = document.getElementById('iconModeRow');
-  const note = document.getElementById('iconModeNote');
-  const title = document.getElementById('iconModeSectionTitle');
+  const group = document.getElementById('iconModeGroup');
   if (!row) return;
   const hasBridge = !!(window.AndroidBridge && window.AndroidBridge.setIconMode);
   // Desktop (Mac/Windows) can't switch its own launcher/dock icon at runtime,
-  // so showing a picker there would be misleading — hide the whole section.
-  row.classList.toggle('hidden', !hasBridge);
-  if (title) title.classList.toggle('hidden', !hasBridge);
-  if (note) note.classList.toggle('hidden', !hasBridge);
+  // so showing a picker there would be misleading — hide the whole group.
+  // NOTE: .icon-mode-row's own `display:flex` rule is declared later in the
+  // stylesheet than `.hidden { display:none }`, so with equal specificity it
+  // would win over the class alone — set display inline too so it can't lose.
+  if (group) { group.classList.toggle('hidden', !hasBridge); group.style.display = hasBridge ? '' : 'none'; }
   if (!hasBridge) return;
   row.querySelectorAll('.icon-mode-opt').forEach(opt => {
     opt.classList.toggle('active', opt.dataset.iconMode === state.iconMode);
   });
-  note.textContent = '';
+  const note = document.getElementById('iconModeNote');
+  if (note) note.textContent = '';
 }
 
 function renderPaletteRow() {
@@ -2298,22 +3866,34 @@ function renderPaletteRow() {
 }
 
 function wireBackgroundParallax() {
+  // Name kept for the existing call. Blobs drift by themselves across the whole background
+  // (sum of slow sine waves with random frequencies/phases = smooth, non-repeating wander).
   const bg = document.querySelector('.app-bg');
   if (!bg) return;
-  const blobs = bg.querySelectorAll('.blob');
-  const handleMove = (x, y) => {
-    const nx = (x / window.innerWidth - 0.5) * 2;
-    const ny = (y / window.innerHeight - 0.5) * 2;
-    blobs.forEach((b, i) => {
-      const strength = 14 + i * 6;
-      b.style.marginLeft = (nx * strength) + 'px';
-      b.style.marginTop = (ny * strength) + 'px';
-    });
+  const blobs = Array.from(bg.querySelectorAll('.blob'));
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const paths = blobs.map(() => ({
+    fx1: rnd(0.07, 0.12), fx2: rnd(0.03, 0.06), fy1: rnd(0.06, 0.11), fy2: rnd(0.025, 0.05), fs: rnd(0.04, 0.08),
+    px1: rnd(0, 6.3), px2: rnd(0, 6.3), py1: rnd(0, 6.3), py2: rnd(0, 6.3), ps: rnd(0, 6.3)
+  }));
+  const SPEED = { slow: 0.5, normal: 1, fast: 2.2, off: 0 };
+  let t = rnd(0, 1000), last = performance.now();
+  const frame = (now) => {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    const k = SPEED[state.bgAnimSpeed || 'normal'] ?? 1;
+    if (k > 0 && !document.hidden) {
+      t += dt * k;
+      blobs.forEach((b, i) => {
+        const p = paths[i];
+        const x = Math.sin(t * p.fx1 + p.px1) * 22 + Math.sin(t * p.fx2 + p.px2) * 14;   // vw
+        const y = Math.sin(t * p.fy1 + p.py1) * 20 + Math.sin(t * p.fy2 + p.py2) * 12;   // vh
+        const sc = 1 + Math.sin(t * p.fs + p.ps) * 0.14;
+        b.style.transform = 'translate3d(' + x.toFixed(2) + 'vw,' + y.toFixed(2) + 'vh,0) scale(' + sc.toFixed(3) + ')';
+      });
+    }
+    requestAnimationFrame(frame);
   };
-  window.addEventListener('mousemove', (e) => handleMove(e.clientX, e.clientY));
-  window.addEventListener('touchmove', (e) => {
-    if (e.touches && e.touches[0]) handleMove(e.touches[0].clientX, e.touches[0].clientY);
-  }, { passive: true });
+  requestAnimationFrame(frame);
 }
 
 function toggleBalanceHidden() {
@@ -2345,6 +3925,7 @@ document.getElementById('appSettingsPopover').addEventListener('click', (e) => e
 document.addEventListener('click', () => {
   document.getElementById('accountPopover').classList.remove('open');
   document.getElementById('appSettingsPopover').classList.remove('open');
+  closeCardsDrawer();
 });
 
 applyStaticI18n();
@@ -2352,6 +3933,14 @@ document.querySelectorAll('#languageRow [data-lang]').forEach(btn => {
   btn.addEventListener('click', () => applyLanguage(btn.dataset.lang));
 });
 renderLanguageRow();
+document.querySelectorAll('#syncAppearanceTabs [data-sync]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.syncAppearance = btn.dataset.sync === 'same';
+    saveState();
+    renderSyncAppearanceRow();
+  });
+});
+renderSyncAppearanceRow();
 applyTheme();
 detectWindowsAccentColor();
 applyBgTheme();
@@ -2370,6 +3959,8 @@ renderIconModeRow();
 wireDragAndDrop();
 wirePanelHideButtons();
 wireBackgroundParallax();
+wireReceiptFeature();
+wireCardsFeature();
 registerServiceWorker();
 renderAll();
 fetchExchangeRates();
