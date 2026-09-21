@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -18,10 +19,13 @@ class MainActivity : Activity() {
     private lateinit var webView: WebView
     private lateinit var prefs: SharedPreferences
 
+    companion object {
+        private const val REQ_SCAN = 4711
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         prefs = getSharedPreferences("stash_prefs", Context.MODE_PRIVATE)
 
         webView = WebView(this)
@@ -45,8 +49,19 @@ class MainActivity : Activity() {
         applyIconMode()
     }
 
-    // --- Icon switching (light / dark / glass / auto) ---
+    // --- Wynik ze skanera paragonow -> strona (window.onNativeReceipt) ---
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_SCAN || resultCode != RESULT_OK) return
+        val json = data?.getStringExtra(ScannerActivity.EXTRA_RESULT) ?: return
+        // JSON is a valid JS literal; only these two characters need escaping inside JS source
+        val safe = json.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+        webView.post {
+            webView.evaluateJavascript("window.onNativeReceipt && window.onNativeReceipt($safe);", null)
+        }
+    }
 
+    // --- Icon switching (light / dark / glass / auto) ---
     private fun isSystemDark(): Boolean {
         val mode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         return mode == Configuration.UI_MODE_NIGHT_YES
@@ -61,13 +76,11 @@ class MainActivity : Activity() {
     private fun applyIconMode() {
         val saved = prefs.getString("icon_mode", "auto") ?: "auto"
         val effective = resolveEffectiveMode(saved)
-
         val aliases = mapOf(
             "light" to ".IconLight",
             "dark" to ".IconDark",
             "glass" to ".IconGlass"
         )
-
         val pm = packageManager
         for ((key, aliasName) in aliases) {
             val state = if (key == effective) {
@@ -88,7 +101,6 @@ class MainActivity : Activity() {
     }
 
     // --- Material You accent color (best-effort) ---
-
     private fun pushSystemAccentColor() {
         try {
             val resId = resources.getIdentifier("system_accent1_500", "color", "android")
@@ -108,15 +120,13 @@ class MainActivity : Activity() {
     }
 
     // --- JS <-> Kotlin bridge ---
-
     inner class AndroidBridge {
-
         @JavascriptInterface
         fun postBalance(text: String) {
             val widgetPrefs = getSharedPreferences("stash_widget", Context.MODE_PRIVATE)
             widgetPrefs.edit().putString("balance_text", text).apply()
             try {
-                val intent = android.content.Intent(applicationContext, BalanceWidgetProvider::class.java)
+                val intent = Intent(applicationContext, BalanceWidgetProvider::class.java)
                 intent.action = android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE
                 val mgr = android.appwidget.AppWidgetManager.getInstance(applicationContext)
                 val ids = mgr.getAppWidgetIds(ComponentName(applicationContext, BalanceWidgetProvider::class.java))
@@ -136,6 +146,16 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun getIconMode(): String {
             return prefs.getString("icon_mode", "auto") ?: "auto"
+        }
+
+        // Otwiera skaner paragonow na zywo; wynik wraca przez onActivityResult
+        @JavascriptInterface
+        fun scanReceipt(lang: String) {
+            runOnUiThread {
+                val i = Intent(this@MainActivity, ScannerActivity::class.java)
+                i.putExtra(ScannerActivity.EXTRA_LANG, lang)
+                startActivityForResult(i, REQ_SCAN)
+            }
         }
     }
 }
