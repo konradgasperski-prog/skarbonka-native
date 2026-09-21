@@ -27,6 +27,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
@@ -45,6 +46,8 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 /**
  * Skaner paragonow: robisz zdjecie przyciskiem, tekst jest odczytywany w telefonie (ML Kit, offline),
@@ -70,6 +73,10 @@ class ScannerActivity : AppCompatActivity() {
     private lateinit var root: FrameLayout
     private var vmiWeb: WebView? = null
     private val handler = Handler(Looper.getMainLooper())
+    private lateinit var analysisExecutor: ExecutorService
+    @Volatile private var liveQr: String? = null      // kod VMI znaleziony na zywo w podgladzie
+    @Volatile private var qrBusy = false
+    private var lastQrCheck = 0L
     private var imageCapture: ImageCapture? = null
     private var camera: Camera? = null
     private var torchOn = false
@@ -77,16 +84,16 @@ class ScannerActivity : AppCompatActivity() {
     private var lang = "pl"
 
     private val strings = mapOf(
-        "pl" to mapOf("vmi" to "Pobieram dane z VMI…", "aim" to "Ustaw cały paragon w ramce i zrób zdjęcie", "reading" to "Odczytuję paragon…",
+        "pl" to mapOf("vmi" to "Pobieram dane z VMI…", "aim" to "Skieruj aparat na kod QR na dole paragonu — resztę pobiorę ze strony VMI. Paragon bez kodu? Zrób zdjęcie przyciskiem", "qr" to "Kod QR znaleziony ✓ — pobieram dane z VMI…", "reading" to "Odczytuję paragon…",
             "got" to "Gotowe ✓ — zdjęcie usunięte", "gallery" to "Galeria", "fail" to "Nie udało się odczytać tekstu — spróbuj jeszcze raz, bliżej i przy lepszym świetle",
             "noCam" to "Brak dostępu do aparatu — możesz wybrać zdjęcie z galerii"),
-        "en" to mapOf("vmi" to "Fetching data from VMI…", "aim" to "Fit the whole receipt in the frame and take a photo", "reading" to "Reading the receipt…",
+        "en" to mapOf("vmi" to "Fetching data from VMI…", "aim" to "Point the camera at the QR code at the bottom of the receipt — I'll get the rest from the VMI website. No code? Take a photo with the button", "qr" to "QR code found ✓ — fetching data from VMI…", "reading" to "Reading the receipt…",
             "got" to "Done ✓ — photo deleted", "gallery" to "Gallery", "fail" to "Couldn't read the text — try again, closer and with better light",
             "noCam" to "No camera access — you can pick a photo from the gallery"),
-        "ru" to mapOf("vmi" to "Загружаю данные из VMI…", "aim" to "Поместите весь чек в рамку и сделайте фото", "reading" to "Читаю чек…",
+        "ru" to mapOf("vmi" to "Загружаю данные из VMI…", "aim" to "Наведите камеру на QR-код внизу чека — остальное возьму с сайта VMI. Нет кода? Сделайте фото кнопкой", "qr" to "QR-код найден ✓ — загружаю данные из VMI…", "reading" to "Читаю чек…",
             "got" to "Готово ✓ — фото удалено", "gallery" to "Галерея", "fail" to "Не удалось прочитать текст — попробуйте ещё раз, ближе и при лучшем свете",
             "noCam" to "Нет доступа к камере — выберите фото из галереи"),
-        "lt" to mapOf("vmi" to "Gaunu duomenis iš VMI…", "aim" to "Sutalpinkite visą kvitą rėmelyje ir nufotografuokite", "reading" to "Skaitau kvitą…",
+        "lt" to mapOf("vmi" to "Gaunu duomenis iš VMI…", "aim" to "Nukreipkite kamerą į QR kodą kvito apačioje — likusius duomenis paimsiu iš VMI svetainės. Nėra kodo? Fotografuokite mygtuku", "qr" to "QR kodas rastas ✓ — gaunu duomenis iš VMI…", "reading" to "Skaitau kvitą…",
             "got" to "Atlikta ✓ — nuotrauka ištrinta", "gallery" to "Galerija", "fail" to "Nepavyko nuskaityti teksto — bandykite dar kartą, arčiau ir šviesiau",
             "noCam" to "Nėra prieigos prie kameros — pasirinkite nuotrauką iš galerijos")
     )
@@ -103,6 +110,7 @@ class ScannerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lang = (intent.getStringExtra(EXTRA_LANG) ?: "pl").take(2).lowercase(Locale.ROOT)
+        analysisExecutor = Executors.newSingleThreadExecutor()
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         previewView = PreviewView(this).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
@@ -188,8 +196,19 @@ class ScannerActivity : AppCompatActivity() {
                 val capture = ImageCapture.Builder()
                     .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                     .build()
+                // Analiza na zywo: szuka kodu QR w podgladzie jak Google Lens
+                val analysis = ImageAnalysis.Builder()
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+                analysis.setAnalyzer(analysisExecutor) { proxy -> analyzeQr(proxy) }
                 provider.unbindAll()
-                camera = provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
+                camera = try {
+                    provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture, analysis)
+                } catch (e: Exception) {
+                    // bardzo stare telefony: bez analizy na zywo, zostaje przycisk zdjecia
+                    provider.unbindAll()
+                    provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
+                }
                 imageCapture = capture
             } catch (e: Exception) {
                 status.text = s("noCam")
@@ -204,17 +223,58 @@ class ScannerActivity : AppCompatActivity() {
         cam.cameraControl.enableTorch(torchOn)
     }
 
+    private fun isVmi(u: String) = u.startsWith("https://kvitas.vmi.lt/") || u.startsWith("http://kvitas.vmi.lt/")
+
+    @OptIn(ExperimentalGetImage::class)
+    private fun analyzeQr(proxy: ImageProxy) {
+        val now = System.currentTimeMillis()
+        val media = proxy.image
+        if (busy || qrBusy || media == null || now - lastQrCheck < 200) { proxy.close(); return }
+        qrBusy = true
+        lastQrCheck = now
+        val input = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
+        qrScanner.process(input)
+            .addOnSuccessListener { codes ->
+                val vmi = codes.mapNotNull { it.rawValue }.firstOrNull { isVmi(it) }
+                if (vmi != null && !busy) onQrFound(vmi)
+            }
+            .addOnCompleteListener { qrBusy = false; proxy.close() }
+    }
+
+    // Kod znaleziony sam: bez zdjecia i bez czytania paragonu - wszystko bierzemy ze strony VMI
+    private fun onQrFound(url: String) {
+        if (busy) return
+        liveQr = url
+        setBusy(true)
+        vibrate()
+        status.text = s("qr")
+        fetchVmiAndFinish(url, ReceiptResult("", null, null, emptyList(), ""))
+    }
+
+    private fun fetchVmiAndFinish(url: String, result: ReceiptResult) {
+        val vmi = JSONObject()
+        val u = Uri.parse(url)
+        vmi.put("url", url)
+        vmi.put("nr", u.getQueryParameter("NR") ?: "")
+        vmi.put("sm", u.getQueryParameter("SM") ?: "")
+        vmi.put("dt", u.getQueryParameter("DT") ?: "")
+        fetchVmiText(url) { pageText ->
+            vmi.put("text", pageText ?: JSONObject.NULL)   // null = brak internetu / strona nie odpowiedziala
+            finishWith(result, vmi)
+        }
+    }
+
     private fun setBusy(b: Boolean) {
         busy = b
         shutter.alpha = if (b) 0.4f else 1f
     }
 
     // Zdjecie trafia tylko do pamieci (bez pliku), po odczycie jest od razu zamykane i usuwane
-    private fun takePhoto() {
+    private fun takePhoto(message: String? = null) {
         val capture = imageCapture ?: return
         if (busy) return
         setBusy(true)
-        status.text = s("reading")
+        status.text = message ?: s("reading")
         capture.takePicture(ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageCapturedCallback() {
             @OptIn(ExperimentalGetImage::class)
             override fun onCaptureSuccess(image: ImageProxy) {
@@ -261,24 +321,15 @@ class ScannerActivity : AppCompatActivity() {
     }
 
     private fun handleResults(text: Text?, codes: List<Barcode>) {
-        val vmiUrl = codes.mapNotNull { it.rawValue }.firstOrNull { it.startsWith("https://kvitas.vmi.lt/") }
+        val vmiUrl = codes.mapNotNull { it.rawValue }.firstOrNull { isVmi(it) } ?: liveQr
         val r = if (text != null && text.text.isNotBlank()) ReceiptParser.parse(text) else null
         if (vmiUrl == null && (r == null || (r.total == null && r.items.isEmpty()))) { fail(); return }
         val result = r ?: ReceiptResult("", null, null, emptyList(), "")
         if (vmiUrl == null) { finishWith(result, null); return }
 
-        // Paragon z kodem VMI: od razu pobieramy oficjalne dane (sklep, adres, sumy, PVM)
-        val vmi = JSONObject()
-        val u = Uri.parse(vmiUrl)
-        vmi.put("url", vmiUrl)
-        vmi.put("nr", u.getQueryParameter("NR") ?: "")
-        vmi.put("sm", u.getQueryParameter("SM") ?: "")
-        vmi.put("dt", u.getQueryParameter("DT") ?: "")
+        // Zdjecie z kodem VMI: dociagamy oficjalne dane ze strony
         status.text = s("vmi")
-        fetchVmiText(vmiUrl) { pageText ->
-            vmi.put("text", pageText ?: JSONObject.NULL)   // null = brak internetu / strona nie odpowiedziala
-            finishWith(result, vmi)
-        }
+        fetchVmiAndFinish(vmiUrl, result)
     }
 
     /**
@@ -320,6 +371,7 @@ class ScannerActivity : AppCompatActivity() {
     }
 
     private fun fail() {
+        liveQr = null
         setBusy(false)
         status.text = s("fail")
     }
@@ -356,6 +408,7 @@ class ScannerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        analysisExecutor.shutdown()
         try { vmiWeb?.destroy() } catch (e: Exception) { }
         super.onDestroy()
         try { recognizer.close() } catch (e: Exception) { }
