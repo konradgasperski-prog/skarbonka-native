@@ -661,6 +661,24 @@
   }
   .receipt-preview .store { font-weight: 700; font-size: 14px; }
   .receipt-preview .meta { font-size: 12px; color: var(--text-dim); }
+  /* Products read from a receipt (result card + transaction details) */
+  .receipt-items { margin: 10px 0 4px; border-radius: 12px; background: color-mix(in srgb, var(--bg) 40%, transparent); padding: 4px 12px; max-height: 260px; overflow-y: auto; }
+  .receipt-items .ri-title { font-size: 12px; font-weight: 700; color: var(--text-dim); padding: 8px 0 4px; }
+  .receipt-items .ri-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent); font-size: 13px; }
+  .receipt-items .ri-row:last-child { border-bottom: none; }
+  .receipt-items .ri-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .receipt-items .ri-price { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .receipt-items .ri-row.sum { font-weight: 800; border-top: 1px solid var(--border); }
+  .receipt-items .ri-row.other { color: var(--text-dim); font-style: italic; }
+  .receipt-items .ri-del { background: none; border: none; color: var(--text-dim); font-size: 13px; padding: 2px 4px; cursor: pointer; }
+  .tx-item { cursor: pointer; }
+  .tx-receipt-badge { font-size: 11px; opacity: 0.75; margin-left: 4px; }
+  .txd-head .txd-title { font-size: 17px; font-weight: 800; }
+  .txd-head .txd-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
+  .txd-head .txd-amount { font-size: 26px; font-weight: 800; margin: 10px 0 2px; }
+  .txd-fulltext { margin-top: 10px; font-size: 12px; }
+  .txd-fulltext summary { cursor: pointer; color: var(--text-dim); font-weight: 600; padding: 6px 0; }
+  .txd-fulltext pre { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; line-height: 1.45; margin: 6px 0 0; padding: 10px; border-radius: 10px; background: color-mix(in srgb, var(--bg) 50%, transparent); max-height: 240px; overflow: auto; }
   .receipt-group-picker { display: flex; flex-wrap: wrap; gap: 7px; }
   .receipt-chip {
     display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px;
@@ -1051,6 +1069,7 @@
           <div class="meta" id="receiptResMeta">—</div>
         </div>
       </div>
+      <div class="receipt-items hidden" id="receiptResItems"></div>
       <div class="field">
         <label data-i18n="receipts.storeLabel">Sklep / opis</label>
         <input type="text" id="receiptResStoreInput">
@@ -1134,6 +1153,15 @@
   </div>
 </div>
 
+<div class="fullscreen-modal" id="txDetailModal">
+  <div class="fullscreen-modal-content" style="max-width:440px;">
+    <div id="txDetailBody"></div>
+    <div class="row-btns" style="margin-top:14px;">
+      <button class="secondary" id="txDetailCloseBtn" style="flex:1" data-i18n="action.close">Zamknij</button>
+    </div>
+  </div>
+</div>
+
 <div class="fullscreen-modal" id="groupModal">
   <div class="fullscreen-modal-content" style="max-width:440px;">
     <div class="section-title" data-i18n="receipts.newGroupTitle">Nowa grupa zakupów</div>
@@ -1209,7 +1237,7 @@ const TRANSLATIONS = {
     period: { day:'Dni', week:'Tygodnie', month:'Miesiące', year:'Kwartały', searchDay:'Przejdź do dnia', searchWeek:'Przejdź do tygodnia', searchMonth:'Przejdź do miesiąca', searchYear:'Przejdź do roku', yearPlaceholder:'np. 2026', weekLabel:'Tydzień {week}, {year} ({from}–{to})' },
     chart: { bar:'Słupkowy', line:'Liniowy', pie:'Kołowy', percent:'Procentowy', preview:'Podgląd', incomeVsExpense:'Przychody vs wydatki (wybrany okres)', percentShare:'Udział %' },
     ai: { title:'Asystent AI (lokalnie, offline)', intro:'Analizuje Twoje dane bezpośrednio na tym urządzeniu — nic nie wysyłamy do internetu. Pierwsze uruchomienie pobiera mały model AI (ok. 600 MB–1 GB), potem działa offline.', analyzeBtn:'🤖 Analizuj moje finanse', downloading:'Pobieranie modelu AI...', loading:'Uruchamianie modelu...', thinking:'Analizuję...', unsupported:'To urządzenie/przeglądarka nie obsługuje lokalnego AI (brak WebGPU). Spróbuj na nowszym komputerze lub telefonie.', error:'Coś poszło nie tak przy uruchamianiu AI: ', noData:'Dodaj kilka transakcji, żeby AI mogło je przeanalizować.', ready:'Model gotowy ✓' },
-    receipts: { scanHintLive:'Skieruj aparat na paragon — sam go złapie i odczyta sklep, kwotę i datę. Wszystko działa w telefonie, bez internetu.', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
+    receipts: { items:'Produkty', fullText:'Pełny tekst paragonu', otherItems:'Pozostałe / nierozpoznane', total:'Suma', noItems:'Ta transakcja nie ma rozbicia na produkty — nie pochodzi ze skanu paragonu.', details:'Szczegóły transakcji', removeItem:'Usuń pozycję', itemsCount:'poz.', scanHintLive:'Zrób zdjęcie paragonu — apka odczyta każdy produkt i cenę, zapisze wszystko jako tekst, a samo zdjęcie od razu usunie. Działa w telefonie, bez internetu.', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
     cards: { myCards:'Karty', allTogether:'Wszystkie', title:'Karty bankowe', hint:'Dodaj swoje karty i wybierz jedną — nowe transakcje będą zapisywać się tylko do wybranej karty. Zakładka „Wszystkie” pokaże sumę ze wszystkich kart naraz.', newCard:'Nowa karta', newCardTitle:'Nowa karta', cardName:'Nazwa karty', createCard:'Utwórz kartę', needName:'Podaj nazwę karty', createdToast:'Utworzono kartę', showing:'Pokazuję:', showingAll:'Pokazuję: wszystkie karty', noCard:'bez karty', allBalanceLabel:'Saldo razem ze wszystkich kart' },
     rates: { title:'Kursy walut (1 EUR =)', refreshNow:'Odśwież teraz', lastSync:'Ostatnia synchronizacja: ', fetchFailed:'Nie udało się pobrać aktualnych kursów (brak połączenia) — używane są zapisane wcześniej.', newDayBanner:'Nowy dzień — sprawdź i zaktualizuj kursy walut.' },
     data: { title:'Dane', resetAll:'Wyczyść wszystkie dane' },
@@ -1242,7 +1270,7 @@ const TRANSLATIONS = {
     period: { day:'Days', week:'Weeks', month:'Months', year:'Quarters', searchDay:'Go to day', searchWeek:'Go to week', searchMonth:'Go to month', searchYear:'Go to year', yearPlaceholder:'e.g. 2026', weekLabel:'Week {week}, {year} ({from}–{to})' },
     chart: { bar:'Bar', line:'Line', pie:'Pie', percent:'Percent', preview:'Preview', incomeVsExpense:'Income vs expenses (selected period)', percentShare:'Share %' },
     ai: { title:'AI Assistant (local, offline)', intro:'Analyzes your data directly on this device — nothing is sent to the internet. First run downloads a small AI model (~600 MB–1 GB), then it works offline.', analyzeBtn:'🤖 Analyze my finances', downloading:'Downloading AI model...', loading:'Starting model...', thinking:'Analyzing...', unsupported:'This device/browser does not support local AI (no WebGPU). Try a newer computer or phone.', error:'Something went wrong starting the AI: ', noData:'Add a few transactions so the AI has something to analyze.', ready:'Model ready ✓' },
-    receipts: { scanHintLive:'Point the camera at the receipt — it grabs it by itself and reads the store, amount and date. Everything runs on the phone, offline.', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
+    receipts: { items:'Products', fullText:'Full receipt text', otherItems:'Other / unrecognized', total:'Total', noItems:'This transaction has no product breakdown — it did not come from a receipt scan.', details:'Transaction details', removeItem:'Remove item', itemsCount:'items', scanHintLive:'Take a photo of the receipt — the app reads every product and price, saves it all as text and deletes the photo right away. Runs on the phone, offline.', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
     cards: { myCards:'Cards', allTogether:'All', title:'Bank cards', hint:'Add your cards and pick one — new transactions will only be saved to the selected card. The "All" tab shows the total across every card at once.', newCard:'New card', newCardTitle:'New card', cardName:'Card name', createCard:'Create card', needName:'Enter a card name', createdToast:'Card created', showing:'Showing:', showingAll:'Showing: all cards', noCard:'no card', allBalanceLabel:'Combined balance across all cards' },
     rates: { title:'Exchange rates (1 EUR =)', refreshNow:'Refresh now', lastSync:'Last sync: ', fetchFailed:"Couldn't fetch current rates (no connection) — using previously saved ones.", newDayBanner:'New day — check and update exchange rates.' },
     data: { title:'Data', resetAll:'Clear all data' },
@@ -1275,7 +1303,7 @@ const TRANSLATIONS = {
     period: { day:'Дни', week:'Недели', month:'Месяцы', year:'Кварталы', searchDay:'Перейти к дню', searchWeek:'Перейти к неделе', searchMonth:'Перейти к месяцу', searchYear:'Перейти к году', yearPlaceholder:'напр. 2026', weekLabel:'Неделя {week}, {year} ({from}–{to})' },
     chart: { bar:'Столбчатый', line:'Линейный', pie:'Круговой', percent:'Процентный', preview:'Просмотр', incomeVsExpense:'Доходы и расходы (выбранный период)', percentShare:'Доля %' },
     ai: { title:'AI-ассистент (локально, офлайн)', intro:'Анализирует ваши данные прямо на этом устройстве — ничего не отправляется в интернет. При первом запуске загружается небольшая AI-модель (около 600 МБ–1 ГБ), затем работает офлайн.', analyzeBtn:'🤖 Проанализировать мои финансы', downloading:'Загрузка AI-модели...', loading:'Запуск модели...', thinking:'Анализирую...', unsupported:'Это устройство/браузер не поддерживает локальный AI (нет WebGPU). Попробуйте на более новом компьютере или телефоне.', error:'Не удалось запустить AI: ', noData:'Добавьте несколько транзакций, чтобы AI мог их проанализировать.', ready:'Модель готова ✓' },
-    receipts: { scanHintLive:'Наведите камеру на чек — он сам его поймает и прочитает магазин, сумму и дату. Всё работает в телефоне, без интернета.', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
+    receipts: { items:'Товары', fullText:'Полный текст чека', otherItems:'Прочее / не распознано', total:'Итого', noItems:'У этой операции нет разбивки по товарам — она не из скана чека.', details:'Детали операции', removeItem:'Удалить позицию', itemsCount:'поз.', scanHintLive:'Сфотографируйте чек — приложение прочитает каждый товар и цену, сохранит всё текстом, а само фото сразу удалит. Работает в телефоне, без интернета.', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
     cards: { myCards:'Карты', allTogether:'Все', title:'Банковские карты', hint:'Добавьте свои карты и выберите одну — новые операции будут сохраняться только на выбранную карту. Вкладка «Все» покажет сумму по всем картам сразу.', newCard:'Новая карта', newCardTitle:'Новая карта', cardName:'Название карты', createCard:'Создать карту', needName:'Укажите название карты', createdToast:'Карта создана', showing:'Показываю:', showingAll:'Показываю: все карты', noCard:'без карты', allBalanceLabel:'Общий баланс по всем картам' },
     rates: { title:'Курсы валют (1 EUR =)', refreshNow:'Обновить сейчас', lastSync:'Последняя синхронизация: ', fetchFailed:'Не удалось получить текущие курсы (нет соединения) — используются ранее сохранённые.', newDayBanner:'Новый день — проверьте и обновите курсы валют.' },
     data: { title:'Данные', resetAll:'Очистить все данные' },
@@ -1308,7 +1336,7 @@ const TRANSLATIONS = {
     period: { day:'Dienos', week:'Savaitės', month:'Mėnesiai', year:'Ketvirčiai', searchDay:'Eiti į dieną', searchWeek:'Eiti į savaitę', searchMonth:'Eiti į mėnesį', searchYear:'Eiti į metus', yearPlaceholder:'pvz. 2026', weekLabel:'{week} savaitė, {year} ({from}–{to})' },
     chart: { bar:'Stulpelinė', line:'Linijinė', pie:'Skritulinė', percent:'Procentinė', preview:'Peržiūra', incomeVsExpense:'Pajamos ir išlaidos (pasirinktas laikotarpis)', percentShare:'Dalis %' },
     ai: { title:'AI asistentas (vietoje, neprisijungus)', intro:'Analizuoja jūsų duomenis tiesiogiai šiame įrenginyje — niekas nesiunčiama į internetą. Pirmą kartą paleidus atsisiunčiamas mažas AI modelis (apie 600 MB–1 GB), vėliau veikia neprisijungus.', analyzeBtn:'🤖 Analizuoti mano finansus', downloading:'Atsisiunčiamas AI modelis...', loading:'Paleidžiamas modelis...', thinking:'Analizuoju...', unsupported:'Šis įrenginys/naršyklė nepalaiko vietinio AI (nėra WebGPU). Bandykite naujesniame kompiuteryje ar telefone.', error:'Nepavyko paleisti AI: ', noData:'Pridėkite kelias operacijas, kad AI turėtų ką analizuoti.', ready:'Modelis paruoštas ✓' },
-    receipts: { scanHintLive:'Nukreipkite kamerą į kvitą — jis pats jį pagaus ir nuskaitys parduotuvę, sumą ir datą. Viskas veikia telefone, be interneto.', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
+    receipts: { items:'Prekės', fullText:'Visas kvito tekstas', otherItems:'Kita / neatpažinta', total:'Suma', noItems:'Ši operacija neturi prekių sąrašo — ji ne iš kvito skenavimo.', details:'Operacijos informacija', removeItem:'Pašalinti prekę', itemsCount:'prek.', scanHintLive:'Nufotografuokite kvitą — programa nuskaitys kiekvieną prekę ir kainą, viską išsaugos tekstu, o pačią nuotrauką iškart ištrins. Veikia telefone, be interneto.', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
     cards: { myCards:'Kortelės', allTogether:'Visos', title:'Banko kortelės', hint:'Pridėkite savo korteles ir pasirinkite vieną — naujos operacijos bus išsaugomos tik pasirinktoje kortelėje. Skirtukas „Visos“ parodys visų kortelių sumą kartu.', newCard:'Nauja kortelė', newCardTitle:'Nauja kortelė', cardName:'Kortelės pavadinimas', createCard:'Sukurti kortelę', needName:'Įveskite kortelės pavadinimą', createdToast:'Kortelė sukurta', showing:'Rodoma:', showingAll:'Rodoma: visos kortelės', noCard:'be kortelės', allBalanceLabel:'Bendras balansas iš visų kortelių' },
     rates: { title:'Valiutų kursai (1 EUR =)', refreshNow:'Atnaujinti dabar', lastSync:'Paskutinis sinchronizavimas: ', fetchFailed:'Nepavyko gauti naujausių kursų (nėra ryšio) — naudojami anksčiau išsaugoti.', newDayBanner:'Nauja diena — patikrinkite ir atnaujinkite valiutų kursus.' },
     data: { title:'Duomenys', resetAll:'Išvalyti visus duomenis' },
@@ -1895,9 +1923,9 @@ function renderBalance() {
 function buildTxRowsHTML(items) {
   if (items.length === 0) return '<div class="empty">' + t('empty.noTx') + '</div>';
   return items.map(t => `
-    <div class="tx-item">
+    <div class="tx-item" data-tx="${t.id}">
       <div>
-        <div class="tx-desc">${t.desc || (t.type === 'income' ? tr('type.income') : tr('type.expense'))}</div>
+        <div class="tx-desc">${t.desc || (t.type === 'income' ? tr('type.income') : tr('type.expense'))}${t.receipt && t.receipt.items && t.receipt.items.length ? '<span class="tx-receipt-badge">🧾 ' + t.receipt.items.length + '</span>' : ''}</div>
         <div class="tx-date">${t.date} · ${fmt(t.amount, t.currency)}</div>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
@@ -1910,6 +1938,12 @@ function buildTxRowsHTML(items) {
   `).join('');
 }
 function wireTxDelButtons(container) {
+  container.querySelectorAll('.tx-item[data-tx]').forEach(row => {
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('.del-btn')) return;
+      openTxDetail(row.dataset.tx);
+    });
+  });
   container.querySelectorAll('.del-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const row = btn.closest('.tx-item');
@@ -2913,13 +2947,28 @@ const DEFAULT_RECEIPT_GROUPS = [
 ];
 
 const DEMO_RECEIPTS = [
-  { store:'LIDL Vilnius, Ukmergės g.', amount:23.47, itemsCount:14, groupId:'lidl' },
-  { store:'MAXIMA XX, Ozo g.', amount:41.10, itemsCount:9, groupId:'maxima' },
-  { store:'IKI Express, Pilies g.', amount:8.90, itemsCount:3, groupId:'iki' },
-  { store:'Toy Planet', amount:15.00, itemsCount:1, groupId:'zabawki' },
-  { store:'PLAY sklep z grami', amount:59.99, itemsCount:1, groupId:'gry' },
-  { store:'Café Neringa', amount:12.30, itemsCount:2, groupId:'jedzenie' },
+  { store:'LIDL Vilnius, Ukmergės g.', amount:23.47, groupId:'lidl', items:[
+    { name:'Pienas 2,5% 1L', price:1.29 }, { name:'Duona ruginė', price:1.49 }, { name:'Bananai 1,12 kg', price:1.67 },
+    { name:'Sūris Džiugas 180g', price:4.39 }, { name:'Vištienos filė', price:6.98 }, { name:'Kava malta 500g', price:5.99 },
+    { name:'Obuolių sultys 1L', price:1.66 } ] },
+  { store:'MAXIMA XX, Ozo g.', amount:41.10, groupId:'maxima', items:[
+    { name:'Skalbimo kapsulės', price:12.99 }, { name:'Tualetinis popierius 8 vnt', price:4.49 }, { name:'Kiaušiniai 10 vnt', price:2.79 },
+    { name:'Makaronai 500g', price:1.19 }, { name:'Pomidorų padažas', price:2.35 }, { name:'Jautiena malta', price:7.49 },
+    { name:'Varškė 9%', price:1.89 }, { name:'Šokoladas', price:1.99 }, { name:'Vanduo 6x1,5L', price:5.92 } ] },
+  { store:'IKI Express, Pilies g.', amount:8.90, groupId:'iki', items:[
+    { name:'Kava su pienu', price:3.20 }, { name:'Sumuštinis', price:3.50 }, { name:'Vanduo 0,5L', price:0.99 } ] },
+  { store:'Toy Planet', amount:15.00, groupId:'zabawki', items:[ { name:'LEGO Classic 11001', price:15.00 } ] },
+  { store:'PLAY sklep z grami', amount:59.99, groupId:'gry', items:[ { name:'Gra PS5', price:59.99 } ] },
+  { store:'Café Neringa', amount:12.30, groupId:'jedzenie', items:[ { name:'Cepelinai', price:8.50 }, { name:'Gira', price:3.80 } ] },
 ];
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+function sumItems(items) { return (items || []).reduce((a, it) => a + (Number(it.price) || 0), 0); }
+function demoReceiptText(d) {
+  return d.store + '\n' + d.items.map(it => it.name + '   ' + it.price.toFixed(2).replace('.', ',')) .join('\n') +
+    '\n' + 'Iš viso   ' + d.amount.toFixed(2).replace('.', ',') + ' EUR';
+}
 
 if (!state.receiptGroups || !state.receiptGroups.length) {
   state.receiptGroups = DEFAULT_RECEIPT_GROUPS.map(g => ({ ...g }));
@@ -2952,15 +3001,19 @@ window.onNativeReceipt = function (res) {
   if (!res) return;
   const store = (res.store || '').trim() || '—';
   const g = matchReceiptGroup((res.text || '') + '\n' + store);
+  const items = Array.isArray(res.items)
+    ? res.items.filter(it => it && it.name && Number(it.price) > 0).map(it => ({ name: String(it.name), price: Math.round(Number(it.price) * 100) / 100 }))
+    : [];
   receiptPendingResult = {
     store,
-    amount: typeof res.total === 'number' ? res.total : 0,
-    itemsCount: res.items || 0,
+    amount: typeof res.total === 'number' ? res.total : Math.round(sumItems(items) * 100) / 100,
+    items,
+    text: res.text || '',
     groupId: g ? g.id : state.receiptGroups[0].id,
     matched: !!g,
     date: res.date || null
   };
-  showReceiptResult(receiptPendingResult, res.thumb || '');
+  showReceiptResult(receiptPendingResult);
 };
 
 let receiptScanIdx = 0;
@@ -2998,12 +3051,12 @@ function wireReceiptFileInput() {
   input.addEventListener('change', () => {
     const file = input.files[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    runSimulatedReceiptScan(url);
+    input.value = '';               // the photo itself is not kept anywhere
+    runSimulatedReceiptScan();
   });
 }
 
-function runSimulatedReceiptScan(thumbUrl) {
+function runSimulatedReceiptScan() {
   const scanCard = document.getElementById('receiptScanCard');
   const zone = scanCard.querySelector('.receipt-scan-zone');
   if (zone) {
@@ -3012,8 +3065,12 @@ function runSimulatedReceiptScan(thumbUrl) {
   setTimeout(() => {
     const demo = DEMO_RECEIPTS[receiptScanIdx % DEMO_RECEIPTS.length];
     receiptScanIdx++;
-    receiptPendingResult = { ...demo };
-    showReceiptResult(receiptPendingResult, thumbUrl);
+    const g = matchReceiptGroup(demo.store);
+    receiptPendingResult = {
+      store: demo.store, amount: demo.amount, items: demo.items.map(it => ({ ...it })),
+      text: demoReceiptText(demo), groupId: g ? g.id : demo.groupId, matched: true, date: null
+    };
+    showReceiptResult(receiptPendingResult);
     restoreReceiptScanZone();
   }, 1100);
 }
@@ -3030,12 +3087,35 @@ function restoreReceiptScanZone() {
   }
 }
 
-function showReceiptResult(res, thumbUrl) {
+function renderReceiptResultItems() {
+  const res = receiptPendingResult;
+  const box = document.getElementById('receiptResItems');
+  if (!res || !res.items || !res.items.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+  box.classList.remove('hidden');
+  box.innerHTML = '<div class="ri-title">' + t('receipts.items') + '</div>' +
+    res.items.map((it, i) =>
+      '<div class="ri-row"><span class="ri-name">' + escHtml(it.name) + '</span>' +
+      '<span class="ri-price">' + fmt(it.price, 'EUR') + '</span>' +
+      '<button class="ri-del" data-i="' + i + '" title="' + escHtml(t('receipts.removeItem')) + '">✕</button></div>'
+    ).join('');
+  box.querySelectorAll('.ri-del').forEach(b => b.addEventListener('click', () => {
+    res.items.splice(parseInt(b.dataset.i, 10), 1);   // drop a misread line
+    renderReceiptResultItems();
+    updateReceiptMeta();
+  }));
+}
+function updateReceiptMeta() {
+  const res = receiptPendingResult;
+  const n = res && res.items ? res.items.length : 0;
+  document.getElementById('receiptResMeta').textContent = (n ? n + ' ' + t('receipts.itemsCount') + ' · ' : '') + fmt((res && res.amount) || 0, 'EUR');
+}
+function showReceiptResult(res) {
   const thumb = document.getElementById('receiptThumb');
-  thumb.src = thumbUrl || '';
-  thumb.style.display = thumbUrl ? '' : 'none';
+  thumb.removeAttribute('src');
+  thumb.style.display = 'none';      // photos are never kept — only the text
   document.getElementById('receiptResStore').textContent = res.store;
-  document.getElementById('receiptResMeta').textContent = (res.itemsCount ? res.itemsCount + ' poz. · ' : '') + fmt(res.amount || 0, 'EUR');
+  updateReceiptMeta();
+  renderReceiptResultItems();
   document.getElementById('receiptResStoreInput').value = res.store;
   document.getElementById('receiptResAmountInput').value = res.amount ? res.amount.toFixed(2) : '';
   renderReceiptGroupPicker(res.groupId);
@@ -3096,7 +3176,13 @@ document.getElementById('receiptSaveBtn').addEventListener('click', () => {
     desc: g.emoji + ' ' + store,
     date: receiptPendingResult.date || todayStr(),
     ts: Date.now(),
-    cardId: state.activeCardId || null
+    cardId: state.activeCardId || null,
+    receipt: {
+      store,
+      groupId: g.id,
+      items: (receiptPendingResult.items || []).map(it => ({ name: it.name, price: it.price })),
+      text: String(receiptPendingResult.text || '').slice(0, 6000)
+    }
   });
   state.recentScans.unshift({ store, amount, groupId: g.id, ts: Date.now() });
   state.recentScans = state.recentScans.slice(0, 8);
@@ -3236,6 +3322,44 @@ document.getElementById('saveGroupBtn').addEventListener('click', () => {
   closeGroupModal();
   showReceiptToast(t('receipts.createdToast') + ' „' + name + '"');
 });
+
+// ---- Transaction details: what a (scanned) transaction consists of ----
+function openTxDetail(id) {
+  const tx = state.transactions.find(x => x.id === id);
+  if (!tx) return;
+  const body = document.getElementById('txDetailBody');
+  const cur = tx.currency || 'EUR';
+  const sign = tx.type === 'income' ? '+' : '-';
+  const card = tx.cardId ? cardById(tx.cardId) : null;
+  const rc = tx.receipt;
+  const grp = rc && rc.groupId ? state.receiptGroups.find(g => g.id === rc.groupId) : null;
+  const sub = [tx.date, card ? '💳 ' + card.name : '', grp ? grp.emoji + ' ' + grp.name : ''].filter(Boolean).map(escHtml).join(' · ');
+  let html = '<div class="txd-head">' +
+    '<div class="section-title" style="margin-bottom:6px;">' + escHtml(t('receipts.details')) + '</div>' +
+    '<div class="txd-title">' + escHtml(tx.desc || (tx.type === 'income' ? tr('type.income') : tr('type.expense'))) + '</div>' +
+    '<div class="txd-sub">' + sub + '</div>' +
+    '<div class="txd-amount ' + (tx.type === 'income' ? 'income-color' : 'expense-color') + '">' + sign + fmt(tx.amount, cur) + '</div>' +
+    '</div>';
+  if (rc && rc.items && rc.items.length) {
+    const itemsSum = sumItems(rc.items);
+    const rest = Math.round((tx.amount - itemsSum) * 100) / 100;
+    html += '<div class="receipt-items" style="max-height:none;"><div class="ri-title">' + escHtml(t('receipts.items')) + ' (' + rc.items.length + ')</div>' +
+      rc.items.map(it => '<div class="ri-row"><span class="ri-name">' + escHtml(it.name) + '</span><span class="ri-price">' + fmt(it.price, cur) + '</span></div>').join('') +
+      (Math.abs(rest) >= 0.01 ? '<div class="ri-row other"><span class="ri-name">' + escHtml(t('receipts.otherItems')) + '</span><span class="ri-price">' + fmt(rest, cur) + '</span></div>' : '') +
+      '<div class="ri-row sum"><span class="ri-name">' + escHtml(t('receipts.total')) + '</span><span class="ri-price">' + fmt(tx.amount, cur) + '</span></div>' +
+      '</div>';
+  } else {
+    html += '<div class="empty" style="padding:10px 0;">' + escHtml(t('receipts.noItems')) + '</div>';
+  }
+  if (rc && rc.text) {
+    html += '<details class="txd-fulltext"><summary>🧾 ' + escHtml(t('receipts.fullText')) + '</summary><pre>' + escHtml(rc.text) + '</pre></details>';
+  }
+  body.innerHTML = html;
+  document.getElementById('txDetailModal').classList.add('open');
+}
+function closeTxDetail() { document.getElementById('txDetailModal').classList.remove('open'); }
+document.getElementById('txDetailCloseBtn').addEventListener('click', closeTxDetail);
+document.getElementById('txDetailModal').addEventListener('click', (e) => { if (e.target.id === 'txDetailModal') closeTxDetail(); });
 
 function wireReceiptFeature() {
   wireReceiptFileInput();

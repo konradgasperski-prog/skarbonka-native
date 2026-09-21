@@ -3,8 +3,6 @@ package com.skarbonka.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -13,7 +11,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.util.Base64
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -22,9 +19,11 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
-import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageCapture
+import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -34,16 +33,14 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import org.json.JSONArray
 import org.json.JSONObject
-import java.io.ByteArrayOutputStream
 import java.util.Locale
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
 
 /**
- * Skaner paragonow na zywo: podglad z aparatu, tekst odczytywany na biezaco (ML Kit, offline).
- * Gdy ta sama suma zostanie odczytana 3 razy z rzedu (obraz stabilny) - paragon jest
- * lapany automatycznie, bez przycisku. Mozna tez wybrac zdjecie z galerii.
+ * Skaner paragonow: robisz zdjecie przyciskiem, tekst jest odczytywany w telefonie (ML Kit, offline),
+ * a samo zdjecie nigdy nie jest zapisywane - zyje tylko w pamieci do czasu odczytu i od razu jest usuwane.
+ * Do apki wraca wylacznie tekst: sklep, suma, data, produkty z cenami i pelny tekst paragonu.
  */
 class ScannerActivity : AppCompatActivity() {
 
@@ -56,33 +53,26 @@ class ScannerActivity : AppCompatActivity() {
 
     private lateinit var previewView: PreviewView
     private lateinit var status: TextView
-    private lateinit var cameraExecutor: ExecutorService
+    private lateinit var shutter: View
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
-
+    private var imageCapture: ImageCapture? = null
+    private var camera: Camera? = null
+    private var torchOn = false
     @Volatile private var busy = false
-    @Volatile private var done = false
-    private var lastAnalysis = 0L
-    private var lastTotal: Double? = null
-    private var stableCount = 0
-    private val startedAt = System.currentTimeMillis()
     private var lang = "pl"
 
     private val strings = mapOf(
-        "pl" to mapOf("aim" to "Skieruj aparat na paragon", "seeing" to "Widzę paragon — szukam sumy…",
-            "bottom" to "Nie widzę sumy — pokaż dół paragonu", "found" to "Suma:", "got" to "Mam! ✓",
-            "gallery" to "Galeria", "reading" to "Odczytuję zdjęcie…", "fail" to "Nie udało się odczytać tekstu",
+        "pl" to mapOf("aim" to "Ustaw cały paragon w ramce i zrób zdjęcie", "reading" to "Odczytuję paragon…",
+            "got" to "Gotowe ✓ — zdjęcie usunięte", "gallery" to "Galeria", "fail" to "Nie udało się odczytać tekstu — spróbuj jeszcze raz, bliżej i przy lepszym świetle",
             "noCam" to "Brak dostępu do aparatu — możesz wybrać zdjęcie z galerii"),
-        "en" to mapOf("aim" to "Point the camera at the receipt", "seeing" to "I see a receipt — looking for the total…",
-            "bottom" to "Can't see the total — show the bottom of the receipt", "found" to "Total:", "got" to "Got it! ✓",
-            "gallery" to "Gallery", "reading" to "Reading the photo…", "fail" to "Couldn't read any text",
+        "en" to mapOf("aim" to "Fit the whole receipt in the frame and take a photo", "reading" to "Reading the receipt…",
+            "got" to "Done ✓ — photo deleted", "gallery" to "Gallery", "fail" to "Couldn't read the text — try again, closer and with better light",
             "noCam" to "No camera access — you can pick a photo from the gallery"),
-        "ru" to mapOf("aim" to "Наведите камеру на чек", "seeing" to "Вижу чек — ищу итог…",
-            "bottom" to "Не вижу итог — покажите низ чека", "found" to "Итог:", "got" to "Готово! ✓",
-            "gallery" to "Галерея", "reading" to "Читаю фото…", "fail" to "Не удалось прочитать текст",
+        "ru" to mapOf("aim" to "Поместите весь чек в рамку и сделайте фото", "reading" to "Читаю чек…",
+            "got" to "Готово ✓ — фото удалено", "gallery" to "Галерея", "fail" to "Не удалось прочитать текст — попробуйте ещё раз, ближе и при лучшем свете",
             "noCam" to "Нет доступа к камере — выберите фото из галереи"),
-        "lt" to mapOf("aim" to "Nukreipkite kamerą į kvitą", "seeing" to "Matau kvitą — ieškau sumos…",
-            "bottom" to "Nematau sumos — parodykite kvito apačią", "found" to "Suma:", "got" to "Yra! ✓",
-            "gallery" to "Galerija", "reading" to "Skaitau nuotrauką…", "fail" to "Nepavyko nuskaityti teksto",
+        "lt" to mapOf("aim" to "Sutalpinkite visą kvitą rėmelyje ir nufotografuokite", "reading" to "Skaitau kvitą…",
+            "got" to "Atlikta ✓ — nuotrauka ištrinta", "gallery" to "Galerija", "fail" to "Nepavyko nuskaityti teksto — bandykite dar kartą, arčiau ir šviesiau",
             "noCam" to "Nėra prieigos prie kameros — pasirinkite nuotrauką iš galerijos")
     )
     private fun s(key: String) = strings[lang]?.get(key) ?: strings["pl"]!![key] ?: key
@@ -98,7 +88,6 @@ class ScannerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         lang = (intent.getStringExtra(EXTRA_LANG) ?: "pl").take(2).lowercase(Locale.ROOT)
-        cameraExecutor = Executors.newSingleThreadExecutor()
 
         val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         previewView = PreviewView(this).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
@@ -113,17 +102,39 @@ class ScannerActivity : AppCompatActivity() {
             }
         }
         root.addView(guide, FrameLayout.LayoutParams(MATCH, MATCH).apply {
-            setMargins(dp(28), dp(96), dp(28), dp(180))
+            setMargins(dp(24), dp(96), dp(24), dp(200))
         })
 
-        status = pill(s("aim"), 15f)
+        status = pill(s("aim"), 14f).apply { maxWidth = dp(320) }
         root.addView(status, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(112)
+            bottomMargin = dp(140)
         })
 
-        val gallery = pill("🖼  " + s("gallery"), 15f).apply { setOnClickListener { pickImage.launch("image/*") } }
-        root.addView(gallery, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(40)
+        // Przycisk zdjecia (duze kolo)
+        shutter = View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.WHITE)
+                setStroke(dp(5), Color.argb(120, 255, 255, 255))
+            }
+            contentDescription = "Zdjęcie"
+            setOnClickListener { takePhoto() }
+        }
+        root.addView(shutter, FrameLayout.LayoutParams(dp(74), dp(74), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(44)
+        })
+
+        val gallery = pill("🖼", 20f).apply {
+            contentDescription = s("gallery")
+            setOnClickListener { if (!busy) pickImage.launch("image/*") }
+        }
+        root.addView(gallery, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.START).apply {
+            bottomMargin = dp(56); leftMargin = dp(36)
+        })
+
+        val torch = pill("🔦", 20f).apply { setOnClickListener { toggleTorch() } }
+        root.addView(torch, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END).apply {
+            bottomMargin = dp(56); rightMargin = dp(36)
         })
 
         val close = pill("✕", 18f).apply { setOnClickListener { finish() } }
@@ -146,7 +157,7 @@ class ScannerActivity : AppCompatActivity() {
         textSize = size
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER
-        setPadding(dp(18), dp(11), dp(18), dp(11))
+        setPadding(dp(16), dp(11), dp(16), dp(11))
         background = GradientDrawable().apply {
             setColor(Color.argb(150, 0, 0, 0))
             cornerRadius = dp(24).toFloat()
@@ -159,102 +170,102 @@ class ScannerActivity : AppCompatActivity() {
             try {
                 val provider = future.get()
                 val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
-                val analysis = ImageAnalysis.Builder()
-                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                val capture = ImageCapture.Builder()
+                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
                     .build()
-                analysis.setAnalyzer(cameraExecutor) { proxy -> analyze(proxy) }
                 provider.unbindAll()
-                provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
+                camera = provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
+                imageCapture = capture
             } catch (e: Exception) {
                 status.text = s("noCam")
             }
         }, ContextCompat.getMainExecutor(this))
     }
 
-    @OptIn(ExperimentalGetImage::class)
-    private fun analyze(proxy: ImageProxy) {
-        val now = System.currentTimeMillis()
-        val media = proxy.image
-        if (done || busy || media == null || now - lastAnalysis < 350) {
-            proxy.close(); return
-        }
-        busy = true
-        lastAnalysis = now
-        val input = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
-        recognizer.process(input)
-            .addOnSuccessListener { text -> onLiveText(text) }
-            .addOnCompleteListener { busy = false; proxy.close() }
+    private fun toggleTorch() {
+        val cam = camera ?: return
+        if (!cam.cameraInfo.hasFlashUnit()) return
+        torchOn = !torchOn
+        cam.cameraControl.enableTorch(torchOn)
     }
 
-    private fun onLiveText(text: Text) {
-        if (done) return
-        val r = ReceiptParser.parse(text)
-        val total = r.total
-        if (total == null) {
-            stableCount = 0
-            lastTotal = null
-            status.text = when {
-                text.text.length > 40 && System.currentTimeMillis() - startedAt > 8000 -> s("bottom")
-                text.text.length > 40 -> s("seeing")
-                else -> s("aim")
+    private fun setBusy(b: Boolean) {
+        busy = b
+        shutter.alpha = if (b) 0.4f else 1f
+    }
+
+    // Zdjecie trafia tylko do pamieci (bez pliku), po odczycie jest od razu zamykane i usuwane
+    private fun takePhoto() {
+        val capture = imageCapture ?: return
+        if (busy) return
+        setBusy(true)
+        status.text = s("reading")
+        capture.takePicture(ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageCapturedCallback() {
+            @OptIn(ExperimentalGetImage::class)
+            override fun onCaptureSuccess(image: ImageProxy) {
+                val rotation = image.imageInfo.rotationDegrees
+                val media = image.image
+                val input = try {
+                    if (media != null) InputImage.fromMediaImage(media, rotation)
+                    else InputImage.fromBitmap(image.toBitmap(), rotation)
+                } catch (e: Exception) {
+                    // zapasowo: przez bitmape (tez tylko w pamieci)
+                    try { InputImage.fromBitmap(image.toBitmap(), rotation) } catch (e2: Exception) { null }
+                }
+                if (input == null) { image.close(); fail(); return }
+                recognizer.process(input)
+                    .addOnSuccessListener { text -> handleText(text) }
+                    .addOnFailureListener { fail() }
+                    .addOnCompleteListener { image.close() }   // zdjecie usuniete z pamieci
             }
-            return
-        }
-        val prev = lastTotal
-        if (prev != null && Math.abs(prev - total) < 0.001) stableCount++ else { stableCount = 1; lastTotal = total }
-        status.text = s("found") + " " + String.format(Locale.US, "%.2f", total)
-        if (stableCount >= 3) finishWith(r, previewView.bitmap)
+
+            override fun onError(exception: ImageCaptureException) { fail() }
+        })
     }
 
+    // Z galerii: odczytujemy tekst, ale nie kopiujemy ani nie zapisujemy zdjecia
     private fun recognizeFromGallery(uri: Uri) {
-        done = true
+        if (busy) return
+        setBusy(true)
         status.text = s("reading")
         try {
             val input = InputImage.fromFilePath(this, uri)
             recognizer.process(input)
-                .addOnSuccessListener { text ->
-                    if (text.text.isBlank()) { status.text = s("fail"); done = false; return@addOnSuccessListener }
-                    finishWith(ReceiptParser.parse(text), loadThumb(uri), fromGallery = true)
-                }
-                .addOnFailureListener { status.text = s("fail"); done = false }
+                .addOnSuccessListener { text -> handleText(text) }
+                .addOnFailureListener { fail() }
         } catch (e: Exception) {
-            status.text = s("fail"); done = false
+            fail()
         }
     }
 
-    private fun finishWith(r: ReceiptResult, bmp: Bitmap?, fromGallery: Boolean = false) {
-        done = true
+    private fun handleText(text: Text) {
+        if (text.text.isBlank()) { fail(); return }
+        val r = ReceiptParser.parse(text)
+        if (r.total == null && r.items.isEmpty()) { fail(); return }
+        finishWith(r)
+    }
+
+    private fun fail() {
+        setBusy(false)
+        status.text = s("fail")
+    }
+
+    private fun finishWith(r: ReceiptResult) {
         status.text = s("got")
         vibrate()
+        val items = JSONArray()
+        for (item in r.items) {
+            items.put(JSONObject().put("name", item.name).put("price", item.price))
+        }
         val json = JSONObject()
         json.put("store", r.store)
         json.put("total", r.total ?: JSONObject.NULL)
         json.put("date", r.date ?: JSONObject.NULL)
-        json.put("items", r.items)
-        json.put("text", r.rawText.take(4000))
-        json.put("thumb", bmp?.let { toDataUrl(it) } ?: JSONObject.NULL)
-        json.put("source", if (fromGallery) "gallery" else "live")
+        json.put("items", items)
+        json.put("text", r.rawText.take(6000))
         setResult(RESULT_OK, Intent().putExtra(EXTRA_RESULT, json.toString()))
-        status.postDelayed({ finish() }, 300)
+        status.postDelayed({ finish() }, 450)
     }
-
-    private fun toDataUrl(src: Bitmap): String {
-        val w = 360
-        val h = (src.height.toFloat() / src.width * w).toInt().coerceAtLeast(1)
-        val small = Bitmap.createScaledBitmap(src, w, h, true)
-        val out = ByteArrayOutputStream()
-        small.compress(Bitmap.CompressFormat.JPEG, 60, out)
-        return "data:image/jpeg;base64," + Base64.encodeToString(out.toByteArray(), Base64.NO_WRAP)
-    }
-
-    private fun loadThumb(uri: Uri): Bitmap? = try {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-        var sample = 1
-        while (bounds.outWidth / (sample * 2) >= 720) sample *= 2
-        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) }
-    } catch (e: Exception) { null }
 
     @Suppress("DEPRECATION")
     private fun vibrate() {
@@ -270,7 +281,6 @@ class ScannerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        cameraExecutor.shutdown()
         try { recognizer.close() } catch (e: Exception) { }
     }
 }
