@@ -1,10 +1,16 @@
 package com.skarbonka.app
 
 import android.Manifest
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
@@ -17,6 +23,7 @@ import android.os.Vibrator
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.animation.LinearInterpolator
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
@@ -28,31 +35,25 @@ import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
-import androidx.camera.core.ImageCapture
-import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
-import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.text.Text
-import com.google.mlkit.vision.text.TextRecognition
-import com.google.mlkit.vision.text.latin.TextRecognizerOptions
-import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
- * Skaner paragonow: robisz zdjecie przyciskiem, tekst jest odczytywany w telefonie (ML Kit, offline),
- * a samo zdjecie nigdy nie jest zapisywane - zyje tylko w pamieci do czasu odczytu i od razu jest usuwane.
- * Do apki wraca wylacznie tekst: sklep, suma, data, produkty z cenami i pelny tekst paragonu.
+ * Skaner kodu QR z paragonu.
+ * Bez zdjec i bez przyciskow: aparat na zywo szuka kodu QR z VMI w kwadratowej ramce.
+ * Gdy go znajdzie - otwiera w tle strone kvitas.vmi.lt, czyta z niej dane
+ * (sklep, adres, suma, PVM, data) i wraca z nimi do apki.
  */
 class ScannerActivity : AppCompatActivity() {
 
@@ -63,46 +64,41 @@ class ScannerActivity : AppCompatActivity() {
         private const val WRAP = FrameLayout.LayoutParams.WRAP_CONTENT
     }
 
+    private lateinit var root: FrameLayout
     private lateinit var previewView: PreviewView
+    private lateinit var overlay: SquareOverlay
     private lateinit var status: TextView
-    private lateinit var shutter: View
-    private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
+    private lateinit var analysisExecutor: ExecutorService
+    private val handler = Handler(Looper.getMainLooper())
     private val qrScanner by lazy {
         BarcodeScanning.getClient(BarcodeScannerOptions.Builder().setBarcodeFormats(Barcode.FORMAT_QR_CODE).build())
     }
-    private lateinit var root: FrameLayout
-    private var vmiWeb: WebView? = null
-    private val handler = Handler(Looper.getMainLooper())
-    private lateinit var analysisExecutor: ExecutorService
-    @Volatile private var liveQr: String? = null      // kod VMI znaleziony na zywo w podgladzie
-    @Volatile private var qrBusy = false
-    private var lastQrCheck = 0L
-    private var imageCapture: ImageCapture? = null
     private var camera: Camera? = null
     private var torchOn = false
-    @Volatile private var busy = false
+    private var vmiWeb: WebView? = null
+    @Volatile private var found = false        // kod juz zlapany - dalej nie szukamy
+    @Volatile private var qrBusy = false
+    private var lastCheck = 0L
+    private var lastOtherQrHint = 0L
     private var lang = "pl"
 
     private val strings = mapOf(
-        "pl" to mapOf("vmi" to "Pobieram dane z VMI…", "aim" to "Skieruj aparat na kod QR na dole paragonu — resztę pobiorę ze strony VMI. Paragon bez kodu? Zrób zdjęcie przyciskiem", "qr" to "Kod QR znaleziony ✓ — pobieram dane z VMI…", "reading" to "Odczytuję paragon…",
-            "got" to "Gotowe ✓ — zdjęcie usunięte", "gallery" to "Galeria", "fail" to "Nie udało się odczytać tekstu — spróbuj jeszcze raz, bliżej i przy lepszym świetle",
-            "noCam" to "Brak dostępu do aparatu — możesz wybrać zdjęcie z galerii"),
-        "en" to mapOf("vmi" to "Fetching data from VMI…", "aim" to "Point the camera at the QR code at the bottom of the receipt — I'll get the rest from the VMI website. No code? Take a photo with the button", "qr" to "QR code found ✓ — fetching data from VMI…", "reading" to "Reading the receipt…",
-            "got" to "Done ✓ — photo deleted", "gallery" to "Gallery", "fail" to "Couldn't read the text — try again, closer and with better light",
-            "noCam" to "No camera access — you can pick a photo from the gallery"),
-        "ru" to mapOf("vmi" to "Загружаю данные из VMI…", "aim" to "Наведите камеру на QR-код внизу чека — остальное возьму с сайта VMI. Нет кода? Сделайте фото кнопкой", "qr" to "QR-код найден ✓ — загружаю данные из VMI…", "reading" to "Читаю чек…",
-            "got" to "Готово ✓ — фото удалено", "gallery" to "Галерея", "fail" to "Не удалось прочитать текст — попробуйте ещё раз, ближе и при лучшем свете",
-            "noCam" to "Нет доступа к камере — выберите фото из галереи"),
-        "lt" to mapOf("vmi" to "Gaunu duomenis iš VMI…", "aim" to "Nukreipkite kamerą į QR kodą kvito apačioje — likusius duomenis paimsiu iš VMI svetainės. Nėra kodo? Fotografuokite mygtuku", "qr" to "QR kodas rastas ✓ — gaunu duomenis iš VMI…", "reading" to "Skaitau kvitą…",
-            "got" to "Atlikta ✓ — nuotrauka ištrinta", "gallery" to "Galerija", "fail" to "Nepavyko nuskaityti teksto — bandykite dar kartą, arčiau ir šviesiau",
-            "noCam" to "Nėra prieigos prie kameros — pasirinkite nuotrauką iš galerijos")
+        "pl" to mapOf("aim" to "Skieruj aparat na kod QR na paragonie", "found" to "Kod QR znaleziony ✓",
+            "vmi" to "Pobieram dane z VMI…", "done" to "Gotowe ✓", "offline" to "Brak internetu — zapisuję sam kod QR",
+            "other" to "To nie jest kod QR z paragonu VMI", "noCam" to "Brak dostępu do aparatu"),
+        "en" to mapOf("aim" to "Point the camera at the QR code on the receipt", "found" to "QR code found ✓",
+            "vmi" to "Fetching data from VMI…", "done" to "Done ✓", "offline" to "No internet — saving the QR code only",
+            "other" to "This is not a VMI receipt QR code", "noCam" to "No camera access"),
+        "ru" to mapOf("aim" to "Наведите камеру на QR-код на чеке", "found" to "QR-код найден ✓",
+            "vmi" to "Загружаю данные из VMI…", "done" to "Готово ✓", "offline" to "Нет интернета — сохраняю только QR-код",
+            "other" to "Это не QR-код чека VMI", "noCam" to "Нет доступа к камере"),
+        "lt" to mapOf("aim" to "Nukreipkite kamerą į QR kodą kvite", "found" to "QR kodas rastas ✓",
+            "vmi" to "Gaunu duomenis iš VMI…", "done" to "Atlikta ✓", "offline" to "Nėra interneto — išsaugau tik QR kodą",
+            "other" to "Tai ne VMI kvito QR kodas", "noCam" to "Nėra prieigos prie kameros")
     )
     private fun s(key: String) = strings[lang]?.get(key) ?: strings["pl"]!![key] ?: key
     private fun dp(v: Int) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt()
 
-    private val pickImage = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) recognizeFromGallery(uri)
-    }
     private val askCamera = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) startCamera() else status.text = s("noCam")
     }
@@ -116,48 +112,18 @@ class ScannerActivity : AppCompatActivity() {
         previewView = PreviewView(this).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
         root.addView(previewView, FrameLayout.LayoutParams(MATCH, MATCH))
 
-        // Ramka pomocnicza
-        val guide = View(this).apply {
-            background = GradientDrawable().apply {
-                setColor(Color.TRANSPARENT)
-                setStroke(dp(2), Color.argb(190, 255, 255, 255))
-                cornerRadius = dp(20).toFloat()
-            }
-        }
-        root.addView(guide, FrameLayout.LayoutParams(MATCH, MATCH).apply {
-            setMargins(dp(24), dp(96), dp(24), dp(200))
-        })
+        // Kwadratowa ramka z przyciemnieniem dookola i przesuwajaca sie linia
+        overlay = SquareOverlay(this)
+        root.addView(overlay, FrameLayout.LayoutParams(MATCH, MATCH))
 
-        status = pill(s("aim"), 14f).apply { maxWidth = dp(320) }
+        status = pill(s("aim"), 15f).apply { maxWidth = dp(320) }
         root.addView(status, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(140)
-        })
-
-        // Przycisk zdjecia (duze kolo)
-        shutter = View(this).apply {
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setColor(Color.WHITE)
-                setStroke(dp(5), Color.argb(120, 255, 255, 255))
-            }
-            contentDescription = "Zdjęcie"
-            setOnClickListener { takePhoto() }
-        }
-        root.addView(shutter, FrameLayout.LayoutParams(dp(74), dp(74), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(44)
-        })
-
-        val gallery = pill("🖼", 20f).apply {
-            contentDescription = s("gallery")
-            setOnClickListener { if (!busy) pickImage.launch("image/*") }
-        }
-        root.addView(gallery, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.START).apply {
-            bottomMargin = dp(56); leftMargin = dp(36)
+            bottomMargin = dp(120)
         })
 
         val torch = pill("🔦", 20f).apply { setOnClickListener { toggleTorch() } }
-        root.addView(torch, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.END).apply {
-            bottomMargin = dp(56); rightMargin = dp(36)
+        root.addView(torch, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(48)
         })
 
         val close = pill("✕", 18f).apply { setOnClickListener { finish() } }
@@ -180,7 +146,7 @@ class ScannerActivity : AppCompatActivity() {
         textSize = size
         typeface = Typeface.DEFAULT_BOLD
         gravity = Gravity.CENTER
-        setPadding(dp(16), dp(11), dp(16), dp(11))
+        setPadding(dp(18), dp(11), dp(18), dp(11))
         background = GradientDrawable().apply {
             setColor(Color.argb(150, 0, 0, 0))
             cornerRadius = dp(24).toFloat()
@@ -193,23 +159,12 @@ class ScannerActivity : AppCompatActivity() {
             try {
                 val provider = future.get()
                 val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
-                val capture = ImageCapture.Builder()
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
-                    .build()
-                // Analiza na zywo: szuka kodu QR w podgladzie jak Google Lens
                 val analysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-                analysis.setAnalyzer(analysisExecutor) { proxy -> analyzeQr(proxy) }
+                analysis.setAnalyzer(analysisExecutor) { proxy -> analyze(proxy) }
                 provider.unbindAll()
-                camera = try {
-                    provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture, analysis)
-                } catch (e: Exception) {
-                    // bardzo stare telefony: bez analizy na zywo, zostaje przycisk zdjecia
-                    provider.unbindAll()
-                    provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture)
-                }
-                imageCapture = capture
+                camera = provider.bindToLifecycle(this, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis)
             } catch (e: Exception) {
                 status.text = s("noCam")
             }
@@ -225,33 +180,35 @@ class ScannerActivity : AppCompatActivity() {
 
     private fun isVmi(u: String) = u.startsWith("https://kvitas.vmi.lt/") || u.startsWith("http://kvitas.vmi.lt/")
 
+    // Kazda klatka podgladu (co ~120 ms) jest sprawdzana, czy jest w niej kod QR
     @OptIn(ExperimentalGetImage::class)
-    private fun analyzeQr(proxy: ImageProxy) {
+    private fun analyze(proxy: ImageProxy) {
         val now = System.currentTimeMillis()
         val media = proxy.image
-        if (busy || qrBusy || media == null || now - lastQrCheck < 200) { proxy.close(); return }
+        if (found || qrBusy || media == null || now - lastCheck < 120) { proxy.close(); return }
         qrBusy = true
-        lastQrCheck = now
+        lastCheck = now
         val input = InputImage.fromMediaImage(media, proxy.imageInfo.rotationDegrees)
         qrScanner.process(input)
             .addOnSuccessListener { codes ->
-                val vmi = codes.mapNotNull { it.rawValue }.firstOrNull { isVmi(it) }
-                if (vmi != null && !busy) onQrFound(vmi)
+                if (found) return@addOnSuccessListener
+                val values = codes.mapNotNull { it.rawValue }
+                val vmi = values.firstOrNull { isVmi(it) }
+                if (vmi != null) onVmiFound(vmi)
+                else if (values.isNotEmpty() && System.currentTimeMillis() - lastOtherQrHint > 2500) {
+                    lastOtherQrHint = System.currentTimeMillis()
+                    status.text = s("other")
+                    handler.postDelayed({ if (!found) status.text = s("aim") }, 2000)
+                }
             }
             .addOnCompleteListener { qrBusy = false; proxy.close() }
     }
 
-    // Kod znaleziony sam: bez zdjecia i bez czytania paragonu - wszystko bierzemy ze strony VMI
-    private fun onQrFound(url: String) {
-        if (busy) return
-        liveQr = url
-        setBusy(true)
+    private fun onVmiFound(url: String) {
+        found = true
         vibrate()
-        status.text = s("qr")
-        fetchVmiAndFinish(url, ReceiptResult("", null, null, emptyList(), ""))
-    }
-
-    private fun fetchVmiAndFinish(url: String, result: ReceiptResult) {
+        overlay.setSuccess()
+        status.text = s("found") + "  " + s("vmi")
         val vmi = JSONObject()
         val u = Uri.parse(url)
         vmi.put("url", url)
@@ -260,81 +217,22 @@ class ScannerActivity : AppCompatActivity() {
         vmi.put("dt", u.getQueryParameter("DT") ?: "")
         fetchVmiText(url) { pageText ->
             vmi.put("text", pageText ?: JSONObject.NULL)   // null = brak internetu / strona nie odpowiedziala
-            finishWith(result, vmi)
+            status.text = if (pageText != null) s("done") else s("offline")
+            val json = JSONObject()
+            json.put("store", "")
+            json.put("total", JSONObject.NULL)
+            json.put("date", JSONObject.NULL)
+            json.put("items", org.json.JSONArray())
+            json.put("text", "")
+            json.put("vmi", vmi)
+            setResult(RESULT_OK, Intent().putExtra(EXTRA_RESULT, json.toString()))
+            handler.postDelayed({ finish() }, if (pageText != null) 350 else 1200)
         }
-    }
-
-    private fun setBusy(b: Boolean) {
-        busy = b
-        shutter.alpha = if (b) 0.4f else 1f
-    }
-
-    // Zdjecie trafia tylko do pamieci (bez pliku), po odczycie jest od razu zamykane i usuwane
-    private fun takePhoto(message: String? = null) {
-        val capture = imageCapture ?: return
-        if (busy) return
-        setBusy(true)
-        status.text = message ?: s("reading")
-        capture.takePicture(ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageCapturedCallback() {
-            @OptIn(ExperimentalGetImage::class)
-            override fun onCaptureSuccess(image: ImageProxy) {
-                val rotation = image.imageInfo.rotationDegrees
-                val media = image.image
-                val input = try {
-                    if (media != null) InputImage.fromMediaImage(media, rotation)
-                    else InputImage.fromBitmap(image.toBitmap(), rotation)
-                } catch (e: Exception) {
-                    // zapasowo: przez bitmape (tez tylko w pamieci)
-                    try { InputImage.fromBitmap(image.toBitmap(), rotation) } catch (e2: Exception) { null }
-                }
-                if (input == null) { image.close(); fail(); return }
-                readTextAndQr(input) { image.close() }   // zdjecie usuniete z pamieci
-            }
-
-            override fun onError(exception: ImageCaptureException) { fail() }
-        })
-    }
-
-    // Z galerii: odczytujemy tekst, ale nie kopiujemy ani nie zapisujemy zdjecia
-    private fun recognizeFromGallery(uri: Uri) {
-        if (busy) return
-        setBusy(true)
-        status.text = s("reading")
-        try {
-            val input = InputImage.fromFilePath(this, uri)
-            readTextAndQr(input) { }
-        } catch (e: Exception) {
-            fail()
-        }
-    }
-
-    // Tekst i kod QR odczytywane rownolegle z tego samego obrazu
-    private fun readTextAndQr(input: InputImage, release: () -> Unit) {
-        val textTask = recognizer.process(input)
-        val qrTask = qrScanner.process(input)
-        Tasks.whenAllComplete(textTask, qrTask).addOnCompleteListener {
-            release()
-            val text: Text? = if (textTask.isSuccessful) textTask.result else null
-            val codes: List<Barcode> = if (qrTask.isSuccessful) (qrTask.result ?: emptyList()) else emptyList()
-            handleResults(text, codes)
-        }
-    }
-
-    private fun handleResults(text: Text?, codes: List<Barcode>) {
-        val vmiUrl = codes.mapNotNull { it.rawValue }.firstOrNull { isVmi(it) } ?: liveQr
-        val r = if (text != null && text.text.isNotBlank()) ReceiptParser.parse(text) else null
-        if (vmiUrl == null && (r == null || (r.total == null && r.items.isEmpty()))) { fail(); return }
-        val result = r ?: ReceiptResult("", null, null, emptyList(), "")
-        if (vmiUrl == null) { finishWith(result, null); return }
-
-        // Zdjecie z kodem VMI: dociagamy oficjalne dane ze strony
-        status.text = s("vmi")
-        fetchVmiAndFinish(vmiUrl, result)
     }
 
     /**
      * Strona VMI laduje dane skryptem, wiec otwieramy ja w ukrytym WebView i czytamy wyswietlony tekst.
-     * Limit 15 s - bez internetu po prostu wracamy z samym kodem QR.
+     * Limit 15 s - bez internetu wracamy z samym kodem QR.
      */
     @SuppressLint("SetJavaScriptEnabled")
     private fun fetchVmiText(url: String, done: (String?) -> Unit) {
@@ -354,6 +252,7 @@ class ScannerActivity : AppCompatActivity() {
             vmiWeb = null
             done(v)
         }
+        val amount = Regex("\\d+[.,]\\d{2}")
         val poll = object : Runnable {
             override fun run() {
                 if (finished) return
@@ -361,37 +260,13 @@ class ScannerActivity : AppCompatActivity() {
                 wv.evaluateJavascript("(function(){var b=document.body;return b?(b.innerText||b.textContent||''):'';})()") { res ->
                     val txt = try { org.json.JSONArray("[$res]").optString(0, "") } catch (e: Exception) { "" }
                     val n = ReceiptParser.norm(txt)
-                    val loaded = txt.length > 60 && (Regex("\\d+[.,]\\d{2}").containsMatchIn(txt) || n.contains("nerast"))
-                    if (loaded) end(txt.take(4000)) else handler.postDelayed(this, 600)
+                    val loaded = txt.length > 60 && (amount.containsMatchIn(txt) || n.contains("nerast"))
+                    if (loaded) end(txt.take(4000)) else handler.postDelayed(this, 500)
                 }
             }
         }
         wv.loadUrl(url)
-        handler.postDelayed(poll, 1200)
-    }
-
-    private fun fail() {
-        liveQr = null
-        setBusy(false)
-        status.text = s("fail")
-    }
-
-    private fun finishWith(r: ReceiptResult, vmi: JSONObject?) {
-        status.text = s("got")
-        vibrate()
-        val items = JSONArray()
-        for (item in r.items) {
-            items.put(JSONObject().put("name", item.name).put("price", item.price))
-        }
-        val json = JSONObject()
-        json.put("store", r.store)
-        json.put("total", r.total ?: JSONObject.NULL)
-        json.put("date", r.date ?: JSONObject.NULL)
-        json.put("items", items)
-        json.put("text", r.rawText.take(6000))
-        if (vmi != null) json.put("vmi", vmi)
-        setResult(RESULT_OK, Intent().putExtra(EXTRA_RESULT, json.toString()))
-        status.postDelayed({ finish() }, 450)
+        handler.postDelayed(poll, 900)
     }
 
     @Suppress("DEPRECATION")
@@ -408,10 +283,76 @@ class ScannerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        overlay.stop()
         analysisExecutor.shutdown()
         try { vmiWeb?.destroy() } catch (e: Exception) { }
         super.onDestroy()
-        try { recognizer.close() } catch (e: Exception) { }
         try { qrScanner.close() } catch (e: Exception) { }
+    }
+
+    /** Kwadratowa ramka skanera: przyciemnienie dookola, biale narozniki, przesuwajaca sie linia. */
+    private class SquareOverlay(context: Context) : View(context) {
+        private val density = context.resources.displayMetrics.density
+        private val dim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(140, 0, 0, 0) }
+        private val corner = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 5f * density; strokeCap = Paint.Cap.ROUND
+        }
+        private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(200, 90, 220, 140); strokeWidth = 2.5f * density }
+        private val box = RectF()
+        private val path = Path()
+        private var progress = 0f
+        private var success = false
+        private val anim = ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 1800
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.REVERSE
+            interpolator = LinearInterpolator()
+            addUpdateListener { progress = it.animatedValue as Float; invalidate() }
+            start()
+        }
+
+        fun setSuccess() {
+            success = true
+            corner.color = Color.rgb(90, 220, 140)
+            anim.cancel()
+            invalidate()
+        }
+
+        fun stop() { anim.cancel() }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val w = width.toFloat(); val h = height.toFloat()
+            val size = minOf(w, h) * 0.72f
+            val left = (w - size) / 2f
+            val top = (h - size) / 2f - 40f * density
+            box.set(left, top, left + size, top + size)
+            val r = 18f * density
+            // przyciemnienie wszystkiego poza kwadratem
+            path.reset()
+            path.fillType = Path.FillType.EVEN_ODD
+            path.addRect(0f, 0f, w, h, Path.Direction.CW)
+            path.addRoundRect(box, r, r, Path.Direction.CW)
+            canvas.drawPath(path, dim)
+            // narozniki
+            val c = size * 0.14f
+            canvas.drawLine(box.left, box.top + c, box.left, box.top + r / 2, corner)
+            canvas.drawLine(box.left + r / 2, box.top, box.left + c, box.top, corner)
+            canvas.drawLine(box.right - c, box.top, box.right - r / 2, box.top, corner)
+            canvas.drawLine(box.right, box.top + r / 2, box.right, box.top + c, corner)
+            canvas.drawLine(box.left, box.bottom - c, box.left, box.bottom - r / 2, corner)
+            canvas.drawLine(box.left + r / 2, box.bottom, box.left + c, box.bottom, corner)
+            canvas.drawLine(box.right - c, box.bottom, box.right - r / 2, box.bottom, corner)
+            canvas.drawLine(box.right, box.bottom - c, box.right, box.bottom - r / 2, corner)
+            canvas.drawArc(RectF(box.left, box.top, box.left + r, box.top + r), 180f, 90f, false, corner)
+            canvas.drawArc(RectF(box.right - r, box.top, box.right, box.top + r), 270f, 90f, false, corner)
+            canvas.drawArc(RectF(box.left, box.bottom - r, box.left + r, box.bottom), 90f, 90f, false, corner)
+            canvas.drawArc(RectF(box.right - r, box.bottom - r, box.right, box.bottom), 0f, 90f, false, corner)
+            // linia skanowania
+            if (!success) {
+                val y = box.top + r + (box.height() - 2 * r) * progress
+                canvas.drawLine(box.left + r, y, box.right - r, y, line)
+            }
+        }
     }
 }
