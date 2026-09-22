@@ -3,7 +3,8 @@
     "beforeBuildCommand": "",
     "beforeDevCommand": "",
     "devPath": "../dist",
-    "distDir": "../dist"
+    "distDir": "../dist",
+    "withGlobalTauri": true
   },
   "package": {
     "productName": "Stash",
@@ -12,13 +13,17 @@
   "tauri": {
     "allowlist": {
       "all": false,
-      "shell": { "open": true }
+      "shell": {
+        "open": true
+      }
     },
     "bundle": {
       "active": true,
       "category": "Finance",
       "copyright": "",
-      "deb": { "depends": [] },
+      "deb": {
+        "depends": []
+      },
       "externalBin": [],
       "icon": [
         "icons/32x32.png",
@@ -36,9 +41,16 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [],
+      "resources": [
+        "llama/*",
+        "models/*"
+      ],
       "shortDescription": "",
-      "targets": ["dmg", "app", "msi", "nsis"],
+      "targets": [
+        "dmg",
+        "app",
+        "nsis"
+      ],
       "windows": {
         "certificateThumbprint": null,
         "digestAlgorithm": "sha256",
