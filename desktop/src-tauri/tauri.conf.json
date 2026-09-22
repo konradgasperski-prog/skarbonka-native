@@ -63,16 +63,6 @@
     "updater": {
       "active": false
     },
-    "windows": [
-      {
-        "fullscreen": false,
-        "resizable": true,
-        "title": "Skarbonka",
-        "width": 480,
-        "height": 900,
-        "minWidth": 380,
-        "minHeight": 600
-      }
-    ]
+    "windows": []
   }
 }
