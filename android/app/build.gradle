@@ -11,8 +11,8 @@ android {
         applicationId "com.skarbonka.app"
         minSdk 24
         targetSdk 34
-        versionCode 5
-        versionName "1.4"
+        versionCode 7
+        versionName "1.6"
     }
 
     buildTypes {
@@ -30,18 +30,18 @@ android {
         jvmTarget = '17'
     }
 
-    // Model AI musi lezec w APK bez kompresji (inaczej nie da sie go szybko odczytac)
+    // Model AI lezy w APK bez kompresji
     androidResources {
         noCompress 'task'
     }
 }
 
 // ---------------------------------------------------------------------------
-// Lokalne AI: model Qwen 2.5 1.5B (1,6 GB) jest za duzy na GitHub, wiec pobiera sie
-// automatycznie przy budowaniu (raz - potem jest juz na miejscu) i trafia do APK.
+// Lokalne AI wbudowane w apke: model Qwen 2.5 1.5B (1,6 GB) jest za duzy na GitHub,
+// wiec pobiera sie automatycznie przy budowaniu i trafia do APK.
 // ---------------------------------------------------------------------------
-def aiModelUrl  = 'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task'
-def aiModelFile = file('src/main/assets/models/qwen2.5-1.5b-instruct-q8.task')
+def aiModelUrl  = 'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task'
+def aiModelFile = file('src/main/assets/models/qwen2.5-1.5b-instruct-q8-ekv4096.task')
 
 tasks.register('downloadAiModel') {
     outputs.file(aiModelFile)
@@ -87,6 +87,9 @@ dependencies {
 
     // Czytnik kodow QR z paragonu (VMI kvitas.vmi.lt) - model wbudowany w apke
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+
+    // Odczyt tekstu ze zdjecia paragonu (Google ML Kit przez Uslugi Google Play - apka zostaje mala)
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.0'
 
     // Lokalne AI (Google MediaPipe LLM Inference)
     implementation 'com.google.mediapipe:tasks-genai:0.10.24'
