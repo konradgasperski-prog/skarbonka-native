@@ -30,17 +30,24 @@ jobs:
       - name: Build AI engine (llama.cpp)
         shell: bash
         run: |
-          git clone --depth 1 --branch b5000 https://github.com/ggml-org/llama.cpp llama-src
+          # najnowsze oficjalne wydanie llama.cpp (tagi bNNNN)
+          TAG=$(git ls-remote --tags --refs https://github.com/ggml-org/llama.cpp | awk -F/ '{print $3}' | grep -E '^b[0-9]+$' | sed 's/^b//' | sort -n | tail -1)
+          TAG="b$TAG"
+          echo "llama.cpp: $TAG"
+          git clone --depth 1 --branch "$TAG" https://github.com/ggml-org/llama.cpp llama-src
           cmake -S llama-src -B llama-build \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=OFF \
             -DGGML_NATIVE=OFF \
             -DLLAMA_CURL=OFF \
             -DLLAMA_BUILD_TESTS=OFF \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=13.3 \
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
-          cmake --build llama-build --config Release --target llama-server -j 4
+          # serwer AI: "llama-server" (starsze wersje) albo wspolny program "llama" z komenda "serve" (nowsze)
+          cmake --build llama-build --config Release --target llama-server -j 4 \
+            || cmake --build llama-build --config Release --target llama -j 4
           BIN=$(find llama-build -type f \( -name llama-server -o -name llama-server.exe \) | head -1)
+          if [ -z "$BIN" ]; then BIN=$(find llama-build -type f \( -name llama -o -name llama.exe \) | grep -i bin | head -1); fi
           echo "Silnik AI: $BIN"
           test -n "$BIN"
           mkdir -p desktop/src-tauri/llama
