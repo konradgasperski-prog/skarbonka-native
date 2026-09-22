@@ -12,10 +12,11 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 const MODEL_FILE: &str = "models/qwen2.5-1.5b-instruct-q4_k_m.gguf";
+// Silnik: "llama-server" (starsze wydania llama.cpp) albo wspolny program "llama" + komenda "serve" (nowsze)
 #[cfg(windows)]
-const SERVER_FILE: &str = "llama/llama-server.exe";
+const SERVER_FILES: [(&str, bool); 2] = [("llama/llama-server.exe", false), ("llama/llama.exe", true)];
 #[cfg(not(windows))]
-const SERVER_FILE: &str = "llama/llama-server";
+const SERVER_FILES: [(&str, bool); 2] = [("llama/llama-server", false), ("llama/llama", true)];
 
 struct Ai {
     child: Option<Child>,
@@ -50,10 +51,12 @@ fn ai_init(app: tauri::AppHandle) -> Value {
     if ai.state == "ready" || ai.state == "loading" {
         return status_json(&ai);
     }
-    let server = app.path_resolver().resolve_resource(SERVER_FILE);
-    let model = app.path_resolver().resolve_resource(MODEL_FILE);
-    let (server, model) = match (server, model) {
-        (Some(s), Some(m)) if s.exists() && m.exists() => (s, m),
+    let found = SERVER_FILES.iter().find_map(|(f, serve)| {
+        app.path_resolver().resolve_resource(f).filter(|p| p.exists()).map(|p| (p, *serve))
+    });
+    let model = app.path_resolver().resolve_resource(MODEL_FILE).filter(|p| p.exists());
+    let ((server, use_serve), model) = match (found, model) {
+        (Some(s), Some(m)) => (s, m),
         _ => {
             ai.state = "missing".into();
             return status_json(&ai);
@@ -68,6 +71,9 @@ fn ai_init(app: tauri::AppHandle) -> Value {
 
     let port = free_port();
     let mut cmd = Command::new(&server);
+    if use_serve {
+        cmd.arg("serve");
+    }
     cmd.arg("-m").arg(&model)
         .args(["--host", "127.0.0.1", "--port", &port.to_string(), "-c", "4096", "-ngl", "99"])
         .stdin(Stdio::null())
