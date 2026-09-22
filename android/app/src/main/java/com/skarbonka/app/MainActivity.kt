@@ -71,6 +71,11 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun pushAiStatus() {
+        val json = AiEngine.statusJson()
+        webView.post { webView.evaluateJavascript("window.onAiStatus && window.onAiStatus($json);", null) }
+    }
+
     // --- Icon switching (light / dark / glass / auto) ---
     private fun isSystemDark(): Boolean {
         val mode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
@@ -156,6 +161,28 @@ class MainActivity : Activity() {
         @JavascriptInterface
         fun getIconMode(): String {
             return prefs.getString("icon_mode", "auto") ?: "auto"
+        }
+
+        // --- Lokalne AI (AiEngine) ---
+        @JavascriptInterface
+        fun aiStatus(): String = AiEngine.statusJson()
+
+        @JavascriptInterface
+        fun aiInit() {
+            AiEngine.init(this@MainActivity) { pushAiStatus() }
+        }
+
+        @JavascriptInterface
+        fun aiGenerate(id: String, prompt: String) {
+            AiEngine.generate(prompt) { text, err ->
+                val json = org.json.JSONObject()
+                    .put("id", id)
+                    .put("text", text ?: org.json.JSONObject.NULL)
+                    .put("error", err ?: org.json.JSONObject.NULL)
+                    .toString()
+                    .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+                webView.post { webView.evaluateJavascript("window.onAiResult && window.onAiResult($json);", null) }
+            }
         }
 
         // Otwiera strone (np. paragon w VMI) w przegladarce telefonu

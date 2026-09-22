@@ -11,8 +11,8 @@ android {
         applicationId "com.skarbonka.app"
         minSdk 24
         targetSdk 34
-        versionCode 4
-        versionName "1.3"
+        versionCode 5
+        versionName "1.4"
     }
 
     buildTypes {
@@ -29,7 +29,50 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
+    // Model AI musi lezec w APK bez kompresji (inaczej nie da sie go szybko odczytac)
+    androidResources {
+        noCompress 'task'
+    }
 }
+
+// ---------------------------------------------------------------------------
+// Lokalne AI: model Qwen 2.5 1.5B (1,6 GB) jest za duzy na GitHub, wiec pobiera sie
+// automatycznie przy budowaniu (raz - potem jest juz na miejscu) i trafia do APK.
+// ---------------------------------------------------------------------------
+def aiModelUrl  = 'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv1280.task'
+def aiModelFile = file('src/main/assets/models/qwen2.5-1.5b-instruct-q8.task')
+
+tasks.register('downloadAiModel') {
+    outputs.file(aiModelFile)
+    doLast {
+        if (aiModelFile.exists() && aiModelFile.length() > 1_000_000_000L) {
+            println "Model AI juz jest: ${aiModelFile.length()} B"
+            return
+        }
+        aiModelFile.parentFile.mkdirs()
+        def tmp = new File(aiModelFile.path + '.part')
+        println "Pobieram model AI (ok. 1,6 GB)..."
+        def conn = new URL(aiModelUrl).openConnection()
+        conn.instanceFollowRedirects = true
+        conn.connectTimeout = 30000
+        conn.readTimeout = 120000
+        conn.inputStream.withStream { input ->
+            tmp.withOutputStream { output ->
+                byte[] buf = new byte[1 << 20]
+                int n
+                while ((n = input.read(buf)) > 0) { output.write(buf, 0, n) }
+            }
+        }
+        if (tmp.length() < 1_000_000_000L) {
+            throw new GradleException("Pobrany model AI jest za maly (${tmp.length()} B) - sprawdz adres: ${aiModelUrl}")
+        }
+        aiModelFile.delete()
+        tmp.renameTo(aiModelFile)
+        println "Model AI gotowy: ${aiModelFile.length()} B"
+    }
+}
+tasks.named('preBuild') { dependsOn 'downloadAiModel' }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
@@ -44,4 +87,7 @@ dependencies {
 
     // Czytnik kodow QR z paragonu (VMI kvitas.vmi.lt) - model wbudowany w apke
     implementation 'com.google.mlkit:barcode-scanning:17.3.0'
+
+    // Lokalne AI (Google MediaPipe LLM Inference)
+    implementation 'com.google.mediapipe:tasks-genai:0.10.24'
 }

@@ -178,7 +178,16 @@ class ScannerActivity : AppCompatActivity() {
         cam.cameraControl.enableTorch(torchOn)
     }
 
-    private fun isVmi(u: String) = u.startsWith("https://kvitas.vmi.lt/") || u.startsWith("http://kvitas.vmi.lt/")
+    // Kody VMI bywaja zapisane roznie: "https://kvitas.vmi.lt?NR=..." (bez ukosnika),
+    // z ukosnikiem, wielkimi literami albo z koncem linii na koncu - wszystkie przyjmujemy
+    private val vmiRe = Regex("^https?://(www\\.)?kvitas\\.vmi\\.lt(?:[/?#]|$)", RegexOption.IGNORE_CASE)
+    private fun isVmi(u: String) = vmiRe.containsMatchIn(u.trim())
+
+    /** Porzadny adres strony VMI z tymi samymi parametrami (NR, SM, RS, RC, DT). */
+    private fun canonicalVmiUrl(raw: String): String {
+        val q = raw.trim().substringAfter('?', "").substringBefore('#').trim()
+        return if (q.isNotEmpty()) "https://kvitas.vmi.lt/?$q" else "https://kvitas.vmi.lt/"
+    }
 
     // Kazda klatka podgladu (co ~120 ms) jest sprawdzana, czy jest w niej kod QR
     @OptIn(ExperimentalGetImage::class)
@@ -194,10 +203,11 @@ class ScannerActivity : AppCompatActivity() {
                 if (found) return@addOnSuccessListener
                 val values = codes.mapNotNull { it.rawValue }
                 val vmi = values.firstOrNull { isVmi(it) }
-                if (vmi != null) onVmiFound(vmi)
+                if (vmi != null) onVmiFound(canonicalVmiUrl(vmi))
                 else if (values.isNotEmpty() && System.currentTimeMillis() - lastOtherQrHint > 2500) {
                     lastOtherQrHint = System.currentTimeMillis()
-                    status.text = s("other")
+                    // pokazujemy poczatek odczytanego kodu - latwiej sprawdzic, co to za kod
+                    status.text = s("other") + "\n" + values.first().trim().take(40)
                     handler.postDelayed({ if (!found) status.text = s("aim") }, 2000)
                 }
             }
@@ -212,9 +222,10 @@ class ScannerActivity : AppCompatActivity() {
         val vmi = JSONObject()
         val u = Uri.parse(url)
         vmi.put("url", url)
-        vmi.put("nr", u.getQueryParameter("NR") ?: "")
-        vmi.put("sm", u.getQueryParameter("SM") ?: "")
-        vmi.put("dt", u.getQueryParameter("DT") ?: "")
+        fun param(k: String) = (u.getQueryParameter(k) ?: u.getQueryParameter(k.lowercase(Locale.ROOT)) ?: "").trim()
+        vmi.put("nr", param("NR"))
+        vmi.put("sm", param("SM"))
+        vmi.put("dt", param("DT"))       // niektore kasy (np. Maxima) nie podaja daty w kodzie - wtedy bierzemy ja ze strony
         fetchVmiText(url) { pageText ->
             vmi.put("text", pageText ?: JSONObject.NULL)   // null = brak internetu / strona nie odpowiedziala
             status.text = if (pageText != null) s("done") else s("offline")
