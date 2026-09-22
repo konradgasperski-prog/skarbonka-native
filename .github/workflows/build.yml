@@ -26,6 +26,37 @@ jobs:
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli@1
 
+      # --- Lokalne AI: silnik llama.cpp budowany z oficjalnego kodu zrodlowego ---
+      - name: Build AI engine (llama.cpp)
+        shell: bash
+        run: |
+          git clone --depth 1 --branch b5000 https://github.com/ggml-org/llama.cpp llama-src
+          cmake -S llama-src -B llama-build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=OFF \
+            -DGGML_NATIVE=OFF \
+            -DLLAMA_CURL=OFF \
+            -DLLAMA_BUILD_TESTS=OFF \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+          cmake --build llama-build --config Release --target llama-server -j 4
+          BIN=$(find llama-build -type f \( -name llama-server -o -name llama-server.exe \) | head -1)
+          echo "Silnik AI: $BIN"
+          test -n "$BIN"
+          mkdir -p desktop/src-tauri/llama
+          cp "$BIN" desktop/src-tauri/llama/
+          chmod +x desktop/src-tauri/llama/* || true
+          ls -la desktop/src-tauri/llama
+
+      # --- Lokalne AI: model Qwen 2.5 1.5B (oficjalny, od Qwen) ---
+      - name: Download AI model
+        shell: bash
+        run: |
+          mkdir -p desktop/src-tauri/models
+          curl -L --fail --retry 3 --retry-delay 5 -o desktop/src-tauri/models/qwen2.5-1.5b-instruct-q4_k_m.gguf \
+            https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf
+          ls -la desktop/src-tauri/models
+
       - name: Build desktop app
         working-directory: desktop
         run: tauri build
@@ -37,7 +68,6 @@ jobs:
           name: skarbonka-macos
           path: |
             desktop/src-tauri/target/release/bundle/dmg/*.dmg
-            desktop/src-tauri/target/release/bundle/macos/*.app
 
       - name: Upload Windows build
         if: matrix.os == 'windows-latest'
@@ -45,7 +75,6 @@ jobs:
         with:
           name: skarbonka-windows
           path: |
-            desktop/src-tauri/target/release/bundle/msi/*.msi
             desktop/src-tauri/target/release/bundle/nsis/*.exe
 
   build-android:
