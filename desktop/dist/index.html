@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609251500">
+<meta name="stash-version" content="202609251700">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -382,12 +382,12 @@
     --ci-t: 0px; --ci-l: 100%; --ci-r: 0px; --ci-b: 100%;
     clip-path: inset(var(--ci-t) var(--ci-r) var(--ci-b) var(--ci-l) round 16px);
     opacity: 0;
-    transition: clip-path 0.46s cubic-bezier(.4,0,.2,1), opacity 0.16s ease 0.32s, height 0.3s ease;
+    transition: clip-path 0.46s cubic-bezier(.4,0,.2,1), opacity 0.16s ease 0.32s;
   }
   .account-popover.open {
     pointer-events: auto; opacity: 1; overflow-y: auto;
     clip-path: inset(0px 0px 0px 0px round 16px);
-    transition: clip-path 0.55s cubic-bezier(.32,1.12,.4,1), opacity 0.12s ease 0s, height 0.3s ease;
+    transition: clip-path 0.55s cubic-bezier(.32,1.12,.4,1), opacity 0.12s ease 0s;
   }
   /* Settings popover: a home screen of tiles, each opening its own view */
   .settings-tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
@@ -4412,23 +4412,23 @@ document.querySelectorAll('#appSettingsPopover .settings-tile').forEach(tile => 
 document.querySelectorAll('#appSettingsPopover [data-back]').forEach(btn => {
   btn.addEventListener('click', () => showSettingsView('home'));
 });
-function openMorphPopover(panelId, iconId) {
+// Same pattern as the cards drawer: height stays at the panel's natural size the whole time —
+// only the clip-path (its shape) animates. That is what makes it grow out of the round icon
+// and shrink back into it, instead of also being squashed by a height change mid-animation.
+function applyMorphPopoverLayout(panelId, iconId, open) {
   const el = document.getElementById(panelId);
   const icon = document.getElementById(iconId);
   if (!el) return;
-  const h = Math.min(el.scrollHeight, window.innerHeight * 0.8);
+  const h = open ? Math.min(el.scrollHeight, window.innerHeight * 0.8) : el.offsetHeight;
   el.style.height = h + 'px';
   setPopoverIconClip(el, icon, h);
-  el.classList.add('open');
+  el.classList.toggle('open', open);
 }
+function openMorphPopover(panelId, iconId) { applyMorphPopoverLayout(panelId, iconId, true); }
 function closeMorphPopover(panelId, iconId) {
   const el = document.getElementById(panelId);
-  const icon = document.getElementById(iconId);
   if (!el || !el.classList.contains('open')) { if (el) { el.classList.remove('open'); el.style.height = '0px'; } return; }
-  const h = el.offsetHeight;
-  setPopoverIconClip(el, icon, h);   // closing pill lands exactly on the icon
-  el.classList.remove('open');
-  el.style.height = '0px';
+  applyMorphPopoverLayout(panelId, iconId, false);
 }
 function openCardsDrawer() {
   const el = document.getElementById('cardsDrawer');
