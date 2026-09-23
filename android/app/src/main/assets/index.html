@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609251200">
+<meta name="stash-version" content="202609251500">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -243,13 +243,9 @@
   .pages-wrap {
     display: flex; align-items: flex-start; overflow: hidden; touch-action: pan-y;
   }
-  /* Clip only sideways (the other page), so things like the currency wheel can
-     stick out a bit above the balance card without being cut off. */
-  @supports (overflow: clip) { .pages-wrap { overflow-x: clip; overflow-y: visible; } }
   .app-page {
     transition: transform 0.5s cubic-bezier(.22,1,.36,1);
-    will-change: transform;
-    background: var(--bg);   /* no seam/gray hairline behind the other page while sliding */
+    will-change: transform; backface-visibility: hidden;
   }
   .pages-wrap.pager-dragging .app-page { transition: none; }
   .pages-wrap::-webkit-scrollbar { display: none; }
@@ -1157,11 +1153,6 @@
 
 <div class="app-page" id="appPage2">
 
-<div class="tabs">
-  <div class="tab active" data-tab2="receipts" data-i18n="tabs.receipts">Paragony</div>
-  <div class="tab" data-tab2="ai" data-i18n="tabs.aiAssistant">Asystent AI</div>
-</div>
-
 <div id="hiddenPanelsBar2" class="hidden-panels-bar"></div>
 <div id="panelsContainer2">
 <div id="tab-receipts" class="panel" data-panel="receipts" style="order:1">
@@ -1234,20 +1225,6 @@
       <span class="plus">+</span>
       <span class="lbl" data-i18n="receipts.newGroup">Nowa grupa</span>
     </button>
-  </div>
-</div>
-
-<div id="tab-ai" class="panel hidden" data-panel="ai" style="order:2">
-  <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.aiAssistant">Asystent AI</span><button class="panel-hide-btn" data-hide="ai" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
-  <div class="card" id="aiCard">
-    <div class="section-title" data-i18n="ai.title">Asystent AI (lokalnie, offline)</div>
-    <div class="balance-sub" id="aiStatus" style="margin-top:4px;"></div>
-    <div id="aiProgressWrap" class="hidden" style="margin-top:8px;">
-      <div style="height:6px; border-radius:4px; background:var(--border); overflow:hidden;">
-        <div id="aiProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width 0.3s ease;"></div>
-      </div>
-    </div>
-    <div id="aiResultBox" class="hidden" style="margin-top:12px; padding:12px; border-radius:10px; background:var(--accent-soft); font-size:14px; line-height:1.5; white-space:pre-wrap;"></div>
   </div>
 </div>
 </div><!-- /panelsContainer2 -->
@@ -1818,7 +1795,7 @@ function applyPanelVisibility() {
 }
 
 const PAGE1_PANEL_IDS = ['add', 'debts', 'stats', 'settings'];
-const PAGE2_PANEL_IDS = ['receipts', 'ai'];
+const PAGE2_PANEL_IDS = ['receipts'];
 
 function renderHiddenBar() {
   const labels = { add: t('tabs.add'), debts: t('tabs.debts'), stats: t('tabs.stats'), settings: t('tabs.settings'), receipts: t('tabs.receipts'), ai: t('tabs.aiAssistant') };
@@ -2606,17 +2583,6 @@ document.querySelectorAll('#appPage1 .tab').forEach(tab => {
   });
 });
 
-document.querySelectorAll('#appPage2 .tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('#appPage2 .tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    ['receipts','ai'].forEach(name => {
-      document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab2);
-    });
-    if (tab.dataset.tab2 === 'receipts') renderReceiptGroups();
-    if (tab.dataset.tab2 === 'ai') renderAiTab();
-  });
-});
 
 // ---- Page pager (page 0 = tiles, page 1 = Paragony + Asystent AI) ----
 // Transform-based (like macOS Spaces): the pages follow the finger/mouse 1:1, rubber-band
