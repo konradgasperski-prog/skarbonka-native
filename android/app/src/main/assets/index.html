@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609231200">
+<meta name="stash-version" content="202609251200">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -248,7 +248,8 @@
   @supports (overflow: clip) { .pages-wrap { overflow-x: clip; overflow-y: visible; } }
   .app-page {
     transition: transform 0.5s cubic-bezier(.22,1,.36,1);
-    will-change: transform; backface-visibility: hidden;
+    will-change: transform;
+    background: var(--bg);   /* no seam/gray hairline behind the other page while sliding */
   }
   .pages-wrap.pager-dragging .app-page { transition: none; }
   .pages-wrap::-webkit-scrollbar { display: none; }
@@ -374,16 +375,53 @@
 
   /* --- Account popover --- */
   .header-buttons { position: relative; }
+  /* Same Dynamic-Island morph as the cards drawer: grows out of its own header icon and
+     shrinks back into it, with a smooth (no-bounce) close. */
   .account-popover {
     position: absolute; top: 46px; right: 0; width: 260px; z-index: 50;
     background: color-mix(in srgb, var(--card) 88%, transparent);
     border: 1px solid color-mix(in srgb, white 28%, var(--border));
     border-radius: 16px; box-shadow: var(--shadow), inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
-    padding: 16px; transform: scale(0.85) translateY(-8px); opacity: 0; pointer-events: none;
-    transform-origin: top right; transition: transform 0.22s cubic-bezier(.2,.9,.3,1.3), opacity 0.18s ease;
-    max-height: 80vh; overflow-y: auto;
+    padding: 16px; pointer-events: none; overflow: hidden; height: 0px;
+    --ci-t: 0px; --ci-l: 100%; --ci-r: 0px; --ci-b: 100%;
+    clip-path: inset(var(--ci-t) var(--ci-r) var(--ci-b) var(--ci-l) round 16px);
+    opacity: 0;
+    transition: clip-path 0.46s cubic-bezier(.4,0,.2,1), opacity 0.16s ease 0.32s, height 0.3s ease;
   }
-  .account-popover.open { transform: scale(1) translateY(0); opacity: 1; pointer-events: auto; }
+  .account-popover.open {
+    pointer-events: auto; opacity: 1; overflow-y: auto;
+    clip-path: inset(0px 0px 0px 0px round 16px);
+    transition: clip-path 0.55s cubic-bezier(.32,1.12,.4,1), opacity 0.12s ease 0s, height 0.3s ease;
+  }
+  /* Settings popover: a home screen of tiles, each opening its own view */
+  .settings-tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .settings-tile {
+    display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 6px;
+    border-radius: 12px; background: color-mix(in srgb, var(--bg) 55%, transparent); cursor: pointer;
+    font-size: 12.5px; font-weight: 600; text-align: center; transition: transform 0.15s ease, background 0.2s ease;
+  }
+  .settings-tile:active { transform: scale(0.95); }
+  .settings-tile .ic { font-size: 22px; }
+  .settings-view { display: none; }
+  .settings-view.active { display: block; }
+  .settings-back {
+    background: none; border: none; color: var(--text-dim); font-size: 13px; font-weight: 600;
+    padding: 0 0 10px; margin: 0; width: auto; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  }
+  .link-btn {
+    background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 600;
+    padding: 6px 0 0; margin: 0; width: auto; cursor: pointer; text-align: left;
+  }
+  .known-accounts-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .known-account-chip {
+    display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px;
+    background: color-mix(in srgb, var(--bg) 55%, transparent); font-size: 12px; font-weight: 600;
+    cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .known-account-chip .av {
+    flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; background: var(--accent);
+    color: #fff; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  }
   .account-popover input { margin-bottom: 8px; }
   .account-popover .row { margin-top: 4px; }
   #appSettingsPopover.left-anchor { width: 290px; }
@@ -693,6 +731,13 @@
   .receipt-items .ri-row.other { color: var(--text-dim); font-style: italic; }
   .receipt-items .ri-del { background: none; border: none; color: var(--text-dim); font-size: 13px; padding: 2px 4px; cursor: pointer; }
   .tx-item { cursor: pointer; }
+  .ai-bg-pill { position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 1900;
+    transform: translate(-50%, -150%); padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+    background: color-mix(in srgb, var(--card) 90%, transparent); box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); pointer-events: none;
+    transition: transform 0.4s cubic-bezier(.32,1.2,.4,1); }
+  .ai-bg-pill.show { transform: translate(-50%, 0); animation: aiPulse 1.6s ease-in-out infinite; }
+  @keyframes aiPulse { 50% { opacity: 0.72; } }
   .update-banner { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2000;
     display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; font-size: 13.5px; font-weight: 600;
     background: color-mix(in srgb, var(--card) 92%, transparent); box-shadow: 0 10px 30px rgba(0,0,0,0.25);
@@ -789,6 +834,20 @@
   <div class="header-buttons">
     <button class="theme-toggle" id="appSettingsToggle" title="Wygląd" data-i18n-title="settings.appearance">⚙️</button>
     <div class="account-popover left-anchor" id="appSettingsPopover">
+      <div class="settings-view active" data-view="home">
+        <div class="section-title" data-i18n="settings.title">Ustawienia</div>
+        <div class="settings-tile-grid">
+          <div class="settings-tile" data-open="appearance"><span class="ic">🌓</span><span data-i18n="settings.tileAppearance">Wygląd</span></div>
+          <div class="settings-tile" data-open="background"><span class="ic">🎨</span><span data-i18n="settings.tileBackground">Tło i kolor</span></div>
+          <div class="settings-tile" data-open="animation"><span class="ic">✨</span><span data-i18n="settings.tileAnimation">Animacje</span></div>
+          <div class="settings-tile" id="iconModeTile" data-open="iconMode"><span class="ic">📱</span><span data-i18n="settings.tileIcon">Ikona aplikacji</span></div>
+          <div class="settings-tile" data-open="language"><span class="ic">🌐</span><span data-i18n="settings.tileLanguage">Język</span></div>
+          <div class="settings-tile" data-open="sync"><span class="ic">☁️</span><span data-i18n="settings.tileSync">Synchronizacja</span></div>
+        </div>
+      </div>
+
+      <div class="settings-view" data-view="appearance">
+      <button class="settings-back" data-back>← <span data-i18n="action.back">Wróć</span></button>
       <div class="settings-group">
       <div class="section-title" data-i18n="settings.personalization">Personalizacja</div>
 
@@ -798,8 +857,12 @@
       <div class="palette-row" id="paletteRow"></div>
       <div class="balance-sub" style="margin-top:4px;">⚙️ = <span data-i18n="settings.systemColorNote">kolor systemu (telefonu/komputera), gdy dostępny</span></div>
       </div>
+      </div>
 
+      <div class="settings-view" data-view="background">
+      <button class="settings-back" data-back>← <span data-i18n="action.back">Wróć</span></button>
       <div class="settings-group">
+      <div class="section-title" data-i18n="settings.tileBackground">Tło i kolor</div>
       <div class="balance-sub" data-i18n="settings.customBgColors">Własne kolory tła</div>
       <div class="custom-color-row">
         <input type="color" id="customC1" value="#2f6f4f" title="Kolor 1" data-i18n-title="settings.color1">
@@ -813,6 +876,18 @@
         <input type="range" id="bgOpacitySlider" min="10" max="60" step="5">
       </div>
       <div class="glass-slider-row">
+        <div class="balance-sub" data-i18n="settings.glassEffect">Efekt szkła (liquid glass)</div>
+        <input type="range" id="glassSlider" min="0" max="100" step="5">
+        <div class="glass-slider-label"><span data-i18n="glass.off">Wyłączony</span><span id="glassSliderVal">70%</span><span data-i18n="glass.max">Maksymalny</span></div>
+      </div>
+      </div>
+      </div>
+
+      <div class="settings-view" data-view="animation">
+      <button class="settings-back" data-back>← <span data-i18n="action.back">Wróć</span></button>
+      <div class="settings-group">
+      <div class="section-title" data-i18n="settings.tileAnimation">Animacje</div>
+      <div class="glass-slider-row">
         <div class="balance-sub" data-i18n="settings.bgAnimation">Animacja tła</div>
         <div class="chart-type-tabs" id="bgSpeedTabs">
           <div class="chart-type-btn" data-speed="slow" data-i18n="speed.slow">Wolna</div>
@@ -821,13 +896,11 @@
           <div class="chart-type-btn" data-speed="off" data-i18n="speed.off">Wyłączona</div>
         </div>
       </div>
-      <div class="glass-slider-row">
-        <div class="balance-sub" data-i18n="settings.glassEffect">Efekt szkła (liquid glass)</div>
-        <input type="range" id="glassSlider" min="0" max="100" step="5">
-        <div class="glass-slider-label"><span data-i18n="glass.off">Wyłączony</span><span id="glassSliderVal">70%</span><span data-i18n="glass.max">Maksymalny</span></div>
       </div>
       </div>
 
+      <div class="settings-view" data-view="iconMode">
+      <button class="settings-back" data-back>← <span data-i18n="action.back">Wróć</span></button>
       <div class="settings-group" id="iconModeGroup">
       <div class="section-title" data-i18n="settings.appIconAndroid" id="iconModeSectionTitle">Ikona aplikacji (Android)</div>
       <div class="icon-mode-row" id="iconModeRow">
@@ -838,7 +911,10 @@
       </div>
       <div class="balance-sub" id="iconModeNote" style="margin-top:4px;"></div>
       </div>
+      </div>
 
+      <div class="settings-view" data-view="language">
+      <button class="settings-back" data-back>← <span data-i18n="action.back">Wróć</span></button>
       <div class="settings-group">
       <div class="section-title" data-i18n="settings.language">Język</div>
       <div class="chart-type-tabs" id="languageRow">
@@ -848,7 +924,10 @@
         <div class="chart-type-btn" data-lang="lt">LT</div>
       </div>
       </div>
+      </div>
 
+      <div class="settings-view" data-view="sync">
+      <button class="settings-back" data-back>← <span data-i18n="action.back">Wróć</span></button>
       <div class="settings-group">
       <div class="section-title" data-i18n="settings.wallpaperSync">Tło między urządzeniami</div>
       <div class="chart-type-tabs" id="syncAppearanceTabs">
@@ -856,6 +935,7 @@
         <div class="chart-type-btn" data-sync="different" data-i18n="settings.wallpaperSyncDifferent">Osobne</div>
       </div>
       <div class="balance-sub" style="margin-top:4px;" data-i18n="settings.wallpaperSyncNote">Dotyczy tła, palety kolorów i efektu szkła. Wymaga zalogowania.</div>
+      </div>
       </div>
     </div>
   </div>
@@ -865,6 +945,7 @@
     <button class="account-toggle" id="accountToggle" title="Konto">👤</button>
     <div class="account-popover" id="accountPopover">
       <div id="popLoggedOut">
+        <div id="knownAccountsRow" class="known-accounts-row hidden"></div>
         <label data-i18n="auth.email">E-mail</label>
         <input type="email" id="authEmail" placeholder="ty@przyklad.pl" autocomplete="username" data-i18n-placeholder="auth.emailPlaceholder">
         <label data-i18n="auth.password">Hasło</label>
@@ -873,11 +954,16 @@
           <button class="secondary" id="loginBtn" data-i18n="auth.login">Zaloguj</button>
           <button class="secondary" id="registerBtn" data-i18n="auth.register">Zarejestruj</button>
         </div>
+        <button class="link-btn" id="forgotPasswordBtn" data-i18n="auth.forgotPassword">Nie pamiętasz hasła?</button>
         <div class="balance-sub" id="authError"></div>
       </div>
       <div id="popLoggedIn" class="hidden">
         <div class="balance-sub" id="accountEmailLabel"></div>
         <div class="balance-sub" id="syncStatus" data-i18n="auth.syncActive">Synchronizacja: aktywna ✓</div>
+        <div id="otherAccountsBlock" class="hidden">
+          <div class="balance-sub" style="margin-top:10px;" data-i18n="auth.otherAccounts">Inne konta</div>
+          <div id="otherAccountsRow" class="known-accounts-row"></div>
+        </div>
         <button class="secondary" id="logoutBtn" data-i18n="auth.logout">Wyloguj</button>
       </div>
     </div>
@@ -1155,9 +1241,7 @@
   <div class="panel-header" draggable="false"><span class="drag-handle">⣿</span> <span data-i18n="tabs.aiAssistant">Asystent AI</span><button class="panel-hide-btn" data-hide="ai" title="Ukryj panel" data-i18n-title="panel.hide">✕</button></div>
   <div class="card" id="aiCard">
     <div class="section-title" data-i18n="ai.title">Asystent AI (lokalnie, offline)</div>
-    <div class="balance-sub" id="aiIntro" data-i18n="ai.intro">Analizuje Twoje dane bezpośrednio na tym urządzeniu — nic nie wysyłamy do internetu. Pierwsze uruchomienie pobiera mały model AI (ok. 600 MB–1 GB), potem działa offline.</div>
-    <button class="secondary" id="aiAnalyzeBtn" style="width:100%; margin-top:10px;" data-i18n="ai.analyzeBtn">🤖 Analizuj moje finanse</button>
-    <div class="balance-sub" id="aiStatus" style="margin-top:8px;"></div>
+    <div class="balance-sub" id="aiStatus" style="margin-top:4px;"></div>
     <div id="aiProgressWrap" class="hidden" style="margin-top:8px;">
       <div style="height:6px; border-radius:4px; background:var(--border); overflow:hidden;">
         <div id="aiProgressBar" style="height:100%; width:0%; background:var(--accent); transition:width 0.3s ease;"></div>
@@ -1198,6 +1282,7 @@
 <div class="fullscreen-modal" id="txDetailModal">
   <div class="fullscreen-modal-content" style="max-width:440px;">
     <div id="txDetailBody"></div>
+    <div id="txDetailGroupPicker" class="groups-grid hidden" style="margin-top:8px;"></div>
     <div class="row-btns" style="margin-top:14px;">
       <button class="secondary" id="txDetailCloseBtn" style="flex:1" data-i18n="action.close">Zamknij</button>
     </div>
@@ -1258,12 +1343,12 @@ const PLOT_W = PLOT_X1 - PLOT_X0;
 
 const TRANSLATIONS = {
   pl: {
-    settings: { appearance:'Wygląd', personalization:'Personalizacja', wallpaperSync:'Tło między urządzeniami', wallpaperSyncSame:'Takie samo', wallpaperSyncDifferent:'Osobne', wallpaperSyncNote:'Dotyczy tła, palety kolorów i efektu szkła. Wymaga zalogowania.', autoLightDark:'Automatycznie jasny/ciemny (wg systemu)', bgPalette:'Tło — zestaw kolorów', systemColorNote:'kolor systemu (telefonu/komputera), gdy dostępny', appIconAndroid:'Ikona aplikacji (Android)', language:'Język', customBgColors:'Własne kolory tła', color1:'Kolor 1', color2:'Kolor 2', color3:'Kolor 3', apply:'Użyj', bgIntensity:'Intensywność tła', bgAnimation:'Animacja tła', glassEffect:'Efekt szkła (liquid glass)', androidOnly:'Dostępne tylko w aplikacji na Androida.', autoSystemColor:'Automatyczny (kolor systemu)' },
+    settings: { title:'Ustawienia', tileAppearance:'Wygląd', tileBackground:'Tło i kolor', tileAnimation:'Animacje', tileIcon:'Ikona aplikacji', tileLanguage:'Język', tileSync:'Synchronizacja', appearance:'Wygląd', personalization:'Personalizacja', wallpaperSync:'Tło między urządzeniami', wallpaperSyncSame:'Takie samo', wallpaperSyncDifferent:'Osobne', wallpaperSyncNote:'Dotyczy tła, palety kolorów i efektu szkła. Wymaga zalogowania.', autoLightDark:'Automatycznie jasny/ciemny (wg systemu)', bgPalette:'Tło — zestaw kolorów', systemColorNote:'kolor systemu (telefonu/komputera), gdy dostępny', appIconAndroid:'Ikona aplikacji (Android)', language:'Język', customBgColors:'Własne kolory tła', color1:'Kolor 1', color2:'Kolor 2', color3:'Kolor 3', apply:'Użyj', bgIntensity:'Intensywność tła', bgAnimation:'Animacja tła', glassEffect:'Efekt szkła (liquid glass)', androidOnly:'Dostępne tylko w aplikacji na Androida.', autoSystemColor:'Automatyczny (kolor systemu)' },
     speed: { slow:'Wolna', normal:'Normalna', fast:'Szybka', off:'Wyłączona' },
     glass: { off:'Wyłączony', max:'Maksymalny' },
     theme: { change:'Zmień motyw' },
-    auth: { email:'E-mail', emailPlaceholder:'ty@przyklad.pl', password:'Hasło', passwordPlaceholder:'min. 6 znaków', login:'Zaloguj', register:'Zarejestruj', syncActive:'Synchronizacja: aktywna ✓', logout:'Wyloguj', syncUnavailable:'Synchronizacja niedostępna.',
-      err: { emailInUse:'Ten e-mail jest już zarejestrowany.', invalidEmail:'Nieprawidłowy adres e-mail.', weakPassword:'Hasło musi mieć min. 6 znaków.', wrongPassword:'Błędne hasło.', userNotFound:'Nie znaleziono konta z tym e-mailem.', invalidCredential:'Błędny e-mail lub hasło.', generic:'Błąd: ' } },
+    auth: { forgotPassword:'Nie pamiętasz hasła?', otherAccounts:'Inne konta', resetSending:'Wysyłam link do resetu hasła…', resetSent:'Wysłano link do resetu hasła — sprawdź skrzynkę.', email:'E-mail', emailPlaceholder:'ty@przyklad.pl', password:'Hasło', passwordPlaceholder:'min. 6 znaków', login:'Zaloguj', register:'Zarejestruj', syncActive:'Synchronizacja: aktywna ✓', logout:'Wyloguj', syncUnavailable:'Synchronizacja niedostępna.',
+      err: { needEmailForReset:'Podaj najpierw e-mail, na który wysłać link.', emailInUse:'Ten e-mail jest już zarejestrowany.', invalidEmail:'Nieprawidłowy adres e-mail.', weakPassword:'Hasło musi mieć min. 6 znaków.', wrongPassword:'Błędne hasło.', userNotFound:'Nie znaleziono konta z tym e-mailem.', invalidCredential:'Błędny e-mail lub hasło.', generic:'Błąd: ' } },
     balance: { total:'Saldo całkowite', toggleVisibility:'Ukryj/pokaż saldo' },
     currency: { pickerTitle:'Stuknij lub przesuń, aby zmienić walutę' },
     tabs: { add:'Dodaj', debts:'Długi', stats:'Statystyki', settings:'Kursy', receipts:'Paragony', aiAssistant:'Asystent AI' },
@@ -1271,7 +1356,7 @@ const TRANSLATIONS = {
     type: { income:'Przychód', expense:'Wydatek' },
     amount: { label:'Kwota' },
     desc: { label:'Opis (opcjonalnie)', placeholder:'np. wypłata, zakupy...' },
-    action: { add:'Dodaj', fullscreen:'Pełny ekran', toggle:'Zwiń/rozwiń', close:'Zamknij' },
+    action: { back:'Wróć', add:'Dodaj', fullscreen:'Pełny ekran', toggle:'Zwiń/rozwiń', close:'Zamknij' },
     section: { recentTx:'Ostatnie transakcje', debtList:'Lista długów' },
     empty: { noTx:'Brak transakcji', noDebts:'Brak długów' },
     debt: { iOwe:'Ja muszę oddać', owedToMe:'Mnie muszą oddać', type: { owe:'Ja oddaję', owed:'Mi oddają' }, person:'Osoba', personPlaceholder:'np. Kasia', dueDate:'Termin zwrotu (opcjonalnie)', descPlaceholder:'np. za bilety' },
@@ -1279,8 +1364,8 @@ const TRANSLATIONS = {
     period: { day:'Dni', week:'Tygodnie', month:'Miesiące', year:'Kwartały', searchDay:'Przejdź do dnia', searchWeek:'Przejdź do tygodnia', searchMonth:'Przejdź do miesiąca', searchYear:'Przejdź do roku', yearPlaceholder:'np. 2026', weekLabel:'Tydzień {week}, {year} ({from}–{to})' },
     chart: { bar:'Słupkowy', line:'Liniowy', pie:'Kołowy', percent:'Procentowy', preview:'Podgląd', incomeVsExpense:'Przychody vs wydatki (wybrany okres)', percentShare:'Udział %' },
     update: { ready:'Nowa wersja apki jest gotowa', restart:'Uruchom ponownie' },
-    ai: { downloadingNative:'Pobieram model AI (1,6 GB, tylko raz — najlepiej przez Wi-Fi)…', preparing:'Przygotowuję model AI (tylko przy pierwszym uruchomieniu)…', lowmem:'Ten telefon ma za mało pamięci RAM dla modelu AI (potrzeba ok. 6 GB).', missing:'Ta wersja apki nie ma wbudowanego modelu AI.', nospace:'Za mało wolnego miejsca w telefonie (potrzeba ok. 1,7 GB).', introNative:'Model AI jest wbudowany w apkę i działa w całości na tym urządzeniu — bez internetu, nic nie wychodzi z urządzenia.', title:'Asystent AI (lokalnie, offline)', intro:'Analizuje Twoje dane bezpośrednio na tym urządzeniu — nic nie wysyłamy do internetu. Pierwsze uruchomienie pobiera mały model AI (ok. 600 MB–1 GB), potem działa offline.', analyzeBtn:'🤖 Analizuj moje finanse', downloading:'Pobieranie modelu AI...', loading:'Uruchamianie modelu...', thinking:'Analizuję...', unsupported:'To urządzenie/przeglądarka nie obsługuje lokalnego AI (brak WebGPU). Spróbuj na nowszym komputerze lub telefonie.', error:'Coś poszło nie tak przy uruchamianiu AI: ', noData:'Dodaj kilka transakcji, żeby AI mogło je przeanalizować.', ready:'Model gotowy ✓' },
-    receipts: { aiNeedModel:'🤖 Żeby AI czytało produkty, pobierz raz model w zakładce Asystent AI', aiReading:'🤖 AI analizuje paragon…', aiDone:'🤖 AI odczytało paragon', aiOff:'Odczyt automatyczny (AI niedostępne)', discount:'rabat', vmiMatch:'✓ Suma produktów zgadza się z VMI', vmiDiff:'⚠️ Suma produktów różni się od VMI', vmiOpen:'Otwórz w VMI', vmiDup:'Ten paragon jest już zapisany', saveAnyway:'💾 Zapisz mimo to', vmiFetched:'Sprawdzone w VMI', vmiOffline:'Bez internetu — dane z VMI nie zostały pobrane (kod QR jest zapisany)', withVat:'Suma z PVM', noVat:'Suma bez PVM', vatAmt:'PVM', receiptNo:'Nr paragonu', address:'Adres', items:'Produkty', fullText:'Pełny tekst paragonu', otherItems:'Pozostałe / nierozpoznane', total:'Suma', noItems:'Ta transakcja nie ma rozbicia na produkty — nie pochodzi ze skanu paragonu.', details:'Szczegóły transakcji', removeItem:'Usuń pozycję', itemsCount:'poz.', scanHintLive:'Zrób zdjęcie całego paragonu — AI odczyta każdy produkt, cenę i rabat, a kod QR na dole sprawdzi w VMI sklep, adres i sumę. Samo zdjęcie od razu jest usuwane.', scanCtaQr:'Zrób zdjęcie paragonu', scanSubQr:'AI odczyta produkty, a kod QR sprawdzi w VMI', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
+    ai: { updated:'Zaktualizowano:', pending:'Zbieram dane — pierwsza analiza pojawi się, gdy zamkniesz albo przełączysz aplikację.', downloadingNative:'Pobieram model AI (1,6 GB, tylko raz — najlepiej przez Wi-Fi)…', preparing:'Przygotowuję model AI (tylko przy pierwszym uruchomieniu)…', lowmem:'Ten telefon ma za mało pamięci RAM dla modelu AI (potrzeba ok. 6 GB).', missing:'Ta wersja apki nie ma wbudowanego modelu AI.', nospace:'Za mało wolnego miejsca w telefonie (potrzeba ok. 1,7 GB).', introNative:'Model AI jest wbudowany w apkę i działa w całości na tym urządzeniu — bez internetu, nic nie wychodzi z urządzenia.', title:'Asystent AI (lokalnie, offline)', intro:'Analizuje Twoje dane bezpośrednio na tym urządzeniu — nic nie wysyłamy do internetu. Pierwsze uruchomienie pobiera mały model AI (ok. 600 MB–1 GB), potem działa offline.', analyzeBtn:'🤖 Analizuj moje finanse', downloading:'Pobieranie modelu AI...', loading:'Uruchamianie modelu...', thinking:'Analizuję...', unsupported:'To urządzenie/przeglądarka nie obsługuje lokalnego AI (brak WebGPU). Spróbuj na nowszym komputerze lub telefonie.', error:'Coś poszło nie tak przy uruchamianiu AI: ', noData:'Dodaj kilka transakcji, żeby AI mogło je przeanalizować.', ready:'Model gotowy ✓' },
+    receipts: { noGroup:'Bez grupy', noGroupNote:'Zapiszę bez przypisanej grupy — możesz ją dodać teraz albo później, w szczegółach transakcji.', noMatchNote:'Nie znalazłem pasującej grupy dla „{store}” — wybierz ją poniżej albo zapisz bez grupy. Możesz dopisać słowo kluczowe w zakładce Grupy.', matchNote:'Rozpoznano „{store}” i dopasowano do grupy {group} po słowie kluczowym.', autoNote:'Ta grupa ma włączone <b>auto-dodawanie</b> — w pełnej wersji AI zapisałoby to bez pytania.', confirmNote:'Ta grupa wymaga Twojego potwierdzenia przed zapisem.', changeGroup:'Zmień grupę', aiBackground:'🤖 AI pracuje w tle — możesz zapisać albo wyjść', aiFinished:'🤖 AI dokończyło paragon:', vmiNotFound:'Paragonu nie znaleziono w VMI', aiNeedModel:'🤖 Żeby AI czytało produkty, pobierz raz model w zakładce Asystent AI', aiReading:'🤖 AI analizuje paragon… Możesz już zapisać — dokończy w tle', aiDone:'🤖 AI odczytało paragon', aiOff:'Odczyt automatyczny (AI niedostępne)', discount:'rabat', vmiMatch:'✓ Suma produktów zgadza się z VMI', vmiDiff:'⚠️ Suma produktów różni się od VMI', vmiOpen:'Otwórz w VMI', vmiDup:'Ten paragon jest już zapisany', saveAnyway:'💾 Zapisz mimo to', vmiFetched:'Sprawdzone w VMI', vmiOffline:'Bez internetu — dane z VMI nie zostały pobrane (kod QR jest zapisany)', withVat:'Suma z PVM', noVat:'Suma bez PVM', vatAmt:'PVM', receiptNo:'Nr paragonu', address:'Adres', items:'Produkty', fullText:'Pełny tekst paragonu', otherItems:'Pozostałe / nierozpoznane', total:'Suma', noItems:'Ta transakcja nie ma rozbicia na produkty — nie pochodzi ze skanu paragonu.', details:'Szczegóły transakcji', removeItem:'Usuń pozycję', itemsCount:'poz.', scanHintLive:'Zrób zdjęcie całego paragonu — AI odczyta każdy produkt, cenę i rabat, a kod QR na dole sprawdzi w VMI sklep, adres i sumę. Samo zdjęcie od razu jest usuwane.', scanCtaQr:'Zrób zdjęcie paragonu', scanSubQr:'AI odczyta produkty, a kod QR sprawdzi w VMI', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
     cards: { myCards:'Karty', allTogether:'Wszystkie', title:'Karty bankowe', hint:'Dodaj swoje karty i wybierz jedną — nowe transakcje będą zapisywać się tylko do wybranej karty. Zakładka „Wszystkie” pokaże sumę ze wszystkich kart naraz.', newCard:'Nowa karta', newCardTitle:'Nowa karta', cardName:'Nazwa karty', createCard:'Utwórz kartę', needName:'Podaj nazwę karty', createdToast:'Utworzono kartę', showing:'Pokazuję:', showingAll:'Pokazuję: wszystkie karty', noCard:'bez karty', allBalanceLabel:'Saldo razem ze wszystkich kart' },
     rates: { title:'Kursy walut (1 EUR =)', refreshNow:'Odśwież teraz', lastSync:'Ostatnia synchronizacja: ', fetchFailed:'Nie udało się pobrać aktualnych kursów (brak połączenia) — używane są zapisane wcześniej.', newDayBanner:'Nowy dzień — sprawdź i zaktualizuj kursy walut.' },
     data: { title:'Dane', resetAll:'Wyczyść wszystkie dane' },
@@ -1292,12 +1377,12 @@ const TRANSLATIONS = {
     months: { short:['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'] }
   },
   en: {
-    settings: { appearance:'Appearance', personalization:'Personalization', wallpaperSync:'Background across devices', wallpaperSyncSame:'Same', wallpaperSyncDifferent:'Separate', wallpaperSyncNote:'Covers the background, color palette and glass effect. Requires being signed in.', autoLightDark:'Automatically light/dark (system)', bgPalette:'Background — color set', systemColorNote:'system color (phone/computer), when available', appIconAndroid:'App icon (Android)', language:'Language', customBgColors:'Custom background colors', color1:'Color 1', color2:'Color 2', color3:'Color 3', apply:'Apply', bgIntensity:'Background intensity', bgAnimation:'Background animation', glassEffect:'Glass effect (liquid glass)', androidOnly:'Available only in the Android app.', autoSystemColor:'Automatic (system color)' },
+    settings: { title:'Settings', tileAppearance:'Appearance', tileBackground:'Background & color', tileAnimation:'Animations', tileIcon:'App icon', tileLanguage:'Language', tileSync:'Sync', appearance:'Appearance', personalization:'Personalization', wallpaperSync:'Background across devices', wallpaperSyncSame:'Same', wallpaperSyncDifferent:'Separate', wallpaperSyncNote:'Covers the background, color palette and glass effect. Requires being signed in.', autoLightDark:'Automatically light/dark (system)', bgPalette:'Background — color set', systemColorNote:'system color (phone/computer), when available', appIconAndroid:'App icon (Android)', language:'Language', customBgColors:'Custom background colors', color1:'Color 1', color2:'Color 2', color3:'Color 3', apply:'Apply', bgIntensity:'Background intensity', bgAnimation:'Background animation', glassEffect:'Glass effect (liquid glass)', androidOnly:'Available only in the Android app.', autoSystemColor:'Automatic (system color)' },
     speed: { slow:'Slow', normal:'Normal', fast:'Fast', off:'Off' },
     glass: { off:'Off', max:'Maximum' },
     theme: { change:'Change theme' },
-    auth: { email:'Email', emailPlaceholder:'you@example.com', password:'Password', passwordPlaceholder:'min. 6 characters', login:'Log in', register:'Register', syncActive:'Sync: active ✓', logout:'Log out', syncUnavailable:'Sync unavailable.',
-      err: { emailInUse:'This email is already registered.', invalidEmail:'Invalid email address.', weakPassword:'Password must be at least 6 characters.', wrongPassword:'Incorrect password.', userNotFound:'No account found with this email.', invalidCredential:'Incorrect email or password.', generic:'Error: ' } },
+    auth: { forgotPassword:'Forgot your password?', otherAccounts:'Other accounts', resetSending:'Sending a password reset link…', resetSent:'Password reset link sent — check your inbox.', email:'Email', emailPlaceholder:'you@example.com', password:'Password', passwordPlaceholder:'min. 6 characters', login:'Log in', register:'Register', syncActive:'Sync: active ✓', logout:'Log out', syncUnavailable:'Sync unavailable.',
+      err: { needEmailForReset:'Enter the email to send the reset link to first.', emailInUse:'This email is already registered.', invalidEmail:'Invalid email address.', weakPassword:'Password must be at least 6 characters.', wrongPassword:'Incorrect password.', userNotFound:'No account found with this email.', invalidCredential:'Incorrect email or password.', generic:'Error: ' } },
     balance: { total:'Total balance', toggleVisibility:'Show/hide balance' },
     currency: { pickerTitle:'Tap or swipe to change currency' },
     tabs: { add:'Add', debts:'Debts', stats:'Stats', settings:'Rates', receipts:'Receipts', aiAssistant:'AI Assistant' },
@@ -1305,7 +1390,7 @@ const TRANSLATIONS = {
     type: { income:'Income', expense:'Expense' },
     amount: { label:'Amount' },
     desc: { label:'Description (optional)', placeholder:'e.g. salary, groceries...' },
-    action: { add:'Add', fullscreen:'Full screen', toggle:'Collapse/expand', close:'Close' },
+    action: { back:'Back', add:'Add', fullscreen:'Full screen', toggle:'Collapse/expand', close:'Close' },
     section: { recentTx:'Recent transactions', debtList:'Debts list' },
     empty: { noTx:'No transactions', noDebts:'No debts' },
     debt: { iOwe:'I owe', owedToMe:'Owed to me', type: { owe:'I owe', owed:'Owed to me' }, person:'Person', personPlaceholder:'e.g. Kate', dueDate:'Due date (optional)', descPlaceholder:'e.g. for tickets' },
@@ -1313,8 +1398,8 @@ const TRANSLATIONS = {
     period: { day:'Days', week:'Weeks', month:'Months', year:'Quarters', searchDay:'Go to day', searchWeek:'Go to week', searchMonth:'Go to month', searchYear:'Go to year', yearPlaceholder:'e.g. 2026', weekLabel:'Week {week}, {year} ({from}–{to})' },
     chart: { bar:'Bar', line:'Line', pie:'Pie', percent:'Percent', preview:'Preview', incomeVsExpense:'Income vs expenses (selected period)', percentShare:'Share %' },
     update: { ready:'A new version of the app is ready', restart:'Restart' },
-    ai: { downloadingNative:'Downloading the AI model (1.6 GB, only once — Wi-Fi recommended)…', preparing:'Preparing the AI model (first run only)…', lowmem:'This phone does not have enough RAM for the AI model (about 6 GB needed).', missing:'This version of the app has no built-in AI model.', nospace:'Not enough free storage on the phone (about 1.7 GB needed).', introNative:'The AI model is built into the app and runs entirely on this device — offline, nothing leaves the device.', title:'AI Assistant (local, offline)', intro:'Analyzes your data directly on this device — nothing is sent to the internet. First run downloads a small AI model (~600 MB–1 GB), then it works offline.', analyzeBtn:'🤖 Analyze my finances', downloading:'Downloading AI model...', loading:'Starting model...', thinking:'Analyzing...', unsupported:'This device/browser does not support local AI (no WebGPU). Try a newer computer or phone.', error:'Something went wrong starting the AI: ', noData:'Add a few transactions so the AI has something to analyze.', ready:'Model ready ✓' },
-    receipts: { aiNeedModel:'🤖 To let AI read products, download the model once in the AI Assistant tab', aiReading:'🤖 AI is reading the receipt…', aiDone:'🤖 AI read the receipt', aiOff:'Automatic reading (AI unavailable)', discount:'discount', vmiMatch:'✓ Items total matches VMI', vmiDiff:'⚠️ Items total differs from VMI', vmiOpen:'Open in VMI', vmiDup:'This receipt is already saved', saveAnyway:'💾 Save anyway', vmiFetched:'Verified with VMI', vmiOffline:'No internet — VMI data was not fetched (the QR code is saved)', withVat:'Total incl. VAT', noVat:'Total excl. VAT', vatAmt:'VAT', receiptNo:'Receipt no.', address:'Address', items:'Products', fullText:'Full receipt text', otherItems:'Other / unrecognized', total:'Total', noItems:'This transaction has no product breakdown — it did not come from a receipt scan.', details:'Transaction details', removeItem:'Remove item', itemsCount:'items', scanHintLive:'Take a photo of the whole receipt — AI reads every product, price and discount, and the QR code at the bottom is checked with VMI (store, address, total). The photo itself is deleted right away.', scanCtaQr:'Take a photo of the receipt', scanSubQr:'AI reads the products, the QR code is checked with VMI', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
+    ai: { updated:'Updated:', pending:'Gathering data — the first analysis appears once you close or switch away from the app.', downloadingNative:'Downloading the AI model (1.6 GB, only once — Wi-Fi recommended)…', preparing:'Preparing the AI model (first run only)…', lowmem:'This phone does not have enough RAM for the AI model (about 6 GB needed).', missing:'This version of the app has no built-in AI model.', nospace:'Not enough free storage on the phone (about 1.7 GB needed).', introNative:'The AI model is built into the app and runs entirely on this device — offline, nothing leaves the device.', title:'AI Assistant (local, offline)', intro:'Analyzes your data directly on this device — nothing is sent to the internet. First run downloads a small AI model (~600 MB–1 GB), then it works offline.', analyzeBtn:'🤖 Analyze my finances', downloading:'Downloading AI model...', loading:'Starting model...', thinking:'Analyzing...', unsupported:'This device/browser does not support local AI (no WebGPU). Try a newer computer or phone.', error:'Something went wrong starting the AI: ', noData:'Add a few transactions so the AI has something to analyze.', ready:'Model ready ✓' },
+    receipts: { noGroup:'No group', noGroupNote:'This will be saved without a group — you can add one now or later, from the transaction details.', noMatchNote:'No matching group found for “{store}” — pick one below or save without a group. You can add a keyword in the Groups tab.', matchNote:'Recognized “{store}” and matched it to the {group} group by keyword.', autoNote:'This group has <b>auto-add</b> turned on — in the full version AI would save this without asking.', confirmNote:'This group needs your confirmation before saving.', changeGroup:'Change group', aiBackground:'🤖 AI is working in the background — you can save or leave', aiFinished:'🤖 AI finished the receipt:', vmiNotFound:'Receipt not found in VMI', aiNeedModel:'🤖 To let AI read products, download the model once in the AI Assistant tab', aiReading:'🤖 AI is reading the receipt…', aiDone:'🤖 AI read the receipt', aiOff:'Automatic reading (AI unavailable)', discount:'discount', vmiMatch:'✓ Items total matches VMI', vmiDiff:'⚠️ Items total differs from VMI', vmiOpen:'Open in VMI', vmiDup:'This receipt is already saved', saveAnyway:'💾 Save anyway', vmiFetched:'Verified with VMI', vmiOffline:'No internet — VMI data was not fetched (the QR code is saved)', withVat:'Total incl. VAT', noVat:'Total excl. VAT', vatAmt:'VAT', receiptNo:'Receipt no.', address:'Address', items:'Products', fullText:'Full receipt text', otherItems:'Other / unrecognized', total:'Total', noItems:'This transaction has no product breakdown — it did not come from a receipt scan.', details:'Transaction details', removeItem:'Remove item', itemsCount:'items', scanHintLive:'Take a photo of the whole receipt — AI reads every product, price and discount, and the QR code at the bottom is checked with VMI (store, address, total). The photo itself is deleted right away.', scanCtaQr:'Take a photo of the receipt', scanSubQr:'AI reads the products, the QR code is checked with VMI', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
     cards: { myCards:'Cards', allTogether:'All', title:'Bank cards', hint:'Add your cards and pick one — new transactions will only be saved to the selected card. The "All" tab shows the total across every card at once.', newCard:'New card', newCardTitle:'New card', cardName:'Card name', createCard:'Create card', needName:'Enter a card name', createdToast:'Card created', showing:'Showing:', showingAll:'Showing: all cards', noCard:'no card', allBalanceLabel:'Combined balance across all cards' },
     rates: { title:'Exchange rates (1 EUR =)', refreshNow:'Refresh now', lastSync:'Last sync: ', fetchFailed:"Couldn't fetch current rates (no connection) — using previously saved ones.", newDayBanner:'New day — check and update exchange rates.' },
     data: { title:'Data', resetAll:'Clear all data' },
@@ -1326,12 +1411,12 @@ const TRANSLATIONS = {
     months: { short:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'] }
   },
   ru: {
-    settings: { appearance:'Внешний вид', personalization:'Персонализация', wallpaperSync:'Фон на разных устройствах', wallpaperSyncSame:'Одинаковый', wallpaperSyncDifferent:'Раздельный', wallpaperSyncNote:'Касается фона, палитры цветов и эффекта стекла. Требуется вход в аккаунт.', autoLightDark:'Автоматически светлая/тёмная (по системе)', bgPalette:'Фон — набор цветов', systemColorNote:'системный цвет (телефона/компьютера), если доступен', appIconAndroid:'Значок приложения (Android)', language:'Язык', customBgColors:'Свои цвета фона', color1:'Цвет 1', color2:'Цвет 2', color3:'Цвет 3', apply:'Применить', bgIntensity:'Интенсивность фона', bgAnimation:'Анимация фона', glassEffect:'Эффект стекла (liquid glass)', androidOnly:'Доступно только в приложении для Android.', autoSystemColor:'Автоматически (системный цвет)' },
+    settings: { title:'Настройки', tileAppearance:'Внешний вид', tileBackground:'Фон и цвет', tileAnimation:'Анимации', tileIcon:'Значок приложения', tileLanguage:'Язык', tileSync:'Синхронизация', appearance:'Внешний вид', personalization:'Персонализация', wallpaperSync:'Фон на разных устройствах', wallpaperSyncSame:'Одинаковый', wallpaperSyncDifferent:'Раздельный', wallpaperSyncNote:'Касается фона, палитры цветов и эффекта стекла. Требуется вход в аккаунт.', autoLightDark:'Автоматически светлая/тёмная (по системе)', bgPalette:'Фон — набор цветов', systemColorNote:'системный цвет (телефона/компьютера), если доступен', appIconAndroid:'Значок приложения (Android)', language:'Язык', customBgColors:'Свои цвета фона', color1:'Цвет 1', color2:'Цвет 2', color3:'Цвет 3', apply:'Применить', bgIntensity:'Интенсивность фона', bgAnimation:'Анимация фона', glassEffect:'Эффект стекла (liquid glass)', androidOnly:'Доступно только в приложении для Android.', autoSystemColor:'Автоматически (системный цвет)' },
     speed: { slow:'Медленная', normal:'Обычная', fast:'Быстрая', off:'Выключена' },
     glass: { off:'Выключен', max:'Максимальный' },
     theme: { change:'Сменить тему' },
-    auth: { email:'Эл. почта', emailPlaceholder:'you@example.com', password:'Пароль', passwordPlaceholder:'минимум 6 символов', login:'Войти', register:'Зарегистрироваться', syncActive:'Синхронизация: активна ✓', logout:'Выйти', syncUnavailable:'Синхронизация недоступна.',
-      err: { emailInUse:'Этот адрес уже зарегистрирован.', invalidEmail:'Неверный адрес эл. почты.', weakPassword:'Пароль должен содержать не менее 6 символов.', wrongPassword:'Неверный пароль.', userNotFound:'Аккаунт с этим адресом не найден.', invalidCredential:'Неверный адрес эл. почты или пароль.', generic:'Ошибка: ' } },
+    auth: { forgotPassword:'Забыли пароль?', otherAccounts:'Другие аккаунты', resetSending:'Отправляю ссылку для сброса пароля…', resetSent:'Ссылка для сброса пароля отправлена — проверьте почту.', email:'Эл. почта', emailPlaceholder:'you@example.com', password:'Пароль', passwordPlaceholder:'минимум 6 символов', login:'Войти', register:'Зарегистрироваться', syncActive:'Синхронизация: активна ✓', logout:'Выйти', syncUnavailable:'Синхронизация недоступна.',
+      err: { needEmailForReset:'Сначала укажите e-mail, на который отправить ссылку.', emailInUse:'Этот адрес уже зарегистрирован.', invalidEmail:'Неверный адрес эл. почты.', weakPassword:'Пароль должен содержать не менее 6 символов.', wrongPassword:'Неверный пароль.', userNotFound:'Аккаунт с этим адресом не найден.', invalidCredential:'Неверный адрес эл. почты или пароль.', generic:'Ошибка: ' } },
     balance: { total:'Общий баланс', toggleVisibility:'Показать/скрыть баланс' },
     currency: { pickerTitle:'Нажмите или проведите, чтобы изменить валюту' },
     tabs: { add:'Добавить', debts:'Долги', stats:'Статистика', settings:'Курсы', receipts:'Чеки', aiAssistant:'AI-ассистент' },
@@ -1339,7 +1424,7 @@ const TRANSLATIONS = {
     type: { income:'Доход', expense:'Расход' },
     amount: { label:'Сумма' },
     desc: { label:'Описание (необязательно)', placeholder:'напр. зарплата, покупки...' },
-    action: { add:'Добавить', fullscreen:'Полный экран', toggle:'Свернуть/развернуть', close:'Закрыть' },
+    action: { back:'Назад', add:'Добавить', fullscreen:'Полный экран', toggle:'Свернуть/развернуть', close:'Закрыть' },
     section: { recentTx:'Последние операции', debtList:'Список долгов' },
     empty: { noTx:'Нет операций', noDebts:'Нет долгов' },
     debt: { iOwe:'Я должен(на)', owedToMe:'Мне должны', type: { owe:'Я отдаю', owed:'Мне отдают' }, person:'Человек', personPlaceholder:'напр. Катя', dueDate:'Срок возврата (необязательно)', descPlaceholder:'напр. за билеты' },
@@ -1347,8 +1432,8 @@ const TRANSLATIONS = {
     period: { day:'Дни', week:'Недели', month:'Месяцы', year:'Кварталы', searchDay:'Перейти к дню', searchWeek:'Перейти к неделе', searchMonth:'Перейти к месяцу', searchYear:'Перейти к году', yearPlaceholder:'напр. 2026', weekLabel:'Неделя {week}, {year} ({from}–{to})' },
     chart: { bar:'Столбчатый', line:'Линейный', pie:'Круговой', percent:'Процентный', preview:'Просмотр', incomeVsExpense:'Доходы и расходы (выбранный период)', percentShare:'Доля %' },
     update: { ready:'Новая версия приложения готова', restart:'Перезапустить' },
-    ai: { downloadingNative:'Загружаю AI-модель (1,6 ГБ, только один раз — лучше через Wi-Fi)…', preparing:'Подготавливаю AI-модель (только при первом запуске)…', lowmem:'На этом телефоне недостаточно ОЗУ для AI-модели (нужно около 6 ГБ).', missing:'В этой версии приложения нет встроенной AI-модели.', nospace:'Недостаточно свободного места в телефоне (нужно около 1,7 ГБ).', introNative:'AI-модель встроена в приложение и работает полностью на этом устройстве — без интернета, ничего не покидает устройство.', title:'AI-ассистент (локально, офлайн)', intro:'Анализирует ваши данные прямо на этом устройстве — ничего не отправляется в интернет. При первом запуске загружается небольшая AI-модель (около 600 МБ–1 ГБ), затем работает офлайн.', analyzeBtn:'🤖 Проанализировать мои финансы', downloading:'Загрузка AI-модели...', loading:'Запуск модели...', thinking:'Анализирую...', unsupported:'Это устройство/браузер не поддерживает локальный AI (нет WebGPU). Попробуйте на более новом компьютере или телефоне.', error:'Не удалось запустить AI: ', noData:'Добавьте несколько транзакций, чтобы AI мог их проанализировать.', ready:'Модель готова ✓' },
-    receipts: { aiNeedModel:'🤖 Чтобы AI читал товары, один раз загрузите модель во вкладке AI-ассистент', aiReading:'🤖 AI читает чек…', aiDone:'🤖 AI прочитал чек', aiOff:'Автоматическое чтение (AI недоступен)', discount:'скидка', vmiMatch:'✓ Сумма товаров совпадает с VMI', vmiDiff:'⚠️ Сумма товаров отличается от VMI', vmiOpen:'Открыть в VMI', vmiDup:'Этот чек уже сохранён', saveAnyway:'💾 Всё равно сохранить', vmiFetched:'Проверено в VMI', vmiOffline:'Нет интернета — данные VMI не загружены (QR-код сохранён)', withVat:'Сумма с НДС', noVat:'Сумма без НДС', vatAmt:'НДС', receiptNo:'№ чека', address:'Адрес', items:'Товары', fullText:'Полный текст чека', otherItems:'Прочее / не распознано', total:'Итого', noItems:'У этой операции нет разбивки по товарам — она не из скана чека.', details:'Детали операции', removeItem:'Удалить позицию', itemsCount:'поз.', scanHintLive:'Сфотографируйте весь чек — AI прочитает каждый товар, цену и скидку, а QR-код внизу проверит в VMI магазин, адрес и сумму. Само фото сразу удаляется.', scanCtaQr:'Сфотографировать чек', scanSubQr:'AI прочитает товары, QR-код проверит VMI', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
+    ai: { updated:'Обновлено:', pending:'Собираю данные — первый анализ появится, когда вы закроете приложение или переключитесь на другое.', downloadingNative:'Загружаю AI-модель (1,6 ГБ, только один раз — лучше через Wi-Fi)…', preparing:'Подготавливаю AI-модель (только при первом запуске)…', lowmem:'На этом телефоне недостаточно ОЗУ для AI-модели (нужно около 6 ГБ).', missing:'В этой версии приложения нет встроенной AI-модели.', nospace:'Недостаточно свободного места в телефоне (нужно около 1,7 ГБ).', introNative:'AI-модель встроена в приложение и работает полностью на этом устройстве — без интернета, ничего не покидает устройство.', title:'AI-ассистент (локально, офлайн)', intro:'Анализирует ваши данные прямо на этом устройстве — ничего не отправляется в интернет. При первом запуске загружается небольшая AI-модель (около 600 МБ–1 ГБ), затем работает офлайн.', analyzeBtn:'🤖 Проанализировать мои финансы', downloading:'Загрузка AI-модели...', loading:'Запуск модели...', thinking:'Анализирую...', unsupported:'Это устройство/браузер не поддерживает локальный AI (нет WebGPU). Попробуйте на более новом компьютере или телефоне.', error:'Не удалось запустить AI: ', noData:'Добавьте несколько транзакций, чтобы AI мог их проанализировать.', ready:'Модель готова ✓' },
+    receipts: { noGroup:'Без группы', noGroupNote:'Сохраню без группы — вы можете добавить её сейчас или позже, в деталях операции.', noMatchNote:'Не нашёл подходящую группу для «{store}» — выберите ниже или сохраните без группы. Можно добавить ключевое слово во вкладке Группы.', matchNote:'Распознано «{store}» и сопоставлено с группой {group} по ключевому слову.', autoNote:'В этой группе включено <b>авто-добавление</b> — в полной версии AI сохранил бы это без вопросов.', confirmNote:'Эта группа требует вашего подтверждения перед сохранением.', changeGroup:'Изменить группу', aiBackground:'🤖 AI работает в фоне — можно сохранить или выйти', aiFinished:'🤖 AI закончил чек:', vmiNotFound:'Чек не найден в VMI', aiNeedModel:'🤖 Чтобы AI читал товары, один раз загрузите модель во вкладке AI-ассистент', aiReading:'🤖 AI читает чек…', aiDone:'🤖 AI прочитал чек', aiOff:'Автоматическое чтение (AI недоступен)', discount:'скидка', vmiMatch:'✓ Сумма товаров совпадает с VMI', vmiDiff:'⚠️ Сумма товаров отличается от VMI', vmiOpen:'Открыть в VMI', vmiDup:'Этот чек уже сохранён', saveAnyway:'💾 Всё равно сохранить', vmiFetched:'Проверено в VMI', vmiOffline:'Нет интернета — данные VMI не загружены (QR-код сохранён)', withVat:'Сумма с НДС', noVat:'Сумма без НДС', vatAmt:'НДС', receiptNo:'№ чека', address:'Адрес', items:'Товары', fullText:'Полный текст чека', otherItems:'Прочее / не распознано', total:'Итого', noItems:'У этой операции нет разбивки по товарам — она не из скана чека.', details:'Детали операции', removeItem:'Удалить позицию', itemsCount:'поз.', scanHintLive:'Сфотографируйте весь чек — AI прочитает каждый товар, цену и скидку, а QR-код внизу проверит в VMI магазин, адрес и сумму. Само фото сразу удаляется.', scanCtaQr:'Сфотографировать чек', scanSubQr:'AI прочитает товары, QR-код проверит VMI', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
     cards: { myCards:'Карты', allTogether:'Все', title:'Банковские карты', hint:'Добавьте свои карты и выберите одну — новые операции будут сохраняться только на выбранную карту. Вкладка «Все» покажет сумму по всем картам сразу.', newCard:'Новая карта', newCardTitle:'Новая карта', cardName:'Название карты', createCard:'Создать карту', needName:'Укажите название карты', createdToast:'Карта создана', showing:'Показываю:', showingAll:'Показываю: все карты', noCard:'без карты', allBalanceLabel:'Общий баланс по всем картам' },
     rates: { title:'Курсы валют (1 EUR =)', refreshNow:'Обновить сейчас', lastSync:'Последняя синхронизация: ', fetchFailed:'Не удалось получить текущие курсы (нет соединения) — используются ранее сохранённые.', newDayBanner:'Новый день — проверьте и обновите курсы валют.' },
     data: { title:'Данные', resetAll:'Очистить все данные' },
@@ -1360,12 +1445,12 @@ const TRANSLATIONS = {
     months: { short:['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'] }
   },
   lt: {
-    settings: { appearance:'Išvaizda', personalization:'Personalizavimas', wallpaperSync:'Fonas tarp įrenginių', wallpaperSyncSame:'Vienodas', wallpaperSyncDifferent:'Atskiras', wallpaperSyncNote:'Taikoma fonui, spalvų paletei ir stiklo efektui. Reikalingas prisijungimas.', autoLightDark:'Automatiškai šviesi/tamsi (pagal sistemą)', bgPalette:'Fonas — spalvų rinkinys', systemColorNote:'sistemos spalva (telefono/kompiuterio), kai pasiekiama', appIconAndroid:'Programėlės piktograma (Android)', language:'Kalba', customBgColors:'Pasirinktinės fono spalvos', color1:'Spalva 1', color2:'Spalva 2', color3:'Spalva 3', apply:'Taikyti', bgIntensity:'Fono intensyvumas', bgAnimation:'Fono animacija', glassEffect:'Stiklo efektas (liquid glass)', androidOnly:'Pasiekiama tik Android programėlėje.', autoSystemColor:'Automatinis (sistemos spalva)' },
+    settings: { title:'Nustatymai', tileAppearance:'Išvaizda', tileBackground:'Fonas ir spalva', tileAnimation:'Animacijos', tileIcon:'Programėlės piktograma', tileLanguage:'Kalba', tileSync:'Sinchronizavimas', appearance:'Išvaizda', personalization:'Personalizavimas', wallpaperSync:'Fonas tarp įrenginių', wallpaperSyncSame:'Vienodas', wallpaperSyncDifferent:'Atskiras', wallpaperSyncNote:'Taikoma fonui, spalvų paletei ir stiklo efektui. Reikalingas prisijungimas.', autoLightDark:'Automatiškai šviesi/tamsi (pagal sistemą)', bgPalette:'Fonas — spalvų rinkinys', systemColorNote:'sistemos spalva (telefono/kompiuterio), kai pasiekiama', appIconAndroid:'Programėlės piktograma (Android)', language:'Kalba', customBgColors:'Pasirinktinės fono spalvos', color1:'Spalva 1', color2:'Spalva 2', color3:'Spalva 3', apply:'Taikyti', bgIntensity:'Fono intensyvumas', bgAnimation:'Fono animacija', glassEffect:'Stiklo efektas (liquid glass)', androidOnly:'Pasiekiama tik Android programėlėje.', autoSystemColor:'Automatinis (sistemos spalva)' },
     speed: { slow:'Lėta', normal:'Normali', fast:'Greita', off:'Išjungta' },
     glass: { off:'Išjungtas', max:'Maksimalus' },
     theme: { change:'Keisti temą' },
-    auth: { email:'El. paštas', emailPlaceholder:'tu@pavyzdys.lt', password:'Slaptažodis', passwordPlaceholder:'bent 6 simboliai', login:'Prisijungti', register:'Registruotis', syncActive:'Sinchronizavimas: aktyvus ✓', logout:'Atsijungti', syncUnavailable:'Sinchronizavimas nepasiekiamas.',
-      err: { emailInUse:'Šis el. paštas jau užregistruotas.', invalidEmail:'Neteisingas el. pašto adresas.', weakPassword:'Slaptažodis turi būti bent 6 simbolių.', wrongPassword:'Neteisingas slaptažodis.', userNotFound:'Paskyra su šiuo el. paštu nerasta.', invalidCredential:'Neteisingas el. paštas arba slaptažodis.', generic:'Klaida: ' } },
+    auth: { forgotPassword:'Pamiršote slaptažodį?', otherAccounts:'Kitos paskyros', resetSending:'Siunčiu slaptažodžio atkūrimo nuorodą…', resetSent:'Nuoroda išsiųsta — patikrinkite paštą.', email:'El. paštas', emailPlaceholder:'tu@pavyzdys.lt', password:'Slaptažodis', passwordPlaceholder:'bent 6 simboliai', login:'Prisijungti', register:'Registruotis', syncActive:'Sinchronizavimas: aktyvus ✓', logout:'Atsijungti', syncUnavailable:'Sinchronizavimas nepasiekiamas.',
+      err: { needEmailForReset:'Pirmiausia įveskite el. paštą, kuriuo siųsti nuorodą.', emailInUse:'Šis el. paštas jau užregistruotas.', invalidEmail:'Neteisingas el. pašto adresas.', weakPassword:'Slaptažodis turi būti bent 6 simbolių.', wrongPassword:'Neteisingas slaptažodis.', userNotFound:'Paskyra su šiuo el. paštu nerasta.', invalidCredential:'Neteisingas el. paštas arba slaptažodis.', generic:'Klaida: ' } },
     balance: { total:'Bendras balansas', toggleVisibility:'Rodyti/slėpti balansą' },
     currency: { pickerTitle:'Bakstelėkite arba perbraukite, kad pakeistumėte valiutą' },
     tabs: { add:'Pridėti', debts:'Skolos', stats:'Statistika', settings:'Kursai', receipts:'Kvitai', aiAssistant:'AI asistentas' },
@@ -1373,7 +1458,7 @@ const TRANSLATIONS = {
     type: { income:'Pajamos', expense:'Išlaidos' },
     amount: { label:'Suma' },
     desc: { label:'Aprašymas (neprivaloma)', placeholder:'pvz. atlyginimas, pirkiniai...' },
-    action: { add:'Pridėti', fullscreen:'Visas ekranas', toggle:'Suskleisti/išskleisti', close:'Uždaryti' },
+    action: { back:'Atgal', add:'Pridėti', fullscreen:'Visas ekranas', toggle:'Suskleisti/išskleisti', close:'Uždaryti' },
     section: { recentTx:'Naujausios operacijos', debtList:'Skolų sąrašas' },
     empty: { noTx:'Nėra operacijų', noDebts:'Nėra skolų' },
     debt: { iOwe:'Aš skolingas(-a)', owedToMe:'Man skolingi', type: { owe:'Aš grąžinu', owed:'Man grąžina' }, person:'Asmuo', personPlaceholder:'pvz. Kotryna', dueDate:'Grąžinimo terminas (neprivaloma)', descPlaceholder:'pvz. už bilietus' },
@@ -1381,8 +1466,8 @@ const TRANSLATIONS = {
     period: { day:'Dienos', week:'Savaitės', month:'Mėnesiai', year:'Ketvirčiai', searchDay:'Eiti į dieną', searchWeek:'Eiti į savaitę', searchMonth:'Eiti į mėnesį', searchYear:'Eiti į metus', yearPlaceholder:'pvz. 2026', weekLabel:'{week} savaitė, {year} ({from}–{to})' },
     chart: { bar:'Stulpelinė', line:'Linijinė', pie:'Skritulinė', percent:'Procentinė', preview:'Peržiūra', incomeVsExpense:'Pajamos ir išlaidos (pasirinktas laikotarpis)', percentShare:'Dalis %' },
     update: { ready:'Nauja programos versija paruošta', restart:'Paleisti iš naujo' },
-    ai: { downloadingNative:'Atsisiunčiu AI modelį (1,6 GB, tik kartą — geriau per Wi-Fi)…', preparing:'Ruošiu AI modelį (tik pirmą kartą)…', lowmem:'Šiame telefone per mažai RAM AI modeliui (reikia apie 6 GB).', missing:'Šioje programos versijoje nėra įdiegto AI modelio.', nospace:'Telefone per mažai laisvos vietos (reikia apie 1,7 GB).', introNative:'AI modelis įdiegtas programoje ir veikia tik šiame įrenginyje — be interneto, niekas neišeina iš įrenginio.', title:'AI asistentas (vietoje, neprisijungus)', intro:'Analizuoja jūsų duomenis tiesiogiai šiame įrenginyje — niekas nesiunčiama į internetą. Pirmą kartą paleidus atsisiunčiamas mažas AI modelis (apie 600 MB–1 GB), vėliau veikia neprisijungus.', analyzeBtn:'🤖 Analizuoti mano finansus', downloading:'Atsisiunčiamas AI modelis...', loading:'Paleidžiamas modelis...', thinking:'Analizuoju...', unsupported:'Šis įrenginys/naršyklė nepalaiko vietinio AI (nėra WebGPU). Bandykite naujesniame kompiuteryje ar telefone.', error:'Nepavyko paleisti AI: ', noData:'Pridėkite kelias operacijas, kad AI turėtų ką analizuoti.', ready:'Modelis paruoštas ✓' },
-    receipts: { aiNeedModel:'🤖 Kad AI skaitytų prekes, vieną kartą atsisiųskite modelį skiltyje AI asistentas', aiReading:'🤖 AI skaito kvitą…', aiDone:'🤖 AI nuskaitė kvitą', aiOff:'Automatinis nuskaitymas (AI nepasiekiamas)', discount:'nuolaida', vmiMatch:'✓ Prekių suma sutampa su VMI', vmiDiff:'⚠️ Prekių suma skiriasi nuo VMI', vmiOpen:'Atidaryti VMI', vmiDup:'Šis kvitas jau išsaugotas', saveAnyway:'💾 Vis tiek išsaugoti', vmiFetched:'Patikrinta VMI', vmiOffline:'Nėra interneto — VMI duomenys neparsiųsti (QR kodas išsaugotas)', withVat:'Suma su PVM', noVat:'Suma be PVM', vatAmt:'PVM', receiptNo:'Kvito nr.', address:'Adresas', items:'Prekės', fullText:'Visas kvito tekstas', otherItems:'Kita / neatpažinta', total:'Suma', noItems:'Ši operacija neturi prekių sąrašo — ji ne iš kvito skenavimo.', details:'Operacijos informacija', removeItem:'Pašalinti prekę', itemsCount:'prek.', scanHintLive:'Nufotografuokite visą kvitą — AI nuskaitys kiekvieną prekę, kainą ir nuolaidą, o QR kodą apačioje patikrins VMI (parduotuvė, adresas, suma). Pati nuotrauka iškart ištrinama.', scanCtaQr:'Nufotografuoti kvitą', scanSubQr:'AI nuskaitys prekes, QR kodą patikrins VMI', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
+    ai: { updated:'Atnaujinta:', pending:'Renku duomenis — pirma analizė atsiras, kai uždarysite arba pereisite į kitą programą.', downloadingNative:'Atsisiunčiu AI modelį (1,6 GB, tik kartą — geriau per Wi-Fi)…', preparing:'Ruošiu AI modelį (tik pirmą kartą)…', lowmem:'Šiame telefone per mažai RAM AI modeliui (reikia apie 6 GB).', missing:'Šioje programos versijoje nėra įdiegto AI modelio.', nospace:'Telefone per mažai laisvos vietos (reikia apie 1,7 GB).', introNative:'AI modelis įdiegtas programoje ir veikia tik šiame įrenginyje — be interneto, niekas neišeina iš įrenginio.', title:'AI asistentas (vietoje, neprisijungus)', intro:'Analizuoja jūsų duomenis tiesiogiai šiame įrenginyje — niekas nesiunčiama į internetą. Pirmą kartą paleidus atsisiunčiamas mažas AI modelis (apie 600 MB–1 GB), vėliau veikia neprisijungus.', analyzeBtn:'🤖 Analizuoti mano finansus', downloading:'Atsisiunčiamas AI modelis...', loading:'Paleidžiamas modelis...', thinking:'Analizuoju...', unsupported:'Šis įrenginys/naršyklė nepalaiko vietinio AI (nėra WebGPU). Bandykite naujesniame kompiuteryje ar telefone.', error:'Nepavyko paleisti AI: ', noData:'Pridėkite kelias operacijas, kad AI turėtų ką analizuoti.', ready:'Modelis paruoštas ✓' },
+    receipts: { noGroup:'Be grupės', noGroupNote:'Išsaugosiu be grupės — galite ją priskirti dabar arba vėliau, operacijos informacijoje.', noMatchNote:'Neradau tinkamos grupės „{store}“ — pasirinkite žemiau arba išsaugokite be grupės. Raktažodį galite pridėti skiltyje Grupės.', matchNote:'Atpažinta „{store}“ ir priskirta grupei {group} pagal raktažodį.', autoNote:'Šioje grupėje įjungtas <b>auto-pridėjimas</b> — pilnoje versijoje AI tai išsaugotų neklausdama.', confirmNote:'Ši grupė reikalauja jūsų patvirtinimo prieš išsaugant.', changeGroup:'Keisti grupę', aiBackground:'🤖 AI dirba fone — galite išsaugoti arba išeiti', aiFinished:'🤖 AI baigė kvitą:', vmiNotFound:'Kvitas VMI nerastas', aiNeedModel:'🤖 Kad AI skaitytų prekes, vieną kartą atsisiųskite modelį skiltyje AI asistentas', aiReading:'🤖 AI skaito kvitą…', aiDone:'🤖 AI nuskaitė kvitą', aiOff:'Automatinis nuskaitymas (AI nepasiekiamas)', discount:'nuolaida', vmiMatch:'✓ Prekių suma sutampa su VMI', vmiDiff:'⚠️ Prekių suma skiriasi nuo VMI', vmiOpen:'Atidaryti VMI', vmiDup:'Šis kvitas jau išsaugotas', saveAnyway:'💾 Vis tiek išsaugoti', vmiFetched:'Patikrinta VMI', vmiOffline:'Nėra interneto — VMI duomenys neparsiųsti (QR kodas išsaugotas)', withVat:'Suma su PVM', noVat:'Suma be PVM', vatAmt:'PVM', receiptNo:'Kvito nr.', address:'Adresas', items:'Prekės', fullText:'Visas kvito tekstas', otherItems:'Kita / neatpažinta', total:'Suma', noItems:'Ši operacija neturi prekių sąrašo — ji ne iš kvito skenavimo.', details:'Operacijos informacija', removeItem:'Pašalinti prekę', itemsCount:'prek.', scanHintLive:'Nufotografuokite visą kvitą — AI nuskaitys kiekvieną prekę, kainą ir nuolaidą, o QR kodą apačioje patikrins VMI (parduotuvė, adresas, suma). Pati nuotrauka iškart ištrinama.', scanCtaQr:'Nufotografuoti kvitą', scanSubQr:'AI nuskaitys prekes, QR kodą patikrins VMI', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
     cards: { myCards:'Kortelės', allTogether:'Visos', title:'Banko kortelės', hint:'Pridėkite savo korteles ir pasirinkite vieną — naujos operacijos bus išsaugomos tik pasirinktoje kortelėje. Skirtukas „Visos“ parodys visų kortelių sumą kartu.', newCard:'Nauja kortelė', newCardTitle:'Nauja kortelė', cardName:'Kortelės pavadinimas', createCard:'Sukurti kortelę', needName:'Įveskite kortelės pavadinimą', createdToast:'Kortelė sukurta', showing:'Rodoma:', showingAll:'Rodoma: visos kortelės', noCard:'be kortelės', allBalanceLabel:'Bendras balansas iš visų kortelių' },
     rates: { title:'Valiutų kursai (1 EUR =)', refreshNow:'Atnaujinti dabar', lastSync:'Paskutinis sinchronizavimas: ', fetchFailed:'Nepavyko gauti naujausių kursų (nėra ryšio) — naudojami anksčiau išsaugoti.', newDayBanner:'Nauja diena — patikrinkite ir atnaujinkite valiutų kursus.' },
     data: { title:'Duomenys', resetAll:'Išvalyti visus duomenis' },
@@ -2341,6 +2426,7 @@ function renderAll() {
   renderChart();
   renderCards();
   if (typeof renderReceiptRecent === 'function' && state.receiptGroups) renderReceiptRecent();
+  if (typeof renderAiTab === 'function') renderAiTab();
 }
 
 // --- Event wiring ---
@@ -2528,6 +2614,7 @@ document.querySelectorAll('#appPage2 .tab').forEach(tab => {
       document.getElementById('tab-' + name).classList.toggle('hidden', name !== tab.dataset.tab2);
     });
     if (tab.dataset.tab2 === 'receipts') renderReceiptGroups();
+    if (tab.dataset.tab2 === 'ai') renderAiTab();
   });
 });
 
@@ -2546,7 +2633,7 @@ document.querySelectorAll('#appPage2 .tab').forEach(tab => {
   // recalculate the style of every element inside on each finger move — that was the jitter),
   // and at most once per frame.
   let pendingX = null, rafId = 0;
-  const writeX = (px) => { const v = 'translate3d(' + px + 'px,0,0)'; pages.forEach(pg => { pg.style.transform = v; }); };
+  const writeX = (px) => { const v = 'translate3d(' + Math.round(px) + 'px,0,0)'; pages.forEach(pg => { pg.style.transform = v; }); };
   const setX = (px) => {
     pendingX = px;
     if (rafId) return;
@@ -2637,32 +2724,23 @@ document.querySelectorAll('#appPage2 .tab').forEach(tab => {
     if (suppressClick) { suppressClick = false; e.stopPropagation(); e.preventDefault(); }
   }, true);
 
-  // Trackpad two-finger swipe: pages follow the fingers 1:1, then settle.
-  // The leftover momentum of a finished swipe is ignored, but a NEW swipe (deltas growing again)
-  // is picked up immediately — no pause between quick switches.
-  let wg = null, wLockUntil = 0, wIdle = null, wLastAbs = 0;
-  const finishWheel = () => {
+  // Trackpad two-finger swipe: pages follow the fingers 1:1 for the whole physical gesture
+  // (including its momentum tail), then settle once, after ~120ms of silence. No mid-gesture
+  // "is this a new swipe" guessing — that heuristic was what caused the jitter/fly-off.
+  let wg = null, wIdle = null;
+  const endWheelGesture = () => {
     if (!wg) return;
     const g = wg; wg = null;
     wrap.classList.remove('pager-dragging');
     const s = g.samples, a = s[0], b = s[s.length - 1];
     const v = s.length > 1 && (b[1] - a[1]) > 0 ? (b[0] - a[0]) / (b[1] - a[1]) : 0;
     settle(g.x, v * 0.6);
-    wLockUntil = performance.now() + 120;
   };
   wrap.addEventListener('wheel', (e) => {
     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
     e.preventDefault();
     const now = performance.now();
     const dX = e.deltaX * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? W() : 1);
-    const abs = Math.abs(dX);
-    if (now < wLockUntil) {
-      const newGesture = abs > 6 && abs > wLastAbs * 1.6;   // fingers moving again, not momentum dying out
-      wLastAbs = abs;
-      if (!newGesture) { wLockUntil = now + 120; return; }
-      wLockUntil = 0;
-    }
-    wLastAbs = abs;
     if (!wg) {
       wg = { base: currentX(), raw: 0, x: 0, samples: [] };
       wrap.classList.add('pager-dragging');
@@ -2672,12 +2750,10 @@ document.querySelectorAll('#appPage2 .tab').forEach(tab => {
     const x = rubber(Math.max(wg.base - W(), Math.min(wg.base + W(), wg.base + wg.raw)));
     wg.x = x;
     wg.samples.push([x, now]);
-    if (wg.samples.length > 6) wg.samples.shift();
+    if (wg.samples.length > 8) wg.samples.shift();
     setX(x);
     clearTimeout(wIdle);
-    // Past halfway to the next page: commit straight away
-    if (Math.abs(x - (-idx * W())) > W() * 0.5 && x <= 0 && x >= minX()) { finishWheel(); return; }
-    wIdle = setTimeout(finishWheel, 140);
+    wIdle = setTimeout(endWheelGesture, 120);
   }, { passive: false });
 
   dots.forEach(dot => dot.addEventListener('click', () => goTo(parseInt(dot.dataset.page, 10) || 0)));
@@ -3072,55 +3148,56 @@ async function aiChat(messages, opts) {
 }
 window.stashAI = { chat: aiChat, native: NATIVE_AI || DESKTOP_AI };
 
-if (NATIVE_AI || DESKTOP_AI) {
-  const intro = document.querySelector('[data-i18n="ai.intro"]');
-  if (intro) { intro.setAttribute('data-i18n', 'ai.introNative'); intro.textContent = t('ai.introNative'); }
+// ---- Runs by itself: no button. The advice is computed once the app is put in the background
+// (closed/switched away from) after the finances changed, and shown next time the AI tab is opened.
+let aiAutoRunning = false;
+function aiDataSignature() {
+  let inc = 0, exp = 0;
+  (state.transactions || []).forEach(tx => { if (tx.type === 'income') inc += tx.amountEUR || 0; else exp += tx.amountEUR || 0; });
+  return (state.transactions || []).length + ':' + inc.toFixed(2) + ':' + exp.toFixed(2) + ':' + (state.debts || []).length + ':' + (state.language || 'pl');
 }
-
-document.getElementById('aiAnalyzeBtn').addEventListener('click', async () => {
-  const btn = document.getElementById('aiAnalyzeBtn');
-  const resultBox = document.getElementById('aiResultBox');
-  if (aiLoading) return;
-
-  const summary = aiBuildFinanceSummary();
-  if (!summary) {
-    aiSetStatus(t('ai.noData'));
-    return;
+function renderAiTab() {
+  const box = document.getElementById('aiResultBox');
+  const status = document.getElementById('aiStatus');
+  if (!box || !status) return;
+  if (state.aiLastAnalysis && state.aiLastAnalysis.text) {
+    box.textContent = state.aiLastAnalysis.text;
+    box.classList.remove('hidden');
+    status.textContent = aiAutoRunning ? t('ai.thinking') : t('ai.updated') + ' ' + new Date(state.aiLastAnalysis.ts).toLocaleString(state.language || 'pl');
+  } else {
+    box.classList.add('hidden');
+    status.textContent = aiAutoRunning ? t('ai.thinking') : (aiBuildFinanceSummary() ? t('ai.pending') : t('ai.noData'));
   }
-
-  aiLoading = true;
-  btn.disabled = true;
-  resultBox.classList.add('hidden');
-  aiSetStatus(NATIVE_AI || DESKTOP_AI ? t('ai.loading') : t('ai.downloading'));
-  if (!NATIVE_AI && !DESKTOP_AI) aiSetProgress(0);
-
+}
+async function runAiAnalysisInBackground() {
+  if (aiAutoRunning) return;
+  const summary = aiBuildFinanceSummary();
+  if (!summary) return;
+  const sig = aiDataSignature();
+  if (state.aiLastAnalysis && state.aiLastAnalysis.dataSig === sig) return;   // nothing changed since last time
+  aiAutoRunning = true;
+  aiBgJobs++; renderAiBgPill(); renderAiTab();
   try {
     const messages = [
       { role: 'system', content: 'Jesteś pomocnym doradcą finansowym. Analizujesz dane budżetu domowego użytkownika i dajesz krótkie, konkretne porady (max 6-8 zdań, w punktach jeśli to pomaga). Nie wymyślaj liczb, których nie ma w danych. Odpowiadaj WYŁĄCZNIE w języku: ' + appLangName(state.language || 'pl') + '.' },
       { role: 'user', content: 'Oto moje dane finansowe:\n\n' + summary + '\n\nPrzeanalizuj je i daj mi praktyczne porady: na czym najbardziej tracę, czy oszczędzam wystarczająco, i co mogę poprawić.' }
     ];
-    const pending = aiChat(messages, { temperature: 0.6 });
-    // once the model is up, show "thinking" while it writes
-    if (NATIVE_AI) aiEnsureNative().then(() => { aiSetProgress(null); aiSetStatus(t('ai.thinking')); }).catch(() => {});
-    else if (DESKTOP_AI) aiEnsureDesktop().then(() => { aiSetProgress(null); aiSetStatus(t('ai.thinking')); }).catch(() => {});
-    else aiEnsureEngine().then(() => { aiSetProgress(null); aiSetStatus(t('ai.thinking')); }).catch(() => {});
-    const text = await pending;
-    resultBox.textContent = text;
-    resultBox.classList.remove('hidden');
-    aiSetStatus(t('ai.ready'));
+    const text = await aiChat(messages, { temperature: 0.6 });
+    state.aiLastAnalysis = { text, ts: Date.now(), dataSig: sig };
+    saveState();
   } catch (e) {
-    aiSetProgress(null);
-    const msg = e && e.message ? e.message : String(e);
-    if (msg === 'NO_WEBGPU') aiSetStatus(t('ai.unsupported'));
-    else if (msg.startsWith('NATIVE_LOWMEM')) aiSetStatus(t('ai.lowmem'));
-    else if (msg.startsWith('NATIVE_MISSING')) aiSetStatus(t('ai.missing'));
-    else if (msg.startsWith('NATIVE_NOSPACE')) aiSetStatus(t('ai.nospace'));
-    else { console.warn('AI error', e); aiSetStatus(t('ai.error') + msg.replace(/^NATIVE_ERROR:?\s*/, '')); }
+    console.warn('AI background analysis', e);
   } finally {
-    aiLoading = false;
-    btn.disabled = false;
+    aiAutoRunning = false;
+    aiBgJobs = Math.max(0, aiBgJobs - 1); renderAiBgPill(); renderAiTab();
   }
-});
+}
+// The moment the app is hidden (switched away from, or closed) is exactly when this should run —
+// it finishes in the background and is simply there, already written, next time the AI tab is opened.
+document.addEventListener('visibilitychange', () => { if (document.hidden) runAiAnalysisInBackground(); });
+window.addEventListener('pagehide', () => { runAiAnalysisInBackground(); });
+// First run a little after start-up too, so a first-time user doesn't have to background the app once first
+setTimeout(runAiAnalysisInBackground, 6000);
 
 // ============================================================
 // Skanowanie paragonów + grupy zakupów
@@ -3364,7 +3441,7 @@ function itemDisplayName(it) {
 }
 
 // ---- AI reads the receipt: products, prices, discounts, total (+ translation) ----
-async function aiReadReceipt(ocrText) {
+async function aiReadReceipt(ocrText, draft) {
   const text = String(ocrText || '').slice(0, 3000);
   const lang = state.language || 'pl';
   const target = lang === 'lt' ? 'polski' : appLangName(lang);
@@ -3386,7 +3463,7 @@ async function aiReadReceipt(ocrText) {
       'name = nazwa produktu dokładnie jak na paragonie (po litewsku). tr = ta nazwa przetłumaczona na język: ' + target + '. ' +
       'price = cena pozycji przed rabatem (za całą kupioną ilość). discount = rabat na tę pozycję, 0 jeśli brak. Liczby zapisuj z kropką.' +
       (hints.length ? ' Słowniczek słów z tego paragonu: ' + hints.join('; ') + '.' : '') },
-    { role: 'user', content: text }
+    { role: 'user', content: text + (draft && draft.length ? '\n\nWSTĘPNY ODCZYT (sprawdź, popraw nazwy, dodaj brakujące, NIE wymyślaj cen): ' + JSON.stringify(draft) : '') }
   ];
   const raw = await aiChat(messages, { temperature: 0.1 });
   const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
@@ -3397,8 +3474,12 @@ async function aiReadReceipt(ocrText) {
     const src = Array.isArray(j.items) ? j.items.filter(x => x && String(x.name || '').trim() && num(x.price) > 0)[i] : null;
     const tr = src && typeof src.tr === 'string' ? src.tr.trim().slice(0, 80) : '';
     return tr ? { ...it, tr, trLang } : it;
-  });
-  return { store: String(j.store || '').trim(), total: num(j.total) || null, items };
+  })
+    // no made-up amounts: a price (and a discount) must be printed on the receipt
+    .filter(it => priceOnReceipt(it.price, text))
+    .map(it => (it.discount && !priceOnReceipt(it.discount, text)) ? { ...it, discount: 0 } : it);
+  const total = num(j.total);
+  return { store: String(j.store || '').trim(), total: total && priceOnReceipt(total, text) ? total : null, items };
 }
 function demoReceiptText(d) {
   return d.store + '\n' + d.items.map(it => it.name + '   ' + it.price.toFixed(2).replace('.', ',')) .join('\n') +
@@ -3446,28 +3527,142 @@ function vmiAmount(v) {
   const n = parseFloat(last);
   return isNaN(n) ? null : n;
 }
-// Reads the text of the VMI page (loaded by the phone in the background) into fields
+// Reads the VMI page (kvitas.vmi.lt, loaded by the phone in the background).
+// The page shows label / value pairs, e.g.:
+//   APMOKĖTA SUMA (SU PVM) -> 7,90 Eur      MOKESČIŲ (PVM) SUMA -> 0,38 Eur
+//   KVITO NUMERIS -> 100589                 KVITO DATA IR LAIKAS -> 2026-09-21 18:07
+//   PARDAVĖJAS -> UAB ALG knygynai, 125940686   VIETA -> Vikingų g. 3, Vilniaus m., ...
 function parseVmiText(text) {
-  const out = { store: '', address: '', total: null, totalNoVat: null, vat: null, date: '' };
+  const out = { store: '', address: '', total: null, totalNoVat: null, vat: null, date: '', number: '', found: null };
   if (!text) return out;
-  const dm = String(text).match(/(20\d{2})[-.](\d{2})[-.](\d{2})(?:[ T](\d{2}:\d{2}(?::\d{2})?))?/);
-  if (dm) out.date = dm[1] + '-' + dm[2] + '-' + dm[3] + (dm[4] ? 'T' + dm[4] : '');
   const lines = String(text).split(/\n+/).map(l => l.trim()).filter(Boolean);
-  const valueAfter = (i, labelRe) => {
-    const rest = lines[i].replace(labelRe, '').replace(/^[\s:–-]+/, '').trim();
-    return rest || lines[i + 1] || '';
-  };
-  lines.forEach((line, i) => {
-    const n = normTxt(line);
-    let m;
-    if (!out.store && (m = n.match(/^(pardavejo pavadinimas|pardavejas|imones pavadinimas|imone|mokesciu moketojas|pavadinimas)\b/))) out.store = valueAfter(i, new RegExp('^.{' + m[0].length + '}'));
-    else if (!out.address && (m = n.match(/^(prekybos vietos adresas|pardavimo vietos adresas|prekybos vieta|adresas)\b/))) out.address = valueAfter(i, new RegExp('^.{' + m[0].length + '}'));
-    else if (out.totalNoVat == null && /be pvm/.test(n)) out.totalNoVat = vmiAmount(valueAfter(i, /^.*?be pvm/i));
-    else if (out.vat == null && /^pvm( suma)?\b/.test(n)) out.vat = vmiAmount(valueAfter(i, /^pvm( suma)?/i));
-    else if (out.total == null && /^(suma su pvm|kvito suma|bendra suma|moketina suma|suma)\b/.test(n) && !/be pvm/.test(n)) out.total = vmiAmount(valueAfter(i, /^[^\d]*/));
-  });
+  const all = normTxt(lines.join(' '));
+  if (/kvitas rastas/.test(all) && !/nerastas/.test(all)) out.found = true;
+  else if (/nerast/.test(all)) out.found = false;
+  const LABELS = [
+    ['total',   /^(apmoketa suma|moketina suma|kvito suma|bendra suma|suma su pvm)/],
+    ['vat',     /^(mokesciu \(pvm\) suma|mokesciu suma|pvm suma)/],
+    ['noVat',   /^(suma be pvm|be pvm)/],
+    ['number',  /^(kvito numeris|dokumento numeris)/],
+    ['date',    /^(kvito data ir laikas|kvito data|data ir laikas)/],
+    ['store',   /^(pardavejas|pardavejo pavadinimas|mokesciu moketojas)/],
+    ['address', /^(vieta|prekybos vieta|adresas|prekybos vietos adresas)/]
+  ];
+  const got = {};
+  for (let i = 0; i < lines.length; i++) {
+    const n = normTxt(lines[i]);
+    if (/^qr kodo duomenys/.test(n)) break;          // the page repeats everything below this heading
+    for (const [key, re] of LABELS) {
+      if (got[key]) continue;
+      const m = n.match(re);
+      if (!m) continue;
+      // value: rest of the same line after the label, or the next line
+      let v = lines[i].slice(m[0].length).replace(/^[\s:()A-Za-z]*?\)?\s*[:–-]?\s*/, '').trim();
+      if (!v || normTxt(v) === '(su pvm)') v = lines[i + 1] || '';
+      got[key] = v;
+      break;
+    }
+  }
+  if (got.total) out.total = vmiAmount(got.total);
+  if (got.vat) out.vat = vmiAmount(got.vat);
+  if (got.noVat) out.totalNoVat = vmiAmount(got.noVat);
+  if (out.totalNoVat == null && out.total != null && out.vat != null) out.totalNoVat = Math.round((out.total - out.vat) * 100) / 100;
+  if (got.number) out.number = got.number.replace(/[^\dA-Za-z-]/g, '');
+  if (got.date) {
+    const dm = got.date.match(/(20\d{2})[-.](\d{2})[-.](\d{2})(?:[ T](\d{2}:\d{2}(?::\d{2})?))?/);
+    if (dm) out.date = dm[1] + '-' + dm[2] + '-' + dm[3] + (dm[4] ? 'T' + dm[4] : '');
+  }
+  if (got.store) out.store = got.store
+    .replace(/,\s*\d{6,}\s*$/, '')                      // company code after the name
+    .replace(/^\s*(UAB|AB|MB|IĮ|VŠĮ|II)\s+/i, '').replace(/["„“”]/g, '').trim();
+  if (got.address) out.address = got.address.trim();
   return out;
 }
+
+// ---- Receipt text (read from the photo) -> products, prices, discounts, total ----
+// Written for Lithuanian receipts; runs in the app, so it can be improved with a normal update.
+const RC_TOTAL = /^(mok[eė]ti suapvalinus|mok[eė]ti|i[sš] viso|suma|viso|moketina|total|razem|do zaplaty)\b/;
+const RC_SKIP = /(pvm|mokestis|apskaitos|kvitas|kvito|kasa\b|kasinink|grynais|kortel|mok[eė]jim|gr[aą][zž]a|apvalinim|a\.p\.|s\/n|cr-|sm-|saugos|para[sš]as|kodas|d[eė]kojame|a[cč]i[uū]|pirkote|informacij|likutis|inv\.|nr\.|www\.|tel\.|telefon)/;
+const RC_DISCOUNT = /(nuolaid|akcij|rabat|discount)/;
+const RC_AMOUNT = /(?<![\d.,])(-?\d{1,5})\s?[.,]\s?(\d{2})(?![.,]?\d)(?!\s*%)/g;
+function rcAmounts(line) {
+  const out = [];
+  let m;
+  RC_AMOUNT.lastIndex = 0;
+  while ((m = RC_AMOUNT.exec(line))) out.push({ v: Math.abs(parseFloat(m[1] + '.' + m[2])), i: m.index });
+  return out;
+}
+function rcCleanName(s) {
+  return String(s)
+    .replace(/^\s*\d{8,14}\s*/, '')                                  // barcode before the name
+    .replace(/\d+(?:[.,]\d+)?\s*(?:kg|g|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|vnt|l))?/gi, ' ')
+    .replace(/\s+[A-E]\s*\*?\s*$/, '')                              // VAT class letter after the price
+    .replace(/[*#]+/g, ' ').replace(/\s{2,}/g, ' ')
+    .replace(/^[\s,.;:-]+|[\s,;:-]+$/g, '').trim().slice(0, 80);
+}
+function parseReceiptText(text) {
+  const rows = String(text || '').split(/\n+/).map(r => r.replace(/\s{2,}/g, '   ').trim()).filter(Boolean);
+  const res = { items: [], total: null, store: '', date: null };
+  // total: "Mokėti suapvalinus" wins over "Mokėti" / "Iš viso"
+  let totalIdx = -1;
+  rows.forEach((r, i) => {
+    const n = normTxt(r);
+    if (!RC_TOTAL.test(n) || /pvm|apvalinimo/.test(n)) return;
+    const am = rcAmounts(r);
+    if (!am.length) return;
+    const v = am[am.length - 1].v;
+    if (totalIdx < 0 || /suapvalinus/.test(n)) { res.total = v; if (totalIdx < 0) totalIdx = i; }
+  });
+  const dm = String(text || '').match(/(20\d{2})[-.](\d{2})[-.](\d{2})/);
+  if (dm) res.date = dm[1] + '-' + dm[2] + '-' + dm[3];
+  const end = totalIdx >= 0 ? totalIdx : rows.length;
+  let pending = '';
+  for (let i = 0; i < end; i++) {
+    const r = rows[i];
+    const n = normTxt(r);
+    if (/^\s*[a-e]\s+\d+[.,]\d+\s*%/.test(n) || /^t?0{3,}\w*$/i.test(r.replace(/\s/g, ''))) { pending = ''; continue; }  // tax rate line / barcode text
+    const am = rcAmounts(r);
+    if (RC_DISCOUNT.test(n)) {                                   // discount belongs to the previous product
+      if (am.length && res.items.length) {
+        const last = res.items[res.items.length - 1];
+        last.discount = Math.round(((last.discount || 0) + am[am.length - 1].v) * 100) / 100;
+      }
+      pending = '';
+      continue;
+    }
+    if (RC_SKIP.test(n) || RC_TOTAL.test(n)) { pending = ''; continue; }
+    if (am.length) {
+      const last = am[am.length - 1];
+      const namePart = rcCleanName(r.slice(0, last.i));
+      // a long name often wraps onto the next lines (it starts with a barcode), with the price at the end;
+      // "Obuoliai" + "0,845 kg x 1,49  1,26" -> the name is on the line before the price.
+      // Other lines without a price (shop name, address) are not glued to a product.
+      const wraps = pending && (/^\s*\d{8,14}\b/.test(pending) || !/[A-Za-zÀ-ž]{3,}/.test(namePart));
+      const name = rcCleanName((wraps ? pending + ' ' : '') + namePart);
+      if (/[A-Za-zÀ-ž]{2,}/.test(name) && last.v > 0 && last.v < 10000) res.items.push({ name, price: last.v, discount: 0 });
+      pending = '';
+    } else if (/[A-Za-zÀ-ž]{3,}/.test(r)) {
+      pending = (pending ? pending + ' ' : '') + r;
+      if (pending.length > 160) pending = r;
+    }
+  }
+  // shop name: a line at the very top, before the first product (barcode line or price)
+  for (const r of rows.slice(0, 6)) {
+    if (/^\s*\d{8,}/.test(r) || rcAmounts(r).length) break;
+    if (/[A-Za-zÀ-ž]{3,}/.test(r) && !RC_SKIP.test(normTxt(r))) {
+      res.store = r.replace(/^\s*(UAB|AB|MB)\s+/i, '').replace(/["„“”]/g, '').trim();
+      break;
+    }
+  }
+  return res;
+}
+// every price the AI gives must really be printed on the receipt (no made-up amounts)
+function priceOnReceipt(v, text) {
+  const t2 = String(text || '').replace(/\s/g, '');
+  const a = v.toFixed(2);
+  return t2.includes(a) || t2.includes(a.replace('.', ','));
+}
+
 function receiptKey(vmi) { return vmi && vmi.sm && vmi.nr ? String(vmi.sm) + '|' + String(vmi.nr) : null; }
 function findDuplicateReceipt(vmi) {
   const key = receiptKey(vmi);
@@ -3487,26 +3682,29 @@ window.onNativeReceipt = function (res) {
   let vmi = null;
   if (res.vmi && res.vmi.url) {
     const parsed = parseVmiText(res.vmi.text || '');
-    vmi = { url: res.vmi.url, nr: res.vmi.nr || '', sm: res.vmi.sm || '', dt: res.vmi.dt || '',
-            fetched: !!res.vmi.text, ...parsed, text: String(res.vmi.text || '').slice(0, 3000) };
+    vmi = { url: res.vmi.url, nr: res.vmi.nr || parsed.number || '', sm: res.vmi.sm || '', dt: res.vmi.dt || '',
+            fetched: !!res.vmi.text && parsed.found !== false, ...parsed, text: String(res.vmi.text || '').slice(0, 3000) };
   }
+  // the receipt text is analysed here (Lithuanian rules); the phone's own quick reading is only a fallback
+  const own = parseReceiptText(res.text || '');
+  if (own.items.length) res.items = own.items;
+  if (own.store && !res.store) res.store = own.store;
+  if (own.total != null) res.total = own.total;
+  if (!res.date && own.date) res.date = own.date;
   // VMI data is official, so it wins over what was read from the photo
-  if (vmi && vmi.store) {
-    vmi.store = vmi.store.replace(/^\s*(UAB|AB|MB|IĮ|VŠĮ)\s+/i, '').replace(/["„“”]/g, '').trim();
-    res.store = vmi.store;
-  }
+  if (vmi && vmi.store) res.store = vmi.store;
   if (vmi && typeof vmi.total === 'number') res.total = vmi.total;
   if (vmi && !vmi.dt && vmi.date) vmi.dt = vmi.date;          // some registers (e.g. Maxima) leave the date out of the QR code
   if (vmi && /^\d{4}-\d{2}-\d{2}/.test(vmi.dt)) res.date = vmi.dt.slice(0, 10);
   const store = (res.store || '').trim() || '—';
   const g = matchReceiptGroup((res.text || '') + '\n' + store + '\n' + (vmi ? vmi.text : ''));
-  const items = cleanItems(res.items);
+  const items = cleanItems(res.items).map(it => ({ ...it, discount: it.discount || 0 }));
   receiptPendingResult = {
     store,
     amount: typeof res.total === 'number' ? res.total : Math.round(sumItems(items) * 100) / 100,
     items,
     text: res.text || '',
-    groupId: g ? g.id : state.receiptGroups[0].id,
+    groupId: g ? g.id : null,
     matched: !!g,
     date: res.date || null,
     vmi,
@@ -3517,6 +3715,30 @@ window.onNativeReceipt = function (res) {
   showReceiptResult(receiptPendingResult);
   if (receiptPendingResult.aiState === 'reading') refineReceiptWithAi(receiptPendingResult, res.text);
 };
+// ---- AI works in the background: you can save the receipt or leave, it finishes on its own ----
+let aiBgJobs = 0;
+function renderAiBgPill() {
+  let pill = document.getElementById('aiBgPill');
+  if (!pill) {
+    pill = document.createElement('div');
+    pill.id = 'aiBgPill';
+    pill.className = 'ai-bg-pill';
+    document.body.appendChild(pill);
+  }
+  pill.textContent = t('receipts.aiBackground');
+  pill.classList.toggle('show', aiBgJobs > 0);
+}
+// the AI finished after the receipt was already saved -> update that transaction
+function applyAiToSavedTx(pending) {
+  const tx = state.transactions.find(x => x.id === pending.savedTxId);
+  if (!tx || !tx.receipt) return;
+  tx.receipt.items = (pending.items || []).map(it => ({ name: it.name, price: it.price, discount: it.discount || 0,
+    ...(it.tr ? { tr: it.tr, trLang: it.trLang } : {}) }));
+  if (pending.store && pending.store !== '—' && (!tx.receipt.store || tx.receipt.store === '—')) tx.receipt.store = pending.store;
+  saveState();
+  renderAll();
+  showReceiptToast(t('receipts.aiFinished') + ' ' + (tx.receipt.store || ''));
+}
 async function refineReceiptWithAi(pending, ocrText) {
   // On the phone the model is downloaded once from the AI tab - a receipt never starts a 1.6 GB download
   try {
@@ -3526,10 +3748,22 @@ async function refineReceiptWithAi(pending, ocrText) {
       return;
     }
   } catch (e) {}
+  aiBgJobs++; renderAiBgPill();
   try {
-    const r = await aiReadReceipt(ocrText);
-    if (receiptPendingResult !== pending) return;          // user already closed / scanned another one
-    if (r.items.length) pending.items = r.items;
+    const draft = (pending.items || []).map(it => ({ name: it.name, price: it.price, discount: it.discount || 0 }));
+    const r = await aiReadReceipt(ocrText, draft);
+    if (pending.discarded) return;
+    // AI only replaces the list if it found at least as many real (printed) products
+    if (r.items.length && r.items.length >= Math.min(pending.items.length, 1)) {
+      if (r.items.length >= pending.items.length || !pending.items.length) pending.items = r.items;
+      else {
+        // keep our list, but take the AI translations for products it recognised
+        pending.items = pending.items.map(it => {
+          const hit = r.items.find(x => Math.abs(x.price - it.price) < 0.005 && x.tr);
+          return hit ? { ...it, tr: hit.tr, trLang: hit.trLang } : it;
+        });
+      }
+    }
     const vmiTotal = pending.vmi && typeof pending.vmi.total === 'number' ? pending.vmi.total : null;
     if (vmiTotal == null && r.total) pending.amount = r.total;   // VMI (official) always wins
     if (!pending.vmi || !pending.vmi.store) {
@@ -3538,9 +3772,13 @@ async function refineReceiptWithAi(pending, ocrText) {
     pending.aiState = 'done';
   } catch (e) {
     console.warn('AI receipt', e);
-    if (receiptPendingResult !== pending) return;
     pending.aiState = 'off';
+  } finally {
+    aiBgJobs = Math.max(0, aiBgJobs - 1); renderAiBgPill();
   }
+  if (pending.discarded) return;
+  if (pending.savedTxId) { if (pending.aiState === 'done') applyAiToSavedTx(pending); return; }
+  if (receiptPendingResult !== pending) return;
   const amtInput = document.getElementById('receiptResAmountInput');
   if (amtInput && pending.amount) amtInput.value = pending.amount.toFixed(2);
   const storeInput = document.getElementById('receiptResStoreInput');
@@ -3557,7 +3795,8 @@ let newGroupEmoji = '';
 let newGroupColor = RECEIPT_COLORS[0];
 
 function receiptGroupById(id) {
-  return state.receiptGroups.find(g => g.id === id) || state.receiptGroups[0];
+  if (id === null || id === undefined) return { id: null, name: t('receipts.noGroup'), emoji: '🧾', color: '#9aa3ad', auto: false };
+  return state.receiptGroups.find(g => g.id === id) || { id: null, name: t('receipts.noGroup'), emoji: '🧾', color: '#9aa3ad', auto: false };
 }
 
 // ---- Receipts sub-tabs (Skanuj / Grupy) ----
@@ -3603,7 +3842,7 @@ function runSimulatedReceiptScan() {
     const g = matchReceiptGroup(demo.store);
     receiptPendingResult = {
       store: demo.store, amount: demo.amount, items: demo.items.map(it => ({ ...it })),
-      text: demoReceiptText(demo), groupId: g ? g.id : demo.groupId, matched: true, date: null
+      text: demoReceiptText(demo), groupId: g ? g.id : null, matched: true, date: null
     };
     showReceiptResult(receiptPendingResult);
     restoreReceiptScanZone();
@@ -3663,17 +3902,15 @@ function renderReceiptVmiBox() {
   if (!v) { box.classList.add('hidden'); box.innerHTML = ''; return; }
   box.classList.remove('hidden');
   const row = (label, val) => val ? '<div class="v-row"><span>' + escHtml(label) + '</span><b>' + escHtml(val) + '</b></div>' : '';
-  box.innerHTML = (v.fetched ? '<div>✅ ' + escHtml(t('receipts.vmiFetched')) + '</div>' : '<div>📴 ' + escHtml(t('receipts.vmiOffline')) + '</div>') +
+  box.innerHTML = (v.found === false ? '<div>⚠️ ' + escHtml(t('receipts.vmiNotFound')) + '</div>'
+      : v.fetched ? '<div>✅ ' + escHtml(t('receipts.vmiFetched')) + '</div>' : '<div>📴 ' + escHtml(t('receipts.vmiOffline')) + '</div>') +
     row(t('receipts.address'), v.address) +
     row(t('receipts.withVat'), typeof v.total === 'number' ? fmt(v.total, 'EUR') : '') +
     row(t('receipts.noVat'), typeof v.totalNoVat === 'number' ? fmt(v.totalNoVat, 'EUR') : '') +
     row(t('receipts.vatAmt'), typeof v.vat === 'number' ? fmt(v.vat, 'EUR') : '') +
     row(t('receipts.receiptNo'), v.nr) +
     row('🕒', v.dt ? v.dt.replace('T', ' ') : '') +
-    vmiCheckHtml(res) +
-    // Page text as a fallback, so nothing is lost if a field was not recognized
-    (v.text && (!v.store || typeof v.total !== 'number') ?
-      '<details class="txd-fulltext"><summary>🏛️ VMI</summary><pre>' + escHtml(v.text) + '</pre></details>' : '');
+    vmiCheckHtml(res);
 }
 // Compares the products read from the photo with the official VMI total
 function vmiCheckHtml(res) {
@@ -3709,7 +3946,8 @@ function showReceiptResult(res) {
 function renderReceiptGroupPicker(selectedId) {
   const wrap = document.getElementById('receiptResGroupPicker');
   wrap.innerHTML = '';
-  state.receiptGroups.forEach(g => {
+  const groups = [{ id: null, name: t('receipts.noGroup'), emoji: '🧾', color: '#9aa3ad' }, ...state.receiptGroups];
+  groups.forEach(g => {
     const chip = document.createElement('div');
     chip.className = 'receipt-chip' + (g.id === selectedId ? ' selected' : '');
     chip.style.setProperty('--chip-c', g.color);
@@ -3728,16 +3966,21 @@ function renderReceiptGroupPicker(selectedId) {
 function updateReceiptAiNote(groupId) {
   const g = receiptGroupById(groupId);
   const note = document.getElementById('receiptAiExplainNote').querySelector('span');
-  if (receiptPendingResult && receiptPendingResult.matched === false) {
-    note.innerHTML = 'Nie znalazłem pasującej grupy dla „<b>' + receiptPendingResult.store + '</b>" — wybierz ją poniżej. Możesz dopisać słowo kluczowe w zakładce Grupy.';
+  if (groupId === null || groupId === undefined) {
+    note.innerHTML = t('receipts.noGroupNote');
     return;
   }
-  note.innerHTML = 'Rozpoznano „<b>' + (receiptPendingResult ? receiptPendingResult.store : '') + '</b>" i dopasowano do grupy <b>' + g.name + '</b> po słowie kluczowym. ' +
-    (g.auto ? 'Ta grupa ma włączone <b>auto-dodawanie</b> — w pełnej wersji AI zapisałoby to bez pytania.' : 'Ta grupa wymaga Twojego potwierdzenia przed zapisem.');
+  if (receiptPendingResult && receiptPendingResult.matched === false) {
+    note.innerHTML = t('receipts.noMatchNote').replace('{store}', '<b>' + escHtml(receiptPendingResult.store) + '</b>');
+    return;
+  }
+  note.innerHTML = t('receipts.matchNote').replace('{store}', '<b>' + escHtml(receiptPendingResult ? receiptPendingResult.store : '') + '</b>').replace('{group}', '<b>' + escHtml(g.name) + '</b>') + ' ' +
+    (g.auto ? t('receipts.autoNote') : t('receipts.confirmNote'));
 }
 
 document.getElementById('receiptDiscardBtn').addEventListener('click', () => {
   document.getElementById('receiptResultCard').classList.add('hidden');
+  if (receiptPendingResult) receiptPendingResult.discarded = true;
   receiptPendingResult = null;
 });
 
@@ -3761,19 +4004,21 @@ document.getElementById('receiptSaveBtn').addEventListener('click', () => {
     amount: amount,
     currency: 'EUR',
     amountEUR: amount,
-    desc: g.emoji + ' ' + store,
+    desc: (g.id ? g.emoji + ' ' : '🧾 ') + store,
     date: receiptPendingResult.date || todayStr(),
     ts: Date.now(),
     cardId: state.activeCardId || null,
     receipt: {
       store,
-      groupId: g.id,
+      groupId: g.id || null,
       items: (receiptPendingResult.items || []).map(it => ({ name: it.name, price: it.price, discount: it.discount || 0,
         ...(it.tr ? { tr: it.tr, trLang: it.trLang } : {}) })),
       text: String(receiptPendingResult.text || '').slice(0, 6000),
       vmi: receiptPendingResult.vmi || null
     }
   });
+  // AI still reading? It finishes in the background and fills in this transaction
+  if (receiptPendingResult.aiState === 'reading') receiptPendingResult.savedTxId = state.transactions[state.transactions.length - 1].id;
   saveState();
   renderAll();
   renderReceiptRecent();
@@ -3961,21 +4206,38 @@ function openTxDetail(id) {
       row(t('receipts.vatAmt'), typeof v.vat === 'number' ? fmt(v.vat, 'EUR') : '') +
       row(t('receipts.receiptNo'), v.nr) +
       row('🕒', v.dt ? v.dt.replace('T', ' ') : '') +
+      (rc.items && rc.items.length ? vmiCheckHtml({ vmi: v, items: rc.items }) : '') +
       '</div>';
   }
-  if (rc && rc.text) {
-    html += '<details class="txd-fulltext"><summary>🧾 ' + escHtml(t('receipts.fullText')) + '</summary><pre>' + escHtml(rc.text) + '</pre></details>';
-  }
-  if (v && v.text) {
-    html += '<details class="txd-fulltext"><summary>🏛️ VMI</summary><pre>' + escHtml(v.text) + '</pre></details>';
-  }
-  if (v && v.url && /^https:\/\/kvitas\.vmi\.lt\//.test(v.url)) {
-    html += '<button class="secondary vmi-btn" id="txDetailVmiBtn">🔗 ' + escHtml(t('receipts.vmiOpen')) + '</button>';
-  }
   body.innerHTML = html;
-  const vb = document.getElementById('txDetailVmiBtn');
-  if (vb) vb.addEventListener('click', () => openExternal(v.url));
+  const gp = document.getElementById('txDetailGroupPicker');
+  if (rc) {
+    gp.classList.remove('hidden');
+    renderTxDetailGroupPicker(tx);
+  } else {
+    gp.classList.add('hidden');
+    gp.innerHTML = '';
+  }
   document.getElementById('txDetailModal').classList.add('open');
+}
+function renderTxDetailGroupPicker(tx) {
+  const gp = document.getElementById('txDetailGroupPicker');
+  const rc = tx.receipt;
+  const groups = [{ id: null, name: t('receipts.noGroup'), emoji: '🧾', color: '#9aa3ad' }, ...state.receiptGroups];
+  gp.innerHTML = '<div class="balance-sub" style="grid-column:1/-1;">' + escHtml(t('receipts.changeGroup')) + '</div>' +
+    groups.map(g => '<div class="receipt-chip' + (g.id === (rc.groupId || null) ? ' selected' : '') + '" data-gid="' + (g.id || '') + '" style="--chip-c:' + g.color + '"><span class="dot"></span>' + g.emoji + ' ' + escHtml(g.name) + '</div>').join('');
+  gp.querySelectorAll('.receipt-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const gid = chip.dataset.gid || null;
+      const g = receiptGroupById(gid);
+      rc.groupId = gid;
+      tx.desc = (g.id ? g.emoji + ' ' : '🧾 ') + (rc.store || tx.desc.replace(/^\S+\s/, ''));
+      saveState();
+      renderAll();
+      renderReceiptRecent();
+      openTxDetail(tx.id);
+    });
+  });
 }
 function closeTxDetail() { document.getElementById('txDetailModal').classList.remove('open'); }
 document.getElementById('txDetailCloseBtn').addEventListener('click', closeTxDetail);
@@ -4150,8 +4412,10 @@ function applyCardsDrawerLayout(open) {
   wrap.style.transform = 'translateY(' + (open ? cardsDrawerPush(h) : 0) + 'px)';
 }
 // The closed drawer is clipped to a pill sitting exactly over the 💳 header icon.
-function setCardsDrawerIconClip(el, h) {
-  const icon = document.getElementById('cardsToggle');
+function setCardsDrawerIconClip(el, h) { setPopoverIconClip(el, document.getElementById('cardsToggle'), h); }
+// Generic version, reused for the settings (⚙️) and account (👤) popovers, so they open with
+// the same Dynamic-Island grow-from-the-icon animation as the cards drawer.
+function setPopoverIconClip(el, icon, h) {
   if (!icon) return;
   // Layout offsets (not getBoundingClientRect), so the header icons' hide animation
   // (shifted up + shrunk while the drawer is open) can't move the pill above the icon.
@@ -4166,11 +4430,45 @@ function setCardsDrawerIconClip(el, h) {
   el.style.setProperty('--ci-r', Math.max(0, w - (left + icon.offsetWidth)) + 'px');
   el.style.setProperty('--ci-b', Math.max(0, h - (top + icon.offsetHeight)) + 'px');
 }
+// The settings popover is a small home screen of tiles; each opens its own view (with a back button).
+function showSettingsView(name) {
+  const panel = document.getElementById('appSettingsPopover');
+  if (!panel) return;
+  panel.querySelectorAll('.settings-view').forEach(v => v.classList.toggle('active', v.dataset.view === name));
+  if (!panel.classList.contains('open')) return;
+  const active = panel.querySelector('.settings-view.active');
+  const h = Math.min((active ? active.scrollHeight : 0) + 32, window.innerHeight * 0.8);
+  panel.style.height = h + 'px';
+}
+document.querySelectorAll('#appSettingsPopover .settings-tile').forEach(tile => {
+  tile.addEventListener('click', () => showSettingsView(tile.dataset.open));
+});
+document.querySelectorAll('#appSettingsPopover [data-back]').forEach(btn => {
+  btn.addEventListener('click', () => showSettingsView('home'));
+});
+function openMorphPopover(panelId, iconId) {
+  const el = document.getElementById(panelId);
+  const icon = document.getElementById(iconId);
+  if (!el) return;
+  const h = Math.min(el.scrollHeight, window.innerHeight * 0.8);
+  el.style.height = h + 'px';
+  setPopoverIconClip(el, icon, h);
+  el.classList.add('open');
+}
+function closeMorphPopover(panelId, iconId) {
+  const el = document.getElementById(panelId);
+  const icon = document.getElementById(iconId);
+  if (!el || !el.classList.contains('open')) { if (el) { el.classList.remove('open'); el.style.height = '0px'; } return; }
+  const h = el.offsetHeight;
+  setPopoverIconClip(el, icon, h);   // closing pill lands exactly on the icon
+  el.classList.remove('open');
+  el.style.height = '0px';
+}
 function openCardsDrawer() {
   const el = document.getElementById('cardsDrawer');
   if (!el) return;
-  document.getElementById('appSettingsPopover').classList.remove('open');
-  document.getElementById('accountPopover').classList.remove('open');
+  closeMorphPopover('appSettingsPopover', 'appSettingsToggle');
+  closeMorphPopover('accountPopover', 'accountToggle');
   renderCards();
   applyCardsDrawerLayout(true);
   el.classList.add('open');
@@ -4353,9 +4651,11 @@ function startCloudSync(user) {
   saveState();
 
   currentUser = user;
+  rememberKnownAccount(user.email);
   document.getElementById('popLoggedOut').classList.add('hidden');
   document.getElementById('popLoggedIn').classList.remove('hidden');
   document.getElementById('accountEmailLabel').textContent = user.email;
+  renderOtherAccounts();
   if (fbUnsub) fbUnsub();
   fbUnsub = fbDb.collection('skarbonka_users').doc(user.uid).onSnapshot((doc) => {
     if (!doc.exists) { pushToCloud(); return; }
@@ -4420,6 +4720,13 @@ function stopCloudSync() {
   applyingRemote = false;
   document.getElementById('popLoggedOut').classList.remove('hidden');
   document.getElementById('popLoggedIn').classList.add('hidden');
+  renderKnownAccountsRow();
+  if (pendingSwitchEmail) {
+    document.getElementById('authEmail').value = pendingSwitchEmail;
+    pendingSwitchEmail = null;
+    document.getElementById('authPassword').value = '';
+    document.getElementById('authPassword').focus();
+  }
 }
 
 function tlumaczBladAuth(code) {
@@ -4439,6 +4746,62 @@ if (fbAuth) {
     if (user) startCloudSync(user); else stopCloudSync();
   });
 }
+
+// ---- Known accounts on this device (email only — never a password), so a returning user
+// can tap their account instead of retyping the address. Switching still needs the password:
+// that's the price of doing this safely, without keeping a second live session or any secret. ----
+function knownAccounts() { return Array.isArray(state.knownAccounts) ? state.knownAccounts : []; }
+function rememberKnownAccount(email) {
+  if (!email) return;
+  const list = knownAccounts().filter(a => a.email.toLowerCase() !== email.toLowerCase());
+  list.unshift({ email });
+  state.knownAccounts = list.slice(0, 5);
+  saveState();
+}
+function accountChip(email, onClick) {
+  const chip = document.createElement('div');
+  chip.className = 'known-account-chip';
+  chip.innerHTML = '<span class="av">' + escHtml((email[0] || '?').toUpperCase()) + '</span><span>' + escHtml(email) + '</span>';
+  chip.addEventListener('click', onClick);
+  return chip;
+}
+let pendingSwitchEmail = null;
+function renderOtherAccounts() {
+  const block = document.getElementById('otherAccountsBlock');
+  const row = document.getElementById('otherAccountsRow');
+  if (!block || !row) return;
+  const mine = (currentUser && currentUser.email || '').toLowerCase();
+  const others = knownAccounts().filter(a => a.email.toLowerCase() !== mine);
+  row.innerHTML = '';
+  others.forEach(a => row.appendChild(accountChip(a.email, () => {
+    pendingSwitchEmail = a.email;
+    if (fbAuth) fbAuth.signOut(); else stopCloudSync();
+  })));
+  block.classList.toggle('hidden', !others.length);
+}
+function renderKnownAccountsRow() {
+  const row = document.getElementById('knownAccountsRow');
+  if (!row) return;
+  const list = knownAccounts();
+  row.innerHTML = '';
+  list.forEach(a => row.appendChild(accountChip(a.email, () => {
+    document.getElementById('authEmail').value = a.email;
+    document.getElementById('authPassword').focus();
+  })));
+  row.classList.toggle('hidden', !list.length);
+}
+renderKnownAccountsRow();
+
+document.getElementById('forgotPasswordBtn').addEventListener('click', () => {
+  const email = document.getElementById('authEmail').value.trim();
+  const errEl = document.getElementById('authError');
+  if (!email) { errEl.textContent = t('auth.err.needEmailForReset'); return; }
+  if (!fbAuth) { errEl.textContent = t('auth.syncUnavailable'); return; }
+  errEl.textContent = t('auth.resetSending');
+  fbAuth.sendPasswordResetEmail(email).then(() => {
+    errEl.textContent = t('auth.resetSent');
+  }).catch((e) => { errEl.textContent = tlumaczBladAuth(e.code); });
+});
 
 document.getElementById('loginBtn').addEventListener('click', () => {
   const email = document.getElementById('authEmail').value.trim();
@@ -4636,6 +4999,8 @@ function renderIconModeRow() {
   // stylesheet than `.hidden { display:none }`, so with equal specificity it
   // would win over the class alone — set display inline too so it can't lose.
   if (group) { group.classList.toggle('hidden', !hasBridge); group.style.display = hasBridge ? '' : 'none'; }
+  const tile = document.getElementById('iconModeTile');
+  if (tile) tile.classList.toggle('hidden', !hasBridge);
   if (!hasBridge) return;
   row.querySelectorAll('.icon-mode-opt').forEach(opt => {
     opt.classList.toggle('active', opt.dataset.iconMode === state.iconMode);
@@ -4713,19 +5078,23 @@ document.getElementById('balanceMain').addEventListener('click', toggleBalanceHi
 
 document.getElementById('accountToggle').addEventListener('click', (e) => {
   e.stopPropagation();
-  document.getElementById('appSettingsPopover').classList.remove('open');
-  document.getElementById('accountPopover').classList.toggle('open');
+  closeMorphPopover('appSettingsPopover', 'appSettingsToggle');
+  const el = document.getElementById('accountPopover');
+  if (el.classList.contains('open')) closeMorphPopover('accountPopover', 'accountToggle');
+  else { closeCardsDrawer(); openMorphPopover('accountPopover', 'accountToggle'); }
 });
 document.getElementById('accountPopover').addEventListener('click', (e) => e.stopPropagation());
 document.getElementById('appSettingsToggle').addEventListener('click', (e) => {
   e.stopPropagation();
-  document.getElementById('accountPopover').classList.remove('open');
-  document.getElementById('appSettingsPopover').classList.toggle('open');
+  closeMorphPopover('accountPopover', 'accountToggle');
+  const el = document.getElementById('appSettingsPopover');
+  if (el.classList.contains('open')) closeMorphPopover('appSettingsPopover', 'appSettingsToggle');
+  else { closeCardsDrawer(); showSettingsView('home'); openMorphPopover('appSettingsPopover', 'appSettingsToggle'); }
 });
 document.getElementById('appSettingsPopover').addEventListener('click', (e) => e.stopPropagation());
 document.addEventListener('click', () => {
-  document.getElementById('accountPopover').classList.remove('open');
-  document.getElementById('appSettingsPopover').classList.remove('open');
+  closeMorphPopover('accountPopover', 'accountToggle');
+  closeMorphPopover('appSettingsPopover', 'appSettingsToggle');
   closeCardsDrawer();
 });
 
