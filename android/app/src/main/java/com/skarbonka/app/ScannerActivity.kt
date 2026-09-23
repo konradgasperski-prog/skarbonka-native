@@ -6,7 +6,9 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Matrix
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
@@ -27,6 +29,7 @@ import android.view.animation.LinearInterpolator
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
@@ -79,6 +82,9 @@ class ScannerActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val recognizer by lazy { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     private var imageCapture: ImageCapture? = null
+    private var cameraProvider: ProcessCameraProvider? = null
+    private var frozenView: ImageView? = null      // zatrzymany obraz zrobionego zdjecia
+    private var frozenBmp: Bitmap? = null
     private lateinit var shutter: View
     @Volatile private var liveQr: String? = null     // kod VMI zauwazony juz w podgladzie (zapas, gdyby na zdjeciu byl nieczytelny)
     @Volatile private var busy = false
@@ -116,7 +122,14 @@ class ScannerActivity : AppCompatActivity() {
         analysisExecutor = Executors.newSingleThreadExecutor()
 
         root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
-        previewView = PreviewView(this).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+        // COMPATIBLE (TextureView) instead of the default SurfaceView: a SurfaceView is drawn on its
+        // own hardware layer and can keep showing live video "through" any view placed on top of it,
+        // even after the camera is unbound - that is exactly why the shutter used to look like it
+        // never froze. TextureView is a normal view, so covering it with the still photo actually works.
+        previewView = PreviewView(this).apply {
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        }
         root.addView(previewView, FrameLayout.LayoutParams(MATCH, MATCH))
 
         // Wysoka ramka na caly paragon, przyciemnienie dookola
@@ -182,6 +195,7 @@ class ScannerActivity : AppCompatActivity() {
         future.addListener({
             try {
                 val provider = future.get()
+                cameraProvider = provider
                 val preview = Preview.Builder().build().also { it.setSurfaceProvider(previewView.surfaceProvider) }
                 val analysis = ImageAnalysis.Builder()
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
@@ -255,18 +269,14 @@ class ScannerActivity : AppCompatActivity() {
         setBusy(true)
         status.text = s("reading")
         capture.takePicture(ContextCompat.getMainExecutor(this), object : ImageCapture.OnImageCapturedCallback() {
-            @OptIn(ExperimentalGetImage::class)
             override fun onCaptureSuccess(image: ImageProxy) {
                 val rotation = image.imageInfo.rotationDegrees
-                val media = image.image
-                val input = try {
-                    if (media != null) InputImage.fromMediaImage(media, rotation)
-                    else InputImage.fromBitmap(image.toBitmap(), rotation)
-                } catch (e: Exception) {
-                    try { InputImage.fromBitmap(image.toBitmap(), rotation) } catch (e2: Exception) { null }
-                }
-                if (input == null) { image.close(); fail(); return }
-                readTextAndQr(input) { image.close() }
+                val bmp = try { rotated(image.toBitmap(), rotation) } catch (e: Exception) { null }
+                image.close()   // dane z aparatu zwolnione od razu
+                if (bmp == null) { fail(); return }
+                // obraz sie zatrzymuje - podglad z aparatu jest wylaczony, widac zrobione zdjecie
+                freeze(bmp)
+                readTextAndQr(InputImage.fromBitmap(bmp, 0)) { }
             }
 
             override fun onError(exception: ImageCaptureException) { fail() }
@@ -312,12 +322,45 @@ class ScannerActivity : AppCompatActivity() {
         }
     }
 
+    private fun rotated(src: Bitmap, degrees: Int): Bitmap {
+        if (degrees == 0) return src
+        val m = Matrix().apply { postRotate(degrees.toFloat()) }
+        val out = Bitmap.createBitmap(src, 0, 0, src.width, src.height, m, true)
+        if (out != src) src.recycle()
+        return out
+    }
+
+    private fun freeze(bmp: Bitmap) {
+        try { cameraProvider?.unbindAll() } catch (e: Exception) { }
+        previewView.visibility = View.INVISIBLE   // belt-and-braces: hide the live feed itself too
+        frozenBmp = bmp
+        val iv = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setImageBitmap(bmp)
+        }
+        frozenView = iv
+        root.addView(iv, 1, FrameLayout.LayoutParams(MATCH, MATCH))   // nad podgladem, pod ramka i napisami
+    }
+
+    // Zdjecie usuwane z pamieci (nigdy nie bylo zapisane w telefonie)
+    private fun deletePhoto() {
+        frozenView?.let { root.removeView(it) }
+        frozenView = null
+        frozenBmp?.recycle()
+        frozenBmp = null
+        previewView.visibility = View.VISIBLE
+    }
+
     private fun fail() {
+        val wasFrozen = frozenView != null
+        deletePhoto()
+        if (wasFrozen) startCamera()      // wracamy do aparatu, zeby zrobic zdjecie jeszcze raz
         setBusy(false)
         status.text = s("fail")
     }
 
     private fun finishWith(r: ReceiptResult, vmi: JSONObject?) {
+        deletePhoto()
         status.text = s("done")
         vibrate()
         val items = JSONArray()
@@ -388,6 +431,7 @@ class ScannerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
+        deletePhoto()
         overlay.stop()
         analysisExecutor.shutdown()
         try { vmiWeb?.destroy() } catch (e: Exception) { }
