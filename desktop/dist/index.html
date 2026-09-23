@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609252000">
+<meta name="stash-version" content="202609252100">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -3466,7 +3466,7 @@ async function aiReadReceipt(ocrText, draft) {
       'RABAT: KAŻDA kwota poprzedzona znakiem "-" (minus) to rabat/zniżka odjęta od ceny POPRZEDNIEGO produktu — niezależnie od słowa obok niej (Nuolaida, Prekės Nuolaida, Sutaupote, Sutaupyta, Akcija, Nuolaida už CLASSIC taškus, itp.). Taka linia NIGDY nie jest osobnym produktem ani sumą końcową — zawsze odejmij ją od produktu bezpośrednio nad nią (pole "discount"), a "price" tego produktu zostaw jako cenę PRZED rabatem. ' +
       'ILOŚĆ / WAGA: jeśli pod albo obok produktu jest linia typu "5 Vienet. X 3,59 EUR/Vienet.", "0,845 kg x 1,49 EUR/kg", "2 X 6,4900", "0.333*12.9500" albo "1,09 X 2,000 vnt." — to ilość i cena jednostkowa TEGO produktu, a nie osobna pozycja. Zapisz ją w polu "qty" krótko i czytelnie, np. "5 szt. x 3,59 €" albo "0,845 kg x 1,49 €/kg" (przetłumacz jednostkę na: ' + target + ', liczby zostaw jak są). Pomiń "qty", jeśli takiej linii nie ma. ' +
       'Słowa na litewskim paragonie: "Iš viso", "Mokėti", "Suma", "Mokėti suapvalinus" = suma do zapłaty; "PVM", "Suma su PVM", "Be PVM", "PVM suma" = podatek VAT (NIE produkt); ' +
-      '"Grąža" = reszta; "kortele" = kartą; "grynaisiais" = gotówką; "Apvalinimo suma" = zaokrąglenie; "vnt" = sztuk; "kg" = kilogram; "Kvito Nr.", "Kasa", "Kasininkas", "Kortelės" = dane kasy/karty (NIE produkt). ' +
+      '"Grąža" = reszta; "kortele" = kartą; "grynaisiais" = gotówką (czasem błędnie odczytane jako "GRVNA IS" — litera Y bywa myl ona z V); "Apvalinimo suma" = zaokrąglenie; "vnt" = sztuk; "kg" = kilogram; "Kvito Nr.", "Kasa", "Kasininkas", "Kortelės" = dane kasy/karty (NIE produkt). ' +
       'Długi numer (8-14 cyfr) przed nazwą to kod kreskowy — nie jest częścią nazwy. Litera A/B/D/E po cenie to stawka VAT — pomiń ją. ' +
       'Zwróć WYŁĄCZNIE JSON, bez żadnego innego tekstu, w formacie: ' +
       '{"store":"nazwa sklepu","total":12.34,"items":[{"name":"nazwa z paragonu","tr":"tłumaczenie nazwy","qty":"5 szt. x 3,59 €","price":1.99,"discount":0}]}. ' +
@@ -3593,7 +3593,7 @@ function parseVmiText(text) {
 // ---- Receipt text (read from the photo) -> products, prices, discounts, total ----
 // Written for Lithuanian receipts; runs in the app, so it can be improved with a normal update.
 const RC_TOTAL = /^(mok[eė]ti suapvalinus|mok[eė]ti|i[sš] viso|suma|viso|moketina|total|razem|do zaplaty)\b/;
-const RC_SKIP = /(pvm|mokestis|apskaitos|kvitas|kvito|kasa\b|kasinink|grynais|kortel|mok[eė]jim|gr[aą][zž]a|apvalinim|a\.p\.|s\/n|cr-|sm-|saugos|para[sš]as|kodas|d[eė]kojame|a[cč]i[uū]|pirkote|informacij|likutis|inv\.|nr\.|www\.|tel\.|telefon)/;
+const RC_SKIP = /(pvm|mokestis|apskaitos|kvitas|kvito|kasa\b|kasinink|gr[vy]na|kortel|mok[eė]jim|gr[aą][zž]a|apvalinim|a\.p\.|s\/n|cr-|sm-|saugos|para[sš]as|kodas|d[eė]kojame|a[cč]i[uū]|pirkote|informacij|likutis|inv\.|nr\.|www\.|tel\.|telefon)/;
 const RC_DISCOUNT = /(nuolaid|akcij|rabat|discount)/;
 const RC_AMOUNT = /(?<![\d.,])(-?\d{1,5})\s?[.,]\s?(\d{2})(?![.,]?\d)(?!\s*%)/g;
 function rcAmounts(line) {
