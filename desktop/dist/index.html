@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609251700">
+<meta name="stash-version" content="202609252000">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -233,6 +233,19 @@
     .panel.hidden { display: block !important; }
     .panel.panel-desktop-hidden { display: none !important; }
     .hidden-panels-bar.show { display: flex; }
+    /* Second page (Paragony): same idea as the first page — on a wide window, show
+       "Skanuj" and "Grupy" side by side instead of behind a phone-style tab switcher. */
+    #receiptSubTabs { display: none; }
+    #tab-receipts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+    /* The header must span both columns, or the grid auto-places it in one cell and
+       pushes "Skanuj" and "Grupy" onto separate rows (one on top of the other) instead
+       of side by side in that same row. */
+    #tab-receipts > .panel-header { grid-column: 1 / -1; }
+    .receipt-view { display: block !important; }
+    /* Page 2 now holds only the Paragony panel (no more Asystent AI panel next to it), so give it
+       the full width here instead of the shared 2-column grid meant for several panels — otherwise
+       it only fills the left half and Skanuj/Grupy end up squeezed into a narrow strip. */
+    #panelsContainer2 { grid-template-columns: 1fr; }
   }
 
   /* --- Two side-by-side pages (like macOS Spaces): page 1 = main tiles,
@@ -743,6 +756,7 @@
   .update-banner span { flex: 1; }
   .update-banner button { width: auto; padding: 9px 14px; margin: 0; }
   .ri-lt { display: block; font-size: 11px; color: var(--text-dim); font-style: italic; margin-top: 1px; }
+  .ri-qty { display: block; font-size: 11px; color: var(--text-dim); margin-top: 1px; }
   .ri-disc { display: block; font-size: 11px; color: #3f9a5a; font-weight: 600; }
   .ri-orig { text-decoration: line-through; opacity: 0.55; font-weight: 500; margin-right: 5px; font-size: 11.5px; }
   .receipt-scan-item { cursor: pointer; }
@@ -3209,6 +3223,7 @@ function itemNameHtml(it, cur) {
   const d = Number(it.discount) || 0;
   const tr = itemDisplayName(it);
   return (tr ? escHtml(tr) + '<span class="ri-lt">' + escHtml(it.name) + '</span>' : escHtml(it.name)) +
+    (it.qty ? '<span class="ri-qty">' + escHtml(it.qty) + '</span>' : '') +
     (d > 0 ? '<span class="ri-disc">−' + fmt(d, cur) + ' ' + escHtml(t('receipts.discount')) + '</span>' : '');
 }
 function num(v) {
@@ -3219,8 +3234,9 @@ function num(v) {
 function cleanItems(arr) {
   return (Array.isArray(arr) ? arr : [])
     .filter(it => it && String(it.name || '').trim() && num(it.price) > 0 && num(it.price) < 10000)
-    .map(it => ({ name: String(it.name).trim().replace(/^\d{8,14}\s+/, '').slice(0, 80), price: Math.round(num(it.price) * 100) / 100,
-                  discount: Math.max(0, Math.round(num(it.discount) * 100) / 100) }))
+    .map(it => ({ ...it, name: String(it.name).trim().replace(/^\d{8,14}\s+/, '').slice(0, 80), price: Math.round(num(it.price) * 100) / 100,
+                  discount: Math.max(0, Math.round(num(it.discount) * 100) / 100),
+                  ...(it.qty ? { qty: String(it.qty).trim().slice(0, 40) } : {}) }))
     .slice(0, 150);
 }
 
@@ -3228,8 +3244,12 @@ function cleanItems(arr) {
 // Works without AI (the small model knows little Lithuanian) and is also given to the AI as a hint.
 // Word stems without Lithuanian letters (ė, š, ū... are removed before matching).
 const LT_DICT = [
+  ['polikarbonat','poliwęglan','поликарбонат','polycarbonate'],
+  ['konstrukcij','konstrukcja','конструкция','structure'],
   ['mineralin','mineralna','минеральная','mineral'],
   ['ekologisk','ekologiczny','эко','organic'],
+  ['hermetik','uszczelniacz','герметик','sealant'],
+  ['sviestuv','lampa/oprawa','светильник','light fixture'],
   ['mandarin','mandarynki','мандарины','tangerines'],
   ['kiaulien','wieprzowina','свинина','pork'],
   ['tualetin','toaletowy','туалетная','toilet'],
@@ -3238,6 +3258,12 @@ const LT_DICT = [
   ['sasiuvin','zeszyt','тетрадь','notebook'],
   ['lietuviu','litewski','литовский','Lithuanian'],
   ['gimnazij','gimnazjum','гимназия','gymnasium'],
+  ['prozekt','reflektor','прожектор','floodlight'],
+  ['skambut','dzwonek','звонок','doorbell'],
+  ['kilimel','dywanik','коврик','mat'],
+  ['siltnam','szklarnia','теплица','greenhouse'],
+  ['cinkuot','ocynkowany','оцинкованный','galvanized'],
+  ['ziebtuv','zapalniczka','зажигалка','lighter'],
   ['grietin','śmietana','сметана','sour cream'],
   ['kiausin','jajka','яйца','eggs'],
   ['sausain','ciastka','печенье','cookies'],
@@ -3263,10 +3289,16 @@ const LT_DICT = [
   ['akvarel','akwarela','акварель','watercolour'],
   ['piestuk','ołówek','карандаш','pencil'],
   ['vaikisk','dziecięcy','детский','kids'],
+  ['obuoliu','jabłkowy','яблочный','apple'],
+  ['lentyn','regał/półka','полка/стеллаж','shelf'],
+  ['plytel','płytka','плитка','tile'],
+  ['granul','granulki/pellet','гранулы','pellets/granules'],
+  ['kempin','gąbka','губка','sponge'],
+  ['rinkin','zestaw','набор','kit/set'],
+  ['keptuv','patelnia','сковорода','frying pan'],
   ['pienin','mleczny','молочный','milk'],
   ['kapsul','kapsułki','капсулы','capsules'],
   ['serija','seria','серия','series'],
-  ['obuoliu','jabłkowy','яблочный','apple'],
   ['jogurt','jogurt','йогурт','yogurt'],
   ['sviest','masło','сливочное масло','butter'],
   ['bandel','bułka','булочка','bun'],
@@ -3294,11 +3326,16 @@ const LT_DICT = [
   ['rasikl','długopis','ручка','pen'],
   ['saldyt','mrożone','замороженные','frozen'],
   ['raudon','czerwony','красный','red'],
+  ['plien','stal','сталь','steel'],
+  ['varsk','twaróg','творог','curd cheese'],
+  ['kumpi','szynka','ветчина','ham'],
+  ['valym','czyszczenie','чистка','cleaning'],
+  ['trivi','trzyosobowy','трёхместный','three-seat'],
+  ['pamat','fundament/podstawa','основание','base/foundation'],
   ['kefyr','kefir','кефир','kefir'],
   ['griet','śmietana','сметана','cream'],
   ['surel','serek','сырок','curd snack'],
   ['suris','ser','сыр','cheese'],
-  ['varsk','twaróg','творог','cottage cheese'],
   ['baton','bułka','батон','white loaf'],
   ['pyrag','ciasto','пирог','cake'],
   ['torta','tort','торт','cake'],
@@ -3334,6 +3371,9 @@ const LT_DICT = [
   ['dalis','część','часть','part'],
   ['klase','klasa','класс','grade'],
   ['kalba','język','язык','language'],
+  ['muro','zaprawa/mur','кладка/раствор','masonry mix/wall'],
+  ['zvak','świeca','свеча','candle'],
+  ['sofa','sofa','диван','sofa'],
   ['file','filet','филе','fillet'],
   ['pien','mleko','молоко','milk'],
   ['suri','ser','сыр','cheese'],
@@ -3364,7 +3404,8 @@ const LT_DICT = [
   ['virt','gotowany','варёный','boiled'],
   ['juod','czarny','чёрный','black'],
   ['balt','biały','белый','white'],
-  ['zali','zielony','зелёный','green']
+  ['zali','zielony','зелёный','green'],
+  ['koj','noga','ножка','leg']
 ];
 const LT_LANG_COL = { pl: 1, ru: 2, en: 3 };
 const LT_SMALL = { su: ['su', 'z', 'с', 'with'], ir: ['ir', 'i', 'и', 'and'], be: ['be', 'bez', 'без', 'without'] };
@@ -3421,13 +3462,16 @@ async function aiReadReceipt(ocrText, draft) {
   const messages = [
     { role: 'system', content:
       'Jesteś czytnikiem paragonów. Paragony są zwykle LITEWSKIE. Dostajesz tekst paragonu odczytany ze zdjęcia (może mieć błędy odczytu, np. brak litewskich znaków). ' +
-      'Słowa na litewskim paragonie: "Iš viso", "Mokėti", "Suma", "Mokėti suapvalinus" = suma do zapłaty; "Nuolaida", "Akcija" = rabat; "PVM", "Suma su PVM", "Be PVM", "PVM suma" = podatek VAT (NIE produkt); ' +
-      '"Grąža" = reszta; "kortele" = kartą; "grynaisiais" = gotówką; "Apvalinimo suma" = zaokrąglenie; "vnt" = sztuk; "kg" = kilogram; "Kvito Nr.", "Kasa", "Kasininkas" = dane kasy (NIE produkt). ' +
-      'Długi numer (13 cyfr) przed nazwą to kod kreskowy — nie jest częścią nazwy. Litera A/B/D/E po cenie to stawka VAT — pomiń ją. ' +
+      'NAZWA SKLEPU: zwykle jest w SAMEJ GÓRZE paragonu, często dużym pogrubionym drukiem albo w osobnym, wyróżnionym polu (logo firmy) — nie myl jej z adresem, kodem PVM ani numerem paragonu, które są zaraz pod nią. ' +
+      'RABAT: KAŻDA kwota poprzedzona znakiem "-" (minus) to rabat/zniżka odjęta od ceny POPRZEDNIEGO produktu — niezależnie od słowa obok niej (Nuolaida, Prekės Nuolaida, Sutaupote, Sutaupyta, Akcija, Nuolaida už CLASSIC taškus, itp.). Taka linia NIGDY nie jest osobnym produktem ani sumą końcową — zawsze odejmij ją od produktu bezpośrednio nad nią (pole "discount"), a "price" tego produktu zostaw jako cenę PRZED rabatem. ' +
+      'ILOŚĆ / WAGA: jeśli pod albo obok produktu jest linia typu "5 Vienet. X 3,59 EUR/Vienet.", "0,845 kg x 1,49 EUR/kg", "2 X 6,4900", "0.333*12.9500" albo "1,09 X 2,000 vnt." — to ilość i cena jednostkowa TEGO produktu, a nie osobna pozycja. Zapisz ją w polu "qty" krótko i czytelnie, np. "5 szt. x 3,59 €" albo "0,845 kg x 1,49 €/kg" (przetłumacz jednostkę na: ' + target + ', liczby zostaw jak są). Pomiń "qty", jeśli takiej linii nie ma. ' +
+      'Słowa na litewskim paragonie: "Iš viso", "Mokėti", "Suma", "Mokėti suapvalinus" = suma do zapłaty; "PVM", "Suma su PVM", "Be PVM", "PVM suma" = podatek VAT (NIE produkt); ' +
+      '"Grąža" = reszta; "kortele" = kartą; "grynaisiais" = gotówką; "Apvalinimo suma" = zaokrąglenie; "vnt" = sztuk; "kg" = kilogram; "Kvito Nr.", "Kasa", "Kasininkas", "Kortelės" = dane kasy/karty (NIE produkt). ' +
+      'Długi numer (8-14 cyfr) przed nazwą to kod kreskowy — nie jest częścią nazwy. Litera A/B/D/E po cenie to stawka VAT — pomiń ją. ' +
       'Zwróć WYŁĄCZNIE JSON, bez żadnego innego tekstu, w formacie: ' +
-      '{"store":"nazwa sklepu","total":12.34,"items":[{"name":"nazwa z paragonu","tr":"tłumaczenie nazwy","price":1.99,"discount":0}]}. ' +
-      'name = nazwa produktu dokładnie jak na paragonie (po litewsku). tr = ta nazwa przetłumaczona na język: ' + target + '. ' +
-      'price = cena pozycji przed rabatem (za całą kupioną ilość). discount = rabat na tę pozycję, 0 jeśli brak. Liczby zapisuj z kropką.' +
+      '{"store":"nazwa sklepu","total":12.34,"items":[{"name":"nazwa z paragonu","tr":"tłumaczenie nazwy","qty":"5 szt. x 3,59 €","price":1.99,"discount":0}]}. ' +
+      'name = nazwa produktu dokładnie jak na paragonie (po litewsku, bez tłumaczenia — litewski oryginał zawsze zostaje zapisany). tr = ta nazwa przetłumaczona na język: ' + target + '. ' +
+      'price = cena pozycji przed rabatem (za całą kupioną ilość, czyli suma z prawej strony linii produktu). discount = suma rabatów odjętych od tej pozycji (z linii zaczynających się od "-"), 0 jeśli brak. Liczby zapisuj z kropką.' +
       (hints.length ? ' Słowniczek słów z tego paragonu: ' + hints.join('; ') + '.' : '') },
     { role: 'user', content: text + (draft && draft.length ? '\n\nWSTĘPNY ODCZYT (sprawdź, popraw nazwy, dodaj brakujące, NIE wymyślaj cen): ' + JSON.stringify(draft) : '') }
   ];
@@ -3439,7 +3483,8 @@ async function aiReadReceipt(ocrText, draft) {
   const items = cleanItems(j.items).map((it, i) => {
     const src = Array.isArray(j.items) ? j.items.filter(x => x && String(x.name || '').trim() && num(x.price) > 0)[i] : null;
     const tr = src && typeof src.tr === 'string' ? src.tr.trim().slice(0, 80) : '';
-    return tr ? { ...it, tr, trLang } : it;
+    const qty = src && typeof src.qty === 'string' ? src.qty.trim().slice(0, 40) : '';
+    return { ...it, ...(tr ? { tr, trLang } : {}), ...(qty ? { qty } : {}) };
   })
     // no made-up amounts: a price (and a discount) must be printed on the receipt
     .filter(it => priceOnReceipt(it.price, text))
@@ -3555,13 +3600,14 @@ function rcAmounts(line) {
   const out = [];
   let m;
   RC_AMOUNT.lastIndex = 0;
-  while ((m = RC_AMOUNT.exec(line))) out.push({ v: Math.abs(parseFloat(m[1] + '.' + m[2])), i: m.index });
+  while ((m = RC_AMOUNT.exec(line))) out.push({ v: Math.abs(parseFloat(m[1] + '.' + m[2])), neg: m[1].trim().startsWith('-'), i: m.index });
   return out;
 }
+const RC_QTY = /\d+(?:[.,]\d+)?\s*(?:kg|g|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|vnt|l))?/i;
 function rcCleanName(s) {
   return String(s)
     .replace(/^\s*\d{8,14}\s*/, '')                                  // barcode before the name
-    .replace(/\d+(?:[.,]\d+)?\s*(?:kg|g|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|vnt|l))?/gi, ' ')
+    .replace(RC_QTY, ' ')
     .replace(/\s+[A-E]\s*\*?\s*$/, '')                              // VAT class letter after the price
     .replace(/[*#]+/g, ' ').replace(/\s{2,}/g, ' ')
     .replace(/^[\s,.;:-]+|[\s,;:-]+$/g, '').trim().slice(0, 80);
@@ -3575,21 +3621,37 @@ function parseReceiptText(text) {
     const n = normTxt(r);
     if (!RC_TOTAL.test(n) || /pvm|apvalinimo/.test(n)) return;
     const am = rcAmounts(r);
-    if (!am.length) return;
+    if (!am.length || am[am.length - 1].neg) return;   // a negative "total" is a discount-given summary, not the amount to pay
     const v = am[am.length - 1].v;
     if (totalIdx < 0 || /suapvalinus/.test(n)) { res.total = v; if (totalIdx < 0) totalIdx = i; }
   });
   const dm = String(text || '').match(/(20\d{2})[-.](\d{2})[-.](\d{2})/);
   if (dm) res.date = dm[1] + '-' + dm[2] + '-' + dm[3];
+  // shop name: a line at the very top, before the first product (barcode line or price) —
+  // computed before the item loop below, so that same line can be excluded from item names.
+  for (const r of rows.slice(0, 6)) {
+    if (/^\s*\d{8,}/.test(r) || rcAmounts(r).length) break;
+    if (/[A-Za-zÀ-ž]{3,}/.test(r) && !RC_SKIP.test(normTxt(r))) {
+      res.store = r.replace(/^\s*(UAB|AB|MB)\s+/i, '').replace(/["„“”]/g, '').trim();
+      break;
+    }
+  }
   const end = totalIdx >= 0 ? totalIdx : rows.length;
   let pending = '';
+  // Company/address boilerplate at the top (before the first product) — never glued onto a product name.
+  const RC_HEADER = /^(uab|ab|mb|vsi|ii)\b|pvm mok|imon.s kodas|kasa nr|\bg\.\s*\d|www\.\w/;
   for (let i = 0; i < end; i++) {
     const r = rows[i];
     const n = normTxt(r);
     if (/^\s*[a-e]\s+\d+[.,]\d+\s*%/.test(n) || /^t?0{3,}\w*$/i.test(r.replace(/\s/g, ''))) { pending = ''; continue; }  // tax rate line / barcode text
     const am = rcAmounts(r);
-    if (RC_DISCOUNT.test(n)) {                                   // discount belongs to the previous product
-      if (am.length && res.items.length) {
+    // "Iš viso suteikta nuolaidų" is a running summary of discounts already applied elsewhere —
+    // applying it again on top of the per-item "Nuolaida" lines would double-count it.
+    if (/nuolaid/.test(n) && /(is viso|viso suteikta)/.test(n)) { pending = ''; continue; }
+    // A "-" amount is always a discount off the previous product, whatever word is next to it
+    // (Nuolaida, Sutaupote, Prekės Nuolaida, Akcija...) — the sign matters more than the wording.
+    if ((RC_DISCOUNT.test(n) || (am.length && am[am.length - 1].neg)) && res.items.length) {
+      if (am.length) {
         const last = res.items[res.items.length - 1];
         last.discount = Math.round(((last.discount || 0) + am[am.length - 1].v) * 100) / 100;
       }
@@ -3599,25 +3661,28 @@ function parseReceiptText(text) {
     if (RC_SKIP.test(n) || RC_TOTAL.test(n)) { pending = ''; continue; }
     if (am.length) {
       const last = am[am.length - 1];
+      const qtyM = r.slice(0, last.i).match(RC_QTY);
       const namePart = rcCleanName(r.slice(0, last.i));
       // a long name often wraps onto the next lines (it starts with a barcode), with the price at the end;
       // "Obuoliai" + "0,845 kg x 1,49  1,26" -> the name is on the line before the price.
-      // Other lines without a price (shop name, address) are not glued to a product.
-      const wraps = pending && (/^\s*\d{8,14}\b/.test(pending) || !/[A-Za-zÀ-ž]{3,}/.test(namePart));
-      const name = rcCleanName((wraps ? pending + ' ' : '') + namePart);
-      if (/[A-Za-zÀ-ž]{2,}/.test(name) && last.v > 0 && last.v < 10000) res.items.push({ name, price: last.v, discount: 0 });
+      // A price line whose own leftover text is just a leftover unit/number (e.g. "00 vnt" once the
+      // qty itself is stripped out) counts as "nothing here" too, so the pending name is used instead.
+      const bare = namePart.replace(/\b(vnt|kg|g|l|szt)\b/gi, '').replace(/[\d\s.,]/g, '');
+      const pendingIsBarcode = pending && /^\s*\d{8,14}\b/.test(pending);
+      const namePartIsJunk = bare.length < 2;
+      const wraps = pending && (pendingIsBarcode || namePartIsJunk);
+      // when namePart is just leftover qty junk ("00 vnt"), drop it entirely rather than tacking it on
+      const name = rcCleanName(wraps ? (namePartIsJunk ? pending : pending + ' ' + namePart) : namePart);
+      if (/[A-Za-zÀ-ž]{2,}/.test(name) && last.v > 0 && last.v < 10000) {
+        const item = { name, price: last.v, discount: 0 };
+        if (qtyM) item.qty = qtyM[0].replace(/\s{2,}/g, ' ').trim();
+        res.items.push(item);
+      }
       pending = '';
     } else if (/[A-Za-zÀ-ž]{3,}/.test(r)) {
+      if (RC_HEADER.test(n) || (res.store && n === normTxt(res.store))) { pending = ''; continue; }   // shop name/address — not part of a product
       pending = (pending ? pending + ' ' : '') + r;
       if (pending.length > 160) pending = r;
-    }
-  }
-  // shop name: a line at the very top, before the first product (barcode line or price)
-  for (const r of rows.slice(0, 6)) {
-    if (/^\s*\d{8,}/.test(r) || rcAmounts(r).length) break;
-    if (/[A-Za-zÀ-ž]{3,}/.test(r) && !RC_SKIP.test(normTxt(r))) {
-      res.store = r.replace(/^\s*(UAB|AB|MB)\s+/i, '').replace(/["„“”]/g, '').trim();
-      break;
     }
   }
   return res;
@@ -3699,7 +3764,7 @@ function applyAiToSavedTx(pending) {
   const tx = state.transactions.find(x => x.id === pending.savedTxId);
   if (!tx || !tx.receipt) return;
   tx.receipt.items = (pending.items || []).map(it => ({ name: it.name, price: it.price, discount: it.discount || 0,
-    ...(it.tr ? { tr: it.tr, trLang: it.trLang } : {}) }));
+    ...(it.tr ? { tr: it.tr, trLang: it.trLang } : {}), ...(it.qty ? { qty: it.qty } : {}) }));
   if (pending.store && pending.store !== '—' && (!tx.receipt.store || tx.receipt.store === '—')) tx.receipt.store = pending.store;
   saveState();
   renderAll();
@@ -3978,7 +4043,7 @@ document.getElementById('receiptSaveBtn').addEventListener('click', () => {
       store,
       groupId: g.id || null,
       items: (receiptPendingResult.items || []).map(it => ({ name: it.name, price: it.price, discount: it.discount || 0,
-        ...(it.tr ? { tr: it.tr, trLang: it.trLang } : {}) })),
+        ...(it.tr ? { tr: it.tr, trLang: it.trLang } : {}), ...(it.qty ? { qty: it.qty } : {}) })),
       text: String(receiptPendingResult.text || '').slice(0, 6000),
       vmi: receiptPendingResult.vmi || null
     }
