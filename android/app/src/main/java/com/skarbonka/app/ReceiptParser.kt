@@ -136,7 +136,7 @@ object ReceiptParser {
                 val name = cleanName(r.substring(0, m.range.first))
                 when {
                     letters(name) >= 2 -> { items.add(ReceiptItem(name, price)); pendingName = null }
-                    pendingName != null -> { items.add(ReceiptItem(pendingName!!, price)); pendingName = null }
+                    pendingName != null -> { items.add(ReceiptItem(pendingName, price)); pendingName = null }
                 }
             } else if (letters(r) >= 3) {
                 pendingName = cleanName(r)
