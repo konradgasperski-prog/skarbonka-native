@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262414">
+<meta name="stash-version" content="202609262415">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -741,6 +741,16 @@
     display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden;
     scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
     padding: 2px 2px 6px; margin-top: -6px; scrollbar-width: none;
+    /* Browsing between cards (swipe) and picking one up to reorder (long-press + drag) are two
+       different gestures on the SAME element, and letting the browser's own touch-scroll compete
+       with our JS drag was the actual bug (three earlier attempts at "outrunning" the browser's
+       scroll mid-gesture all failed the same way on a real phone - the browser cancelling the
+       whole touch outright the instant we changed touch-action/overflow underneath it while it
+       was already tracking that finger). touch-action:pan-y permanently hands OFF horizontal
+       panning to us and never touches it again mid-gesture - JS below does the horizontal
+       scrolling itself (wireCardReorder) - while leaving vertical page scrolling untouched and
+       fully native, so a finger that drifts up/down over a card still scrolls the page normally. */
+    touch-action: pan-y;
   }
   .cards-strip::-webkit-scrollbar { display: none; }
   .cards-strip-item {
@@ -4609,7 +4619,9 @@ function wireCardReorder() {
   const strip = document.getElementById('cardsStrip');
   if (!strip) return;
   const LONG_PRESS_MS = 450;
-  let pressTimer = null, dragId = null, dragTile = null, startX = 0, startY = 0, activePointerId = null, longPressFired = false, suppressClick = false, shiftedTile = null, lockedScrollLeft = 0;
+  let pressTimer = null, dragId = null, dragTile = null, startX = 0, startY = 0, startScrollLeft = 0,
+      activePointerId = null, longPressFired = false, suppressClick = false, shiftedTile = null,
+      panning = false, panDecided = false;
   const cancelPress = () => { clearTimeout(pressTimer); pressTimer = null; };
   // Android's own long-press-to-select (and on MIUI/HyperOS, the system "smart selection"
   // popup) can still win the race against our hold timer and highlight a card blue even with
@@ -4623,7 +4635,8 @@ function wireCardReorder() {
   strip.addEventListener('pointerdown', (e) => {
     const tile = e.target.closest('.cards-strip-item[data-card-tile]');
     if (!tile || !tile.dataset.cardTile || e.target.closest('[data-delcard]')) return;
-    startX = e.clientX; startY = e.clientY; activePointerId = e.pointerId; longPressFired = false;
+    startX = e.clientX; startY = e.clientY; startScrollLeft = strip.scrollLeft;
+    activePointerId = e.pointerId; longPressFired = false; panning = false; panDecided = false;
     cancelPress();
     pressTimer = setTimeout(() => {
       longPressFired = true;
@@ -4636,25 +4649,6 @@ function wireCardReorder() {
       // rule has a transform transition (for hover/press states) that would otherwise fight
       // every style update below, making the card visibly lag and "settle" late.
       tile.style.transition = 'none';
-      // The strip itself is a horizontally-scrollable row (overflow-x: auto), and by default a
-      // touchscreen browser decides whether a touch is "a scroll" or not from its very FIRST move
-      // event of the whole gesture - calling preventDefault() later, once the long-press has fired,
-      // is too late if the browser already committed to scrolling earlier. Since the finger has been
-      // essentially still for the whole LONG_PRESS_MS hold (any bigger movement already cancelled the
-      // press above, before this runs), no scroll has been able to start yet - locking touch-action
-      // down right now, before the drag's own first move event, is what actually stops the strip from
-      // just sliding under the finger instead of the card following it. A plain swipe (no long hold)
-      // never reaches this line, so normal side-to-side browsing of the cards is untouched.
-      strip.style.touchAction = 'none';
-      // touch-action alone still wasn't enough on this phone (reported twice) - the WebView had
-      // apparently already committed to a scroll gesture a moment earlier and touch-action can only
-      // stop a gesture that hasn't started yet. overflow-x:hidden is a much blunter, unconditional
-      // instrument: a container that isn't scrollable AT ALL can't be scrolled by any in-flight
-      // gesture, no matter when the browser committed to it. Restored the instant the drag ends.
-      lockedScrollLeft = strip.scrollLeft;
-      strip.style.overflowX = 'hidden';
-      // Belt-and-suspenders on top of that: also force the scroll position back every single move
-      // event below, in case some WebView build still manages to nudge it even while hidden.
       try { navigator.vibrate && navigator.vibrate(15); } catch (err) {}
       try { strip.setPointerCapture(e.pointerId); } catch (err) {}
     }, LONG_PRESS_MS);
@@ -4662,11 +4656,41 @@ function wireCardReorder() {
   strip.addEventListener('pointermove', (e) => {
     if (e.pointerId !== activePointerId) return;
     if (!longPressFired) {
-      if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) cancelPress();
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      // Deciding "is this a horizontal swipe (browse cards) or something else" ourselves, once,
+      // the moment the finger has moved enough to tell — rather than ever asking the browser's own
+      // touch-scroll to handle it — is the actual fix here. Three earlier attempts all tried to let
+      // the browser start its native scroll and then fight it (touch-action, then also locking
+      // scrollLeft, then also forcing overflow:hidden mid-touch) - and changing those properties
+      // out from under an ALREADY-TRACKED touch is exactly what made the phone cancel the whole
+      // gesture outright ("odczepia się i traci palec" - the drag dying the instant it started).
+      // touch-action:pan-y on the strip (in the stylesheet) means the browser never even attempts
+      // horizontal panning here in the first place, so there is nothing to cancel or race against -
+      // a sideways drag is scrolled by hand below, a long-press candidate is left alone (no scrollLeft
+      // writes at all while just holding still), and vertical movement is left to the browser as
+      // normal page scroll.
+      if (!panDecided) {
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          panDecided = true;
+          if (Math.abs(dx) > Math.abs(dy)) {
+            panning = true;
+            // Without this, a fast swipe that carries the finger outside the strip's own bounding
+            // box (easy to do on a narrow row of cards) would stop delivering pointermove events
+            // here entirely, freezing the scroll mid-swipe.
+            try { strip.setPointerCapture(e.pointerId); } catch (err) {}
+          }
+          cancelPress();
+        } else {
+          return;   // finger has barely moved yet - still a valid long-press-in-progress, wait
+        }
+      }
+      if (panning) {
+        e.preventDefault();
+        strip.scrollLeft = startScrollLeft - dx;
+      }
       return;
     }
     e.preventDefault();
-    if (strip.scrollLeft !== lockedScrollLeft) strip.scrollLeft = lockedScrollLeft;
     // The card itself follows your finger/mouse — sideways only (left or right), never up/down.
     if (dragTile) dragTile.style.transform = 'translateX(' + (e.clientX - startX) + 'px) scale(1.06)';
     // The card under the cursor slides aside to make room, the opposite way from your drag —
@@ -4705,11 +4729,9 @@ function wireCardReorder() {
     if (e.pointerId !== activePointerId) return;
     cancelPress();
     activePointerId = null;
+    panning = false; panDecided = false;
     if (!longPressFired) return;
     longPressFired = false;
-    strip.style.touchAction = '';   // restore normal side-to-side scrolling for the next swipe
-    strip.style.overflowX = '';
-    strip.scrollLeft = lockedScrollLeft;
     suppressClick = true;
     setTimeout(() => { suppressClick = false; }, 0);
     const el = document.elementFromPoint(e.clientX, e.clientY);
