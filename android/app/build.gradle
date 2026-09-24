@@ -11,8 +11,8 @@ android {
         applicationId "com.skarbonka.app"
         minSdk 24
         targetSdk 34
-        versionCode 7
-        versionName "1.6"
+        versionCode 8
+        versionName "1.7"
     }
 
     buildTypes {
@@ -29,50 +29,7 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
-
-    // Model AI lezy w APK bez kompresji
-    androidResources {
-        noCompress 'task'
-    }
 }
-
-// ---------------------------------------------------------------------------
-// Lokalne AI wbudowane w apke: model Qwen 2.5 1.5B (1,6 GB) jest za duzy na GitHub,
-// wiec pobiera sie automatycznie przy budowaniu i trafia do APK.
-// ---------------------------------------------------------------------------
-def aiModelUrl  = 'https://huggingface.co/litert-community/Qwen2.5-1.5B-Instruct/resolve/main/Qwen2.5-1.5B-Instruct_multi-prefill-seq_q8_ekv4096.task'
-def aiModelFile = file('src/main/assets/models/qwen2.5-1.5b-instruct-q8-ekv4096.task')
-
-tasks.register('downloadAiModel') {
-    outputs.file(aiModelFile)
-    doLast {
-        if (aiModelFile.exists() && aiModelFile.length() > 1_000_000_000L) {
-            println "Model AI juz jest: ${aiModelFile.length()} B"
-            return
-        }
-        aiModelFile.parentFile.mkdirs()
-        def tmp = new File(aiModelFile.path + '.part')
-        println "Pobieram model AI (ok. 1,6 GB)..."
-        def conn = new URL(aiModelUrl).openConnection()
-        conn.instanceFollowRedirects = true
-        conn.connectTimeout = 30000
-        conn.readTimeout = 120000
-        conn.inputStream.withStream { input ->
-            tmp.withOutputStream { output ->
-                byte[] buf = new byte[1 << 20]
-                int n
-                while ((n = input.read(buf)) > 0) { output.write(buf, 0, n) }
-            }
-        }
-        if (tmp.length() < 1_000_000_000L) {
-            throw new GradleException("Pobrany model AI jest za maly (${tmp.length()} B) - sprawdz adres: ${aiModelUrl}")
-        }
-        aiModelFile.delete()
-        tmp.renameTo(aiModelFile)
-        println "Model AI gotowy: ${aiModelFile.length()} B"
-    }
-}
-tasks.named('preBuild') { dependsOn 'downloadAiModel' }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
@@ -90,7 +47,4 @@ dependencies {
 
     // Odczyt tekstu ze zdjecia paragonu (Google ML Kit przez Uslugi Google Play - apka zostaje mala)
     implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.0'
-
-    // Lokalne AI (Google MediaPipe LLM Inference)
-    implementation 'com.google.mediapipe:tasks-genai:0.10.24'
 }

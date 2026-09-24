@@ -77,7 +77,25 @@ object ReceiptParser {
             }
             rows.add(mutableListOf(ln))
         }
-        return rows.map { r -> r.sortedBy { it.boundingBox!!.left }.joinToString("   ") { it.text.trim() } }
+        return rows.map { r -> r.sortedBy { it.boundingBox!!.left }.joinToString("   ") { joinWords(it) } }
+    }
+
+    // Google ML Kit sometimes splits ONE word into several "elements" (e.g. "Duona" -> "Du" + "ona") and
+    // joins them with a space of its own, because letter spacing on a thermal-printer receipt can be uneven.
+    // We ignore that guess and decide it ourselves from the actual pixel gap between the pieces: a small gap
+    // means it is really the same word (glue it back together, no space); a wider gap is a genuine word break.
+    private fun joinWords(line: Text.Line): String {
+        val els = line.elements.filter { it.boundingBox != null }.sortedBy { it.boundingBox!!.left }
+        if (els.isEmpty()) return line.text.trim()
+        val sb = StringBuilder(els.first().text)
+        for (i in 1 until els.size) {
+            val prev = els[i - 1].boundingBox!!
+            val cur = els[i].boundingBox!!
+            val gap = cur.left - prev.right
+            val charW = maxOf(1f, prev.height() * 0.55f)   // rough width of one character at this line's size
+            if (gap < charW * 0.9f) sb.append(els[i].text) else { sb.append(' '); sb.append(els[i].text) }
+        }
+        return sb.toString().trim()
     }
 
     fun parse(text: Text): ReceiptResult {

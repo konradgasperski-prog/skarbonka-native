@@ -7,9 +7,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -61,7 +64,7 @@ import java.util.concurrent.Executors
 
 /**
  * Skaner paragonow: zdjecie calego paragonu przyciskiem.
- * 1) tekst ze zdjecia (ML Kit) -> produkty, ceny, rabaty (dokladnie czyta je potem AI w apce),
+ * 1) tekst ze zdjecia (ML Kit) -> produkty, ceny, rabaty,
  * 2) kod QR VMI z tego samego zdjecia (albo zlapany wczesniej w podgladzie) -> strona VMI -> sklep, adres, suma, PVM.
  * Zdjecie jest tylko w pamieci i zaraz po odczycie jest usuwane - nic nie trafia do galerii.
  */
@@ -276,7 +279,7 @@ class ScannerActivity : AppCompatActivity() {
                 if (bmp == null) { fail(); return }
                 // obraz sie zatrzymuje - podglad z aparatu jest wylaczony, widac zrobione zdjecie
                 freeze(bmp)
-                readTextAndQr(InputImage.fromBitmap(bmp, 0)) { }
+                readTextAndQr(InputImage.fromBitmap(enhanceForOcr(bmp), 0)) { }
             }
 
             override fun onError(exception: ImageCaptureException) { fail() }
@@ -289,7 +292,9 @@ class ScannerActivity : AppCompatActivity() {
         setBusy(true)
         status.text = s("reading")
         try {
-            readTextAndQr(InputImage.fromFilePath(this, uri)) { }
+            val bmp = try { contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) } } catch (e: Exception) { null }
+            val input = if (bmp != null) InputImage.fromBitmap(enhanceForOcr(bmp), 0) else InputImage.fromFilePath(this, uri)
+            readTextAndQr(input) { }
         } catch (e: Exception) {
             fail()
         }
@@ -320,6 +325,28 @@ class ScannerActivity : AppCompatActivity() {
                 finishWith(result, vmi)
             }
         }
+    }
+
+    // Wiekszosc paragonow z drukarek termicznych ma slaby, wyblakly kontrast - podbicie go
+    // (szarosc + mocniejszy kontrast) wyraznie poprawia odczyt liter, zwlaszcza litewskich
+    // znakow diakrytycznych (ą, č, ę, ė, į, š, ų, ū, ž). Zdjecie pokazywane uzytkownikowi
+    // (freeze()) zostaje oryginalne - to tylko kopia uzywana do samego odczytu OCR.
+    private fun enhanceForOcr(src: Bitmap): Bitmap {
+        val out = Bitmap.createBitmap(src.width, src.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(out)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        val contrast = 1.9f
+        val translate = (-0.5f * contrast + 0.5f) * 255f
+        val cm = ColorMatrix().apply { setSaturation(0f) }   // grayscale
+        cm.postConcat(ColorMatrix(floatArrayOf(
+            contrast, 0f, 0f, 0f, translate,
+            0f, contrast, 0f, 0f, translate,
+            0f, 0f, contrast, 0f, translate,
+            0f, 0f, 0f, 1f, 0f
+        )))
+        paint.colorFilter = ColorMatrixColorFilter(cm)
+        canvas.drawBitmap(src, 0f, 0f, paint)
+        return out
     }
 
     private fun rotated(src: Bitmap, degrees: Int): Bitmap {

@@ -79,7 +79,6 @@ class MainActivity : Activity() {
 
         applyIconMode()
         pushSystemAccentColor()
-        AiEngine.prepare(this)   // pierwsze uruchomienie: model AI przygotowuje sie w tle
     }
 
     override fun onResume() {
@@ -160,11 +159,6 @@ class MainActivity : Activity() {
         webView.post {
             webView.evaluateJavascript("window.onNativeReceipt && window.onNativeReceipt($safe);", null)
         }
-    }
-
-    private fun pushAiStatus() {
-        val json = AiEngine.statusJson()
-        webView.post { webView.evaluateJavascript("window.onAiStatus && window.onAiStatus($json);", null) }
     }
 
     // --- Icon switching (light / dark / glass / auto) ---
@@ -278,36 +272,6 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun getWebVersion(): String = loadedVersion.toString()
-
-        // --- Lokalne AI (AiEngine) ---
-        @JavascriptInterface
-        fun aiStatus(): String = AiEngine.statusJson()
-
-        @JavascriptInterface
-        fun aiModelDownloaded(): Boolean = AiEngine.isDownloaded(this@MainActivity)
-
-        @JavascriptInterface
-        fun aiInit() {
-            AiEngine.init(this@MainActivity) { pushAiStatus() }
-        }
-
-        @JavascriptInterface
-        fun aiGenerate(id: String, prompt: String) {
-            aiGenerateT(id, prompt, 0.7)
-        }
-
-        @JavascriptInterface
-        fun aiGenerateT(id: String, prompt: String, temperature: Double) {
-            AiEngine.generate(prompt, temperature.toFloat()) { text, err ->
-                val json = JSONObject()
-                    .put("id", id)
-                    .put("text", text ?: JSONObject.NULL)
-                    .put("error", err ?: JSONObject.NULL)
-                    .toString()
-                    .replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
-                webView.post { webView.evaluateJavascript("window.onAiResult && window.onAiResult($json);", null) }
-            }
-        }
 
         // Otwiera strone (np. paragon w VMI) w przegladarce telefonu
         @JavascriptInterface

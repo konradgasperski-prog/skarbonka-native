@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609252100">
+<meta name="stash-version" content="202609261200">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -323,6 +323,7 @@
   .theme-toggle, .account-toggle {
     background: color-mix(in srgb, var(--card) 65%, transparent);
     transition: transform 0.15s ease, background 0.25s ease;
+    position: relative; z-index: 51;   /* stays clickable even though the open popover now geometrically overlaps it */
   }
   .theme-toggle.spin { animation: themeSpin 0.45s ease; }
   @keyframes themeSpin { from { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(0.8); } to { transform: rotate(360deg) scale(1); } }
@@ -387,11 +388,11 @@
   /* Same Dynamic-Island morph as the cards drawer: grows out of its own header icon and
      shrinks back into it, with a smooth (no-bounce) close. */
   .account-popover {
-    position: absolute; top: 46px; right: 0; width: 260px; z-index: 50;
+    position: absolute; top: 0; right: 0; width: 260px; z-index: 50;
     background: color-mix(in srgb, var(--card) 88%, transparent);
     border: 1px solid color-mix(in srgb, white 28%, var(--border));
     border-radius: 16px; box-shadow: var(--shadow), inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
-    padding: 16px; pointer-events: none; overflow: hidden; height: 0px;
+    padding: 46px 16px 16px; pointer-events: none; overflow: hidden; height: 0px;
     --ci-t: 0px; --ci-l: 100%; --ci-r: 0px; --ci-b: 100%;
     clip-path: inset(var(--ci-t) var(--ci-r) var(--ci-b) var(--ci-l) round 16px);
     opacity: 0;
@@ -657,6 +658,8 @@
   .cards-strip-item.all-item { background: var(--accent-soft); }
   .cards-strip-item { transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
   .cards-strip-item:active { transform: scale(0.97); }
+  .cards-strip-item.reordering { transform: scale(1.06); box-shadow: 0 10px 26px rgba(0,0,0,0.28); z-index: 5; }
+  .cards-strip-item.drop-target { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; background: var(--accent-soft); }
   .cards-strip-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
   .cards-strip-item .check.pop { animation: checkPop 0.18s cubic-bezier(.3,1.4,.5,1); }
   @keyframes checkPop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -740,13 +743,6 @@
   .receipt-items .ri-row.other { color: var(--text-dim); font-style: italic; }
   .receipt-items .ri-del { background: none; border: none; color: var(--text-dim); font-size: 13px; padding: 2px 4px; cursor: pointer; }
   .tx-item { cursor: pointer; }
-  .ai-bg-pill { position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top, 0px)); z-index: 1900;
-    transform: translate(-50%, -150%); padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
-    background: color-mix(in srgb, var(--card) 90%, transparent); box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); pointer-events: none;
-    transition: transform 0.4s cubic-bezier(.32,1.2,.4,1); }
-  .ai-bg-pill.show { transform: translate(-50%, 0); animation: aiPulse 1.6s ease-in-out infinite; }
-  @keyframes aiPulse { 50% { opacity: 0.72; } }
   .update-banner { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2000;
     display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; font-size: 13.5px; font-weight: 600;
     background: color-mix(in srgb, var(--card) 92%, transparent); box-shadow: 0 10px 30px rgba(0,0,0,0.25);
@@ -768,6 +764,18 @@
   .vmi-btn { margin-top: 10px; width: 100%; }
   .tx-receipt-badge { font-size: 11px; opacity: 0.75; margin-left: 4px; }
   .txd-head .txd-title { font-size: 17px; font-weight: 800; }
+  .txd-title-row { display: flex; align-items: center; gap: 8px; }
+  .txd-title-row .txd-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .txd-edit-btn {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: none; cursor: pointer;
+    background: color-mix(in srgb, var(--bg) 55%, transparent); color: var(--text-dim); font-size: 13px;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .txd-title-input {
+    flex: 1; min-width: 0; font-size: 17px; font-weight: 800; font-family: inherit; color: var(--text);
+    background: color-mix(in srgb, var(--bg) 55%, transparent); border: 1px solid var(--border);
+    border-radius: 8px; padding: 4px 8px; margin: 0;
+  }
   .txd-head .txd-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
   .txd-head .txd-amount { font-size: 26px; font-weight: 800; margin: 10px 0 2px; }
   .txd-fulltext { margin-top: 10px; font-size: 12px; }
@@ -1200,7 +1208,6 @@
         </div>
       </div>
       <div class="receipt-vmi warn hidden" id="receiptResDup"></div>
-      <div class="receipt-ai-note hidden" id="receiptResAi"></div>
       <div class="receipt-items hidden" id="receiptResItems"></div>
       <div class="receipt-vmi hidden" id="receiptResVmi"></div>
       <div class="field">
@@ -1355,8 +1362,7 @@ const TRANSLATIONS = {
     period: { day:'Dni', week:'Tygodnie', month:'Miesiące', year:'Kwartały', searchDay:'Przejdź do dnia', searchWeek:'Przejdź do tygodnia', searchMonth:'Przejdź do miesiąca', searchYear:'Przejdź do roku', yearPlaceholder:'np. 2026', weekLabel:'Tydzień {week}, {year} ({from}–{to})' },
     chart: { bar:'Słupkowy', line:'Liniowy', pie:'Kołowy', percent:'Procentowy', preview:'Podgląd', incomeVsExpense:'Przychody vs wydatki (wybrany okres)', percentShare:'Udział %' },
     update: { ready:'Nowa wersja apki jest gotowa', restart:'Uruchom ponownie' },
-    ai: { updated:'Zaktualizowano:', pending:'Zbieram dane — pierwsza analiza pojawi się, gdy zamkniesz albo przełączysz aplikację.', downloadingNative:'Pobieram model AI (1,6 GB, tylko raz — najlepiej przez Wi-Fi)…', preparing:'Przygotowuję model AI (tylko przy pierwszym uruchomieniu)…', lowmem:'Ten telefon ma za mało pamięci RAM dla modelu AI (potrzeba ok. 6 GB).', missing:'Ta wersja apki nie ma wbudowanego modelu AI.', nospace:'Za mało wolnego miejsca w telefonie (potrzeba ok. 1,7 GB).', introNative:'Model AI jest wbudowany w apkę i działa w całości na tym urządzeniu — bez internetu, nic nie wychodzi z urządzenia.', title:'Asystent AI (lokalnie, offline)', intro:'Analizuje Twoje dane bezpośrednio na tym urządzeniu — nic nie wysyłamy do internetu. Pierwsze uruchomienie pobiera mały model AI (ok. 600 MB–1 GB), potem działa offline.', analyzeBtn:'🤖 Analizuj moje finanse', downloading:'Pobieranie modelu AI...', loading:'Uruchamianie modelu...', thinking:'Analizuję...', unsupported:'To urządzenie/przeglądarka nie obsługuje lokalnego AI (brak WebGPU). Spróbuj na nowszym komputerze lub telefonie.', error:'Coś poszło nie tak przy uruchamianiu AI: ', noData:'Dodaj kilka transakcji, żeby AI mogło je przeanalizować.', ready:'Model gotowy ✓' },
-    receipts: { noGroup:'Bez grupy', noGroupNote:'Zapiszę bez przypisanej grupy — możesz ją dodać teraz albo później, w szczegółach transakcji.', noMatchNote:'Nie znalazłem pasującej grupy dla „{store}” — wybierz ją poniżej albo zapisz bez grupy. Możesz dopisać słowo kluczowe w zakładce Grupy.', matchNote:'Rozpoznano „{store}” i dopasowano do grupy {group} po słowie kluczowym.', autoNote:'Ta grupa ma włączone <b>auto-dodawanie</b> — w pełnej wersji AI zapisałoby to bez pytania.', confirmNote:'Ta grupa wymaga Twojego potwierdzenia przed zapisem.', changeGroup:'Zmień grupę', aiBackground:'🤖 AI pracuje w tle — możesz zapisać albo wyjść', aiFinished:'🤖 AI dokończyło paragon:', vmiNotFound:'Paragonu nie znaleziono w VMI', aiNeedModel:'🤖 Żeby AI czytało produkty, pobierz raz model w zakładce Asystent AI', aiReading:'🤖 AI analizuje paragon… Możesz już zapisać — dokończy w tle', aiDone:'🤖 AI odczytało paragon', aiOff:'Odczyt automatyczny (AI niedostępne)', discount:'rabat', vmiMatch:'✓ Suma produktów zgadza się z VMI', vmiDiff:'⚠️ Suma produktów różni się od VMI', vmiOpen:'Otwórz w VMI', vmiDup:'Ten paragon jest już zapisany', saveAnyway:'💾 Zapisz mimo to', vmiFetched:'Sprawdzone w VMI', vmiOffline:'Bez internetu — dane z VMI nie zostały pobrane (kod QR jest zapisany)', withVat:'Suma z PVM', noVat:'Suma bez PVM', vatAmt:'PVM', receiptNo:'Nr paragonu', address:'Adres', items:'Produkty', fullText:'Pełny tekst paragonu', otherItems:'Pozostałe / nierozpoznane', total:'Suma', noItems:'Ta transakcja nie ma rozbicia na produkty — nie pochodzi ze skanu paragonu.', details:'Szczegóły transakcji', removeItem:'Usuń pozycję', itemsCount:'poz.', scanHintLive:'Zrób zdjęcie całego paragonu — AI odczyta każdy produkt, cenę i rabat, a kod QR na dole sprawdzi w VMI sklep, adres i sumę. Samo zdjęcie od razu jest usuwane.', scanCtaQr:'Zrób zdjęcie paragonu', scanSubQr:'AI odczyta produkty, a kod QR sprawdzi w VMI', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
+    receipts: { editName:'Popraw nazwę', noGroup:'Bez grupy', noGroupNote:'Zapiszę bez przypisanej grupy — możesz ją dodać teraz albo później, w szczegółach transakcji.', noMatchNote:'Nie znalazłem pasującej grupy dla „{store}” — wybierz ją poniżej albo zapisz bez grupy. Możesz dopisać słowo kluczowe w zakładce Grupy.', matchNote:'Rozpoznano „{store}” i dopasowano do grupy {group} po słowie kluczowym.', autoNote:'Ta grupa ma włączone <b>auto-dodawanie</b> — w pełnej wersji AI zapisałoby to bez pytania.', confirmNote:'Ta grupa wymaga Twojego potwierdzenia przed zapisem.', changeGroup:'Zmień grupę', vmiNotFound:'Paragonu nie znaleziono w VMI', discount:'rabat', vmiMatch:'✓ Suma produktów zgadza się z VMI', vmiDiff:'⚠️ Suma produktów różni się od VMI', vmiOpen:'Otwórz w VMI', vmiDup:'Ten paragon jest już zapisany', saveAnyway:'💾 Zapisz mimo to', vmiFetched:'Sprawdzone w VMI', vmiOffline:'Bez internetu — dane z VMI nie zostały pobrane (kod QR jest zapisany)', withVat:'Suma z PVM', noVat:'Suma bez PVM', vatAmt:'PVM', receiptNo:'Nr paragonu', address:'Adres', items:'Produkty', fullText:'Pełny tekst paragonu', otherItems:'Pozostałe / nierozpoznane', total:'Suma', noItems:'Ta transakcja nie ma rozbicia na produkty — nie pochodzi ze skanu paragonu.', details:'Szczegóły transakcji', removeItem:'Usuń pozycję', itemsCount:'poz.', scanHintLive:'Zrób zdjęcie całego paragonu — AI odczyta każdy produkt, cenę i rabat, a kod QR na dole sprawdzi w VMI sklep, adres i sumę. Samo zdjęcie od razu jest usuwane.', scanCtaQr:'Zrób zdjęcie paragonu', scanSubQr:'AI odczyta produkty, a kod QR sprawdzi w VMI', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
     cards: { myCards:'Karty', allTogether:'Wszystkie', title:'Karty bankowe', hint:'Dodaj swoje karty i wybierz jedną — nowe transakcje będą zapisywać się tylko do wybranej karty. Zakładka „Wszystkie” pokaże sumę ze wszystkich kart naraz.', newCard:'Nowa karta', newCardTitle:'Nowa karta', cardName:'Nazwa karty', createCard:'Utwórz kartę', needName:'Podaj nazwę karty', createdToast:'Utworzono kartę', showing:'Pokazuję:', showingAll:'Pokazuję: wszystkie karty', noCard:'bez karty', allBalanceLabel:'Saldo razem ze wszystkich kart' },
     rates: { title:'Kursy walut (1 EUR =)', refreshNow:'Odśwież teraz', lastSync:'Ostatnia synchronizacja: ', fetchFailed:'Nie udało się pobrać aktualnych kursów (brak połączenia) — używane są zapisane wcześniej.', newDayBanner:'Nowy dzień — sprawdź i zaktualizuj kursy walut.' },
     data: { title:'Dane', resetAll:'Wyczyść wszystkie dane' },
@@ -1389,8 +1395,7 @@ const TRANSLATIONS = {
     period: { day:'Days', week:'Weeks', month:'Months', year:'Quarters', searchDay:'Go to day', searchWeek:'Go to week', searchMonth:'Go to month', searchYear:'Go to year', yearPlaceholder:'e.g. 2026', weekLabel:'Week {week}, {year} ({from}–{to})' },
     chart: { bar:'Bar', line:'Line', pie:'Pie', percent:'Percent', preview:'Preview', incomeVsExpense:'Income vs expenses (selected period)', percentShare:'Share %' },
     update: { ready:'A new version of the app is ready', restart:'Restart' },
-    ai: { updated:'Updated:', pending:'Gathering data — the first analysis appears once you close or switch away from the app.', downloadingNative:'Downloading the AI model (1.6 GB, only once — Wi-Fi recommended)…', preparing:'Preparing the AI model (first run only)…', lowmem:'This phone does not have enough RAM for the AI model (about 6 GB needed).', missing:'This version of the app has no built-in AI model.', nospace:'Not enough free storage on the phone (about 1.7 GB needed).', introNative:'The AI model is built into the app and runs entirely on this device — offline, nothing leaves the device.', title:'AI Assistant (local, offline)', intro:'Analyzes your data directly on this device — nothing is sent to the internet. First run downloads a small AI model (~600 MB–1 GB), then it works offline.', analyzeBtn:'🤖 Analyze my finances', downloading:'Downloading AI model...', loading:'Starting model...', thinking:'Analyzing...', unsupported:'This device/browser does not support local AI (no WebGPU). Try a newer computer or phone.', error:'Something went wrong starting the AI: ', noData:'Add a few transactions so the AI has something to analyze.', ready:'Model ready ✓' },
-    receipts: { noGroup:'No group', noGroupNote:'This will be saved without a group — you can add one now or later, from the transaction details.', noMatchNote:'No matching group found for “{store}” — pick one below or save without a group. You can add a keyword in the Groups tab.', matchNote:'Recognized “{store}” and matched it to the {group} group by keyword.', autoNote:'This group has <b>auto-add</b> turned on — in the full version AI would save this without asking.', confirmNote:'This group needs your confirmation before saving.', changeGroup:'Change group', aiBackground:'🤖 AI is working in the background — you can save or leave', aiFinished:'🤖 AI finished the receipt:', vmiNotFound:'Receipt not found in VMI', aiNeedModel:'🤖 To let AI read products, download the model once in the AI Assistant tab', aiReading:'🤖 AI is reading the receipt…', aiDone:'🤖 AI read the receipt', aiOff:'Automatic reading (AI unavailable)', discount:'discount', vmiMatch:'✓ Items total matches VMI', vmiDiff:'⚠️ Items total differs from VMI', vmiOpen:'Open in VMI', vmiDup:'This receipt is already saved', saveAnyway:'💾 Save anyway', vmiFetched:'Verified with VMI', vmiOffline:'No internet — VMI data was not fetched (the QR code is saved)', withVat:'Total incl. VAT', noVat:'Total excl. VAT', vatAmt:'VAT', receiptNo:'Receipt no.', address:'Address', items:'Products', fullText:'Full receipt text', otherItems:'Other / unrecognized', total:'Total', noItems:'This transaction has no product breakdown — it did not come from a receipt scan.', details:'Transaction details', removeItem:'Remove item', itemsCount:'items', scanHintLive:'Take a photo of the whole receipt — AI reads every product, price and discount, and the QR code at the bottom is checked with VMI (store, address, total). The photo itself is deleted right away.', scanCtaQr:'Take a photo of the receipt', scanSubQr:'AI reads the products, the QR code is checked with VMI', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
+    receipts: { editName:'Fix name', noGroup:'No group', noGroupNote:'This will be saved without a group — you can add one now or later, from the transaction details.', noMatchNote:'No matching group found for “{store}” — pick one below or save without a group. You can add a keyword in the Groups tab.', matchNote:'Recognized “{store}” and matched it to the {group} group by keyword.', autoNote:'This group has <b>auto-add</b> turned on — in the full version AI would save this without asking.', confirmNote:'This group needs your confirmation before saving.', changeGroup:'Change group', vmiNotFound:'Receipt not found in VMI', discount:'discount', vmiMatch:'✓ Items total matches VMI', vmiDiff:'⚠️ Items total differs from VMI', vmiOpen:'Open in VMI', vmiDup:'This receipt is already saved', saveAnyway:'💾 Save anyway', vmiFetched:'Verified with VMI', vmiOffline:'No internet — VMI data was not fetched (the QR code is saved)', withVat:'Total incl. VAT', noVat:'Total excl. VAT', vatAmt:'VAT', receiptNo:'Receipt no.', address:'Address', items:'Products', fullText:'Full receipt text', otherItems:'Other / unrecognized', total:'Total', noItems:'This transaction has no product breakdown — it did not come from a receipt scan.', details:'Transaction details', removeItem:'Remove item', itemsCount:'items', scanHintLive:'Take a photo of the whole receipt — AI reads every product, price and discount, and the QR code at the bottom is checked with VMI (store, address, total). The photo itself is deleted right away.', scanCtaQr:'Take a photo of the receipt', scanSubQr:'AI reads the products, the QR code is checked with VMI', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
     cards: { myCards:'Cards', allTogether:'All', title:'Bank cards', hint:'Add your cards and pick one — new transactions will only be saved to the selected card. The "All" tab shows the total across every card at once.', newCard:'New card', newCardTitle:'New card', cardName:'Card name', createCard:'Create card', needName:'Enter a card name', createdToast:'Card created', showing:'Showing:', showingAll:'Showing: all cards', noCard:'no card', allBalanceLabel:'Combined balance across all cards' },
     rates: { title:'Exchange rates (1 EUR =)', refreshNow:'Refresh now', lastSync:'Last sync: ', fetchFailed:"Couldn't fetch current rates (no connection) — using previously saved ones.", newDayBanner:'New day — check and update exchange rates.' },
     data: { title:'Data', resetAll:'Clear all data' },
@@ -1423,8 +1428,7 @@ const TRANSLATIONS = {
     period: { day:'Дни', week:'Недели', month:'Месяцы', year:'Кварталы', searchDay:'Перейти к дню', searchWeek:'Перейти к неделе', searchMonth:'Перейти к месяцу', searchYear:'Перейти к году', yearPlaceholder:'напр. 2026', weekLabel:'Неделя {week}, {year} ({from}–{to})' },
     chart: { bar:'Столбчатый', line:'Линейный', pie:'Круговой', percent:'Процентный', preview:'Просмотр', incomeVsExpense:'Доходы и расходы (выбранный период)', percentShare:'Доля %' },
     update: { ready:'Новая версия приложения готова', restart:'Перезапустить' },
-    ai: { updated:'Обновлено:', pending:'Собираю данные — первый анализ появится, когда вы закроете приложение или переключитесь на другое.', downloadingNative:'Загружаю AI-модель (1,6 ГБ, только один раз — лучше через Wi-Fi)…', preparing:'Подготавливаю AI-модель (только при первом запуске)…', lowmem:'На этом телефоне недостаточно ОЗУ для AI-модели (нужно около 6 ГБ).', missing:'В этой версии приложения нет встроенной AI-модели.', nospace:'Недостаточно свободного места в телефоне (нужно около 1,7 ГБ).', introNative:'AI-модель встроена в приложение и работает полностью на этом устройстве — без интернета, ничего не покидает устройство.', title:'AI-ассистент (локально, офлайн)', intro:'Анализирует ваши данные прямо на этом устройстве — ничего не отправляется в интернет. При первом запуске загружается небольшая AI-модель (около 600 МБ–1 ГБ), затем работает офлайн.', analyzeBtn:'🤖 Проанализировать мои финансы', downloading:'Загрузка AI-модели...', loading:'Запуск модели...', thinking:'Анализирую...', unsupported:'Это устройство/браузер не поддерживает локальный AI (нет WebGPU). Попробуйте на более новом компьютере или телефоне.', error:'Не удалось запустить AI: ', noData:'Добавьте несколько транзакций, чтобы AI мог их проанализировать.', ready:'Модель готова ✓' },
-    receipts: { noGroup:'Без группы', noGroupNote:'Сохраню без группы — вы можете добавить её сейчас или позже, в деталях операции.', noMatchNote:'Не нашёл подходящую группу для «{store}» — выберите ниже или сохраните без группы. Можно добавить ключевое слово во вкладке Группы.', matchNote:'Распознано «{store}» и сопоставлено с группой {group} по ключевому слову.', autoNote:'В этой группе включено <b>авто-добавление</b> — в полной версии AI сохранил бы это без вопросов.', confirmNote:'Эта группа требует вашего подтверждения перед сохранением.', changeGroup:'Изменить группу', aiBackground:'🤖 AI работает в фоне — можно сохранить или выйти', aiFinished:'🤖 AI закончил чек:', vmiNotFound:'Чек не найден в VMI', aiNeedModel:'🤖 Чтобы AI читал товары, один раз загрузите модель во вкладке AI-ассистент', aiReading:'🤖 AI читает чек…', aiDone:'🤖 AI прочитал чек', aiOff:'Автоматическое чтение (AI недоступен)', discount:'скидка', vmiMatch:'✓ Сумма товаров совпадает с VMI', vmiDiff:'⚠️ Сумма товаров отличается от VMI', vmiOpen:'Открыть в VMI', vmiDup:'Этот чек уже сохранён', saveAnyway:'💾 Всё равно сохранить', vmiFetched:'Проверено в VMI', vmiOffline:'Нет интернета — данные VMI не загружены (QR-код сохранён)', withVat:'Сумма с НДС', noVat:'Сумма без НДС', vatAmt:'НДС', receiptNo:'№ чека', address:'Адрес', items:'Товары', fullText:'Полный текст чека', otherItems:'Прочее / не распознано', total:'Итого', noItems:'У этой операции нет разбивки по товарам — она не из скана чека.', details:'Детали операции', removeItem:'Удалить позицию', itemsCount:'поз.', scanHintLive:'Сфотографируйте весь чек — AI прочитает каждый товар, цену и скидку, а QR-код внизу проверит в VMI магазин, адрес и сумму. Само фото сразу удаляется.', scanCtaQr:'Сфотографировать чек', scanSubQr:'AI прочитает товары, QR-код проверит VMI', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
+    receipts: { editName:'Исправить название', noGroup:'Без группы', noGroupNote:'Сохраню без группы — вы можете добавить её сейчас или позже, в деталях операции.', noMatchNote:'Не нашёл подходящую группу для «{store}» — выберите ниже или сохраните без группы. Можно добавить ключевое слово во вкладке Группы.', matchNote:'Распознано «{store}» и сопоставлено с группой {group} по ключевому слову.', autoNote:'В этой группе включено <b>авто-добавление</b> — в полной версии AI сохранил бы это без вопросов.', confirmNote:'Эта группа требует вашего подтверждения перед сохранением.', changeGroup:'Изменить группу', vmiNotFound:'Чек не найден в VMI', discount:'скидка', vmiMatch:'✓ Сумма товаров совпадает с VMI', vmiDiff:'⚠️ Сумма товаров отличается от VMI', vmiOpen:'Открыть в VMI', vmiDup:'Этот чек уже сохранён', saveAnyway:'💾 Всё равно сохранить', vmiFetched:'Проверено в VMI', vmiOffline:'Нет интернета — данные VMI не загружены (QR-код сохранён)', withVat:'Сумма с НДС', noVat:'Сумма без НДС', vatAmt:'НДС', receiptNo:'№ чека', address:'Адрес', items:'Товары', fullText:'Полный текст чека', otherItems:'Прочее / не распознано', total:'Итого', noItems:'У этой операции нет разбивки по товарам — она не из скана чека.', details:'Детали операции', removeItem:'Удалить позицию', itemsCount:'поз.', scanHintLive:'Сфотографируйте весь чек — AI прочитает каждый товар, цену и скидку, а QR-код внизу проверит в VMI магазин, адрес и сумму. Само фото сразу удаляется.', scanCtaQr:'Сфотографировать чек', scanSubQr:'AI прочитает товары, QR-код проверит VMI', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
     cards: { myCards:'Карты', allTogether:'Все', title:'Банковские карты', hint:'Добавьте свои карты и выберите одну — новые операции будут сохраняться только на выбранную карту. Вкладка «Все» покажет сумму по всем картам сразу.', newCard:'Новая карта', newCardTitle:'Новая карта', cardName:'Название карты', createCard:'Создать карту', needName:'Укажите название карты', createdToast:'Карта создана', showing:'Показываю:', showingAll:'Показываю: все карты', noCard:'без карты', allBalanceLabel:'Общий баланс по всем картам' },
     rates: { title:'Курсы валют (1 EUR =)', refreshNow:'Обновить сейчас', lastSync:'Последняя синхронизация: ', fetchFailed:'Не удалось получить текущие курсы (нет соединения) — используются ранее сохранённые.', newDayBanner:'Новый день — проверьте и обновите курсы валют.' },
     data: { title:'Данные', resetAll:'Очистить все данные' },
@@ -1457,8 +1461,7 @@ const TRANSLATIONS = {
     period: { day:'Dienos', week:'Savaitės', month:'Mėnesiai', year:'Ketvirčiai', searchDay:'Eiti į dieną', searchWeek:'Eiti į savaitę', searchMonth:'Eiti į mėnesį', searchYear:'Eiti į metus', yearPlaceholder:'pvz. 2026', weekLabel:'{week} savaitė, {year} ({from}–{to})' },
     chart: { bar:'Stulpelinė', line:'Linijinė', pie:'Skritulinė', percent:'Procentinė', preview:'Peržiūra', incomeVsExpense:'Pajamos ir išlaidos (pasirinktas laikotarpis)', percentShare:'Dalis %' },
     update: { ready:'Nauja programos versija paruošta', restart:'Paleisti iš naujo' },
-    ai: { updated:'Atnaujinta:', pending:'Renku duomenis — pirma analizė atsiras, kai uždarysite arba pereisite į kitą programą.', downloadingNative:'Atsisiunčiu AI modelį (1,6 GB, tik kartą — geriau per Wi-Fi)…', preparing:'Ruošiu AI modelį (tik pirmą kartą)…', lowmem:'Šiame telefone per mažai RAM AI modeliui (reikia apie 6 GB).', missing:'Šioje programos versijoje nėra įdiegto AI modelio.', nospace:'Telefone per mažai laisvos vietos (reikia apie 1,7 GB).', introNative:'AI modelis įdiegtas programoje ir veikia tik šiame įrenginyje — be interneto, niekas neišeina iš įrenginio.', title:'AI asistentas (vietoje, neprisijungus)', intro:'Analizuoja jūsų duomenis tiesiogiai šiame įrenginyje — niekas nesiunčiama į internetą. Pirmą kartą paleidus atsisiunčiamas mažas AI modelis (apie 600 MB–1 GB), vėliau veikia neprisijungus.', analyzeBtn:'🤖 Analizuoti mano finansus', downloading:'Atsisiunčiamas AI modelis...', loading:'Paleidžiamas modelis...', thinking:'Analizuoju...', unsupported:'Šis įrenginys/naršyklė nepalaiko vietinio AI (nėra WebGPU). Bandykite naujesniame kompiuteryje ar telefone.', error:'Nepavyko paleisti AI: ', noData:'Pridėkite kelias operacijas, kad AI turėtų ką analizuoti.', ready:'Modelis paruoštas ✓' },
-    receipts: { noGroup:'Be grupės', noGroupNote:'Išsaugosiu be grupės — galite ją priskirti dabar arba vėliau, operacijos informacijoje.', noMatchNote:'Neradau tinkamos grupės „{store}“ — pasirinkite žemiau arba išsaugokite be grupės. Raktažodį galite pridėti skiltyje Grupės.', matchNote:'Atpažinta „{store}“ ir priskirta grupei {group} pagal raktažodį.', autoNote:'Šioje grupėje įjungtas <b>auto-pridėjimas</b> — pilnoje versijoje AI tai išsaugotų neklausdama.', confirmNote:'Ši grupė reikalauja jūsų patvirtinimo prieš išsaugant.', changeGroup:'Keisti grupę', aiBackground:'🤖 AI dirba fone — galite išsaugoti arba išeiti', aiFinished:'🤖 AI baigė kvitą:', vmiNotFound:'Kvitas VMI nerastas', aiNeedModel:'🤖 Kad AI skaitytų prekes, vieną kartą atsisiųskite modelį skiltyje AI asistentas', aiReading:'🤖 AI skaito kvitą…', aiDone:'🤖 AI nuskaitė kvitą', aiOff:'Automatinis nuskaitymas (AI nepasiekiamas)', discount:'nuolaida', vmiMatch:'✓ Prekių suma sutampa su VMI', vmiDiff:'⚠️ Prekių suma skiriasi nuo VMI', vmiOpen:'Atidaryti VMI', vmiDup:'Šis kvitas jau išsaugotas', saveAnyway:'💾 Vis tiek išsaugoti', vmiFetched:'Patikrinta VMI', vmiOffline:'Nėra interneto — VMI duomenys neparsiųsti (QR kodas išsaugotas)', withVat:'Suma su PVM', noVat:'Suma be PVM', vatAmt:'PVM', receiptNo:'Kvito nr.', address:'Adresas', items:'Prekės', fullText:'Visas kvito tekstas', otherItems:'Kita / neatpažinta', total:'Suma', noItems:'Ši operacija neturi prekių sąrašo — ji ne iš kvito skenavimo.', details:'Operacijos informacija', removeItem:'Pašalinti prekę', itemsCount:'prek.', scanHintLive:'Nufotografuokite visą kvitą — AI nuskaitys kiekvieną prekę, kainą ir nuolaidą, o QR kodą apačioje patikrins VMI (parduotuvė, adresas, suma). Pati nuotrauka iškart ištrinama.', scanCtaQr:'Nufotografuoti kvitą', scanSubQr:'AI nuskaitys prekes, QR kodą patikrins VMI', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
+    receipts: { editName:'Pataisyti pavadinimą', noGroup:'Be grupės', noGroupNote:'Išsaugosiu be grupės — galite ją priskirti dabar arba vėliau, operacijos informacijoje.', noMatchNote:'Neradau tinkamos grupės „{store}“ — pasirinkite žemiau arba išsaugokite be grupės. Raktažodį galite pridėti skiltyje Grupės.', matchNote:'Atpažinta „{store}“ ir priskirta grupei {group} pagal raktažodį.', autoNote:'Šioje grupėje įjungtas <b>auto-pridėjimas</b> — pilnoje versijoje AI tai išsaugotų neklausdama.', confirmNote:'Ši grupė reikalauja jūsų patvirtinimo prieš išsaugant.', changeGroup:'Keisti grupę', vmiNotFound:'Kvitas VMI nerastas', discount:'nuolaida', vmiMatch:'✓ Prekių suma sutampa su VMI', vmiDiff:'⚠️ Prekių suma skiriasi nuo VMI', vmiOpen:'Atidaryti VMI', vmiDup:'Šis kvitas jau išsaugotas', saveAnyway:'💾 Vis tiek išsaugoti', vmiFetched:'Patikrinta VMI', vmiOffline:'Nėra interneto — VMI duomenys neparsiųsti (QR kodas išsaugotas)', withVat:'Suma su PVM', noVat:'Suma be PVM', vatAmt:'PVM', receiptNo:'Kvito nr.', address:'Adresas', items:'Prekės', fullText:'Visas kvito tekstas', otherItems:'Kita / neatpažinta', total:'Suma', noItems:'Ši operacija neturi prekių sąrašo — ji ne iš kvito skenavimo.', details:'Operacijos informacija', removeItem:'Pašalinti prekę', itemsCount:'prek.', scanHintLive:'Nufotografuokite visą kvitą — AI nuskaitys kiekvieną prekę, kainą ir nuolaidą, o QR kodą apačioje patikrins VMI (parduotuvė, adresas, suma). Pati nuotrauka iškart ištrinama.', scanCtaQr:'Nufotografuoti kvitą', scanSubQr:'AI nuskaitys prekes, QR kodą patikrins VMI', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
     cards: { myCards:'Kortelės', allTogether:'Visos', title:'Banko kortelės', hint:'Pridėkite savo korteles ir pasirinkite vieną — naujos operacijos bus išsaugomos tik pasirinktoje kortelėje. Skirtukas „Visos“ parodys visų kortelių sumą kartu.', newCard:'Nauja kortelė', newCardTitle:'Nauja kortelė', cardName:'Kortelės pavadinimas', createCard:'Sukurti kortelę', needName:'Įveskite kortelės pavadinimą', createdToast:'Kortelė sukurta', showing:'Rodoma:', showingAll:'Rodoma: visos kortelės', noCard:'be kortelės', allBalanceLabel:'Bendras balansas iš visų kortelių' },
     rates: { title:'Valiutų kursai (1 EUR =)', refreshNow:'Atnaujinti dabar', lastSync:'Paskutinis sinchronizavimas: ', fetchFailed:'Nepavyko gauti naujausių kursų (nėra ryšio) — naudojami anksčiau išsaugoti.', newDayBanner:'Nauja diena — patikrinkite ir atnaujinkite valiutų kursus.' },
     data: { title:'Duomenys', resetAll:'Išvalyti visus duomenis' },
@@ -1664,6 +1667,8 @@ function formatFullDate(dayStr) {
 }
 
 let state = loadState();
+// Mac/Windows app bridge — used for the auto-update check (Android has its own bridge, window.AndroidBridge)
+const tauriInvoke = window.__TAURI__ && (window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke));
 lastAppearanceJson = JSON.stringify(appearanceSnapshot());
 let txType = 'income';
 let debtType = 'i_owe';
@@ -2417,7 +2422,6 @@ function renderAll() {
   renderChart();
   renderCards();
   if (typeof renderReceiptRecent === 'function' && state.receiptGroups) renderReceiptRecent();
-  if (typeof renderAiTab === 'function') renderAiTab();
 }
 
 // --- Event wiring ---
@@ -2657,7 +2661,7 @@ document.querySelectorAll('#appPage1 .tab').forEach(tab => {
   };
 
   let drag = null, suppressClick = false;
-  const skip = (t) => t.closest && t.closest('input, textarea, select, button[draggable], .panel-header, .currency-picker, .currency-wheel, [data-no-swipe]');
+  const skip = (t) => t.closest && t.closest('button[draggable], .panel-header, .currency-picker, .currency-wheel, [data-no-swipe]');
   wrap.addEventListener('pointerdown', (e) => {
     if (e.button !== undefined && e.button !== 0) return;
     if (skip(e.target) || (typeof dragSourceId !== 'undefined' && dragSourceId)) return;
@@ -2970,214 +2974,6 @@ document.getElementById('resetBtn').addEventListener('click', () => {
   }
 });
 
-// ---- Local AI assistant (WebLLM: runs fully in-device, no data leaves the app) ----
-let aiEngine = null;
-let aiLoading = false;
-const AI_MODEL_ID = 'Qwen2.5-0.5B-Instruct-q4f16_1-MLC'; // small (~600MB) model, works on most desktops and modern phones
-
-function aiSetStatus(text) {
-  const el = document.getElementById('aiStatus');
-  if (el) el.textContent = text || '';
-}
-function aiSetProgress(pct) {
-  const wrap = document.getElementById('aiProgressWrap');
-  const bar = document.getElementById('aiProgressBar');
-  if (!wrap || !bar) return;
-  if (pct === null) { wrap.classList.add('hidden'); return; }
-  wrap.classList.remove('hidden');
-  bar.style.width = Math.max(0, Math.min(100, pct)) + '%';
-}
-
-function aiBuildFinanceSummary() {
-  const txs = state.transactions || [];
-  const debts = state.debts || [];
-  if (!txs.length && !debts.length) return null;
-
-  const totalInc = txs.filter(t => t.type === 'income').reduce((s,t) => s + t.amountEUR, 0);
-  const totalExp = txs.filter(t => t.type === 'expense').reduce((s,t) => s + t.amountEUR, 0);
-
-  // Group by month (last 6 months present in data)
-  const byMonth = {};
-  txs.forEach(t => {
-    const m = (t.date || '').slice(0,7);
-    if (!m) return;
-    if (!byMonth[m]) byMonth[m] = { inc: 0, exp: 0 };
-    if (t.type === 'income') byMonth[m].inc += t.amountEUR; else byMonth[m].exp += t.amountEUR;
-  });
-  const months = Object.keys(byMonth).sort().slice(-6);
-
-  // Group expenses by description (rough "category" proxy) to surface biggest spending buckets
-  const byDesc = {};
-  txs.filter(t => t.type === 'expense').forEach(t => {
-    const key = (t.desc || '(bez opisu)').trim().toLowerCase() || '(bez opisu)';
-    byDesc[key] = (byDesc[key] || 0) + t.amountEUR;
-  });
-  const topExpenses = Object.entries(byDesc).sort((a,b) => b[1]-a[1]).slice(0, 8);
-
-  const iOwe = debts.filter(d => d.type === 'i_owe').reduce((s,d) => s + d.amountEUR, 0);
-  const owedToMe = debts.filter(d => d.type === 'owed_to_me').reduce((s,d) => s + d.amountEUR, 0);
-
-  let lines = [];
-  lines.push(`Waluta wewnętrzna: EUR. Łączne przychody (całość historii): ${totalInc.toFixed(2)} EUR. Łączne wydatki: ${totalExp.toFixed(2)} EUR. Saldo: ${(totalInc-totalExp).toFixed(2)} EUR.`);
-  if (months.length) {
-    lines.push('Przychody/wydatki wg miesięcy (ostatnie ' + months.length + '):');
-    months.forEach(m => lines.push(`- ${m}: przychody ${byMonth[m].inc.toFixed(2)} EUR, wydatki ${byMonth[m].exp.toFixed(2)} EUR`));
-  }
-  if (topExpenses.length) {
-    lines.push('Największe pozycje wydatków (wg opisu transakcji):');
-    topExpenses.forEach(([desc, sum]) => lines.push(`- ${desc}: ${sum.toFixed(2)} EUR`));
-  }
-  if (debts.length) {
-    lines.push(`Długi: jestem winien ${iOwe.toFixed(2)} EUR, winni mi są ${owedToMe.toFixed(2)} EUR.`);
-  }
-  return lines.join('\n');
-}
-
-// ---- Native AI (Android): Qwen 2.5 1.5B built into the app, run by Google MediaPipe ----
-const NATIVE_AI = !!(window.AndroidBridge && typeof window.AndroidBridge.aiGenerate === 'function');
-let aiNativeWaiters = [];
-const aiNativePending = new Map();
-let aiReqSeq = 0;
-window.onAiStatus = function (st) {
-  if (!st) return;
-  if (st.state === 'copying') { aiSetStatus(t('ai.preparing') + ' ' + (st.progress || 0) + '%'); aiSetProgress(st.progress || 0); }
-  else if (st.state === 'downloading') { aiSetStatus(t('ai.downloadingNative') + ' ' + (st.progress || 0) + '%'); aiSetProgress(st.progress || 0); }
-  else if (st.state === 'loading') { aiSetStatus(t('ai.loading')); aiSetProgress(null); }
-  if (['ready', 'error', 'lowmem', 'missing', 'nospace'].includes(st.state)) {
-    const w = aiNativeWaiters; aiNativeWaiters = [];
-    w.forEach(f => f(st));
-  }
-};
-window.onAiResult = function (r) {
-  const p = r && aiNativePending.get(r.id);
-  if (!p) return;
-  aiNativePending.delete(r.id);
-  if (r.error) p.reject(new Error(r.error)); else p.resolve(r.text || '');
-};
-function aiEnsureNative() {
-  return new Promise((resolve, reject) => {
-    let st = { state: 'none' };
-    try { st = JSON.parse(window.AndroidBridge.aiStatus()); } catch (e) {}
-    if (st.state === 'ready') return resolve();
-    aiNativeWaiters.push(s2 => s2.state === 'ready' ? resolve() : reject(new Error('NATIVE_' + String(s2.state).toUpperCase() + (s2.error ? ': ' + s2.error : ''))));
-    window.AndroidBridge.aiInit();
-  });
-}
-// ---- Desktop AI (Mac / Windows app): llama.cpp + Qwen 2.5 1.5B built into the app ----
-const tauriInvoke = window.__TAURI__ && (window.__TAURI__.invoke || (window.__TAURI__.tauri && window.__TAURI__.tauri.invoke));
-const DESKTOP_AI = !NATIVE_AI && typeof tauriInvoke === 'function';
-async function aiEnsureDesktop() {
-  let st = await tauriInvoke('ai_status');
-  if (st.state === 'ready') return;
-  if (st.state !== 'loading') st = await tauriInvoke('ai_init');
-  const t0 = Date.now();
-  while (st.state === 'loading') {
-    aiSetStatus(t('ai.loading'));
-    if (Date.now() - t0 > 250000) throw new Error('NATIVE_ERROR: timeout');
-    await new Promise(r => setTimeout(r, 500));
-    st = await tauriInvoke('ai_status');
-  }
-  if (st.state !== 'ready') throw new Error('NATIVE_' + String(st.state).toUpperCase() + (st.error ? ': ' + st.error : ''));
-}
-
-// Qwen chat format
-function aiToChatML(messages) {
-  return messages.map(m => '<|im_start|>' + m.role + '\n' + m.content + '<|im_end|>\n').join('') + '<|im_start|>assistant\n';
-}
-
-async function aiEnsureEngine() {
-  if (aiEngine) return aiEngine;
-  if (!navigator.gpu) {
-    throw new Error('NO_WEBGPU');
-  }
-  const webllm = await import('https://esm.run/@mlc-ai/web-llm');
-  aiEngine = await webllm.CreateMLCEngine(AI_MODEL_ID, {
-    initProgressCallback: (report) => {
-      aiSetStatus(report.text || t('ai.loading'));
-      if (typeof report.progress === 'number') aiSetProgress(report.progress * 100);
-    }
-  });
-  return aiEngine;
-}
-
-/**
- * One entry point for every AI feature: aiChat([{role:'system'|'user'|'assistant', content}], {temperature})
- * -> Promise<string>. On the Android app it uses the built-in model (offline), elsewhere WebLLM.
- * Future features: call window.stashAI.chat(...)
- */
-async function aiChat(messages, opts) {
-  opts = opts || {};
-  if (NATIVE_AI) {
-    await aiEnsureNative();
-    const id = 'ai' + (++aiReqSeq);
-    const text = await new Promise((resolve, reject) => {
-      aiNativePending.set(id, { resolve, reject });
-      const prompt = aiToChatML(messages);
-      if (typeof window.AndroidBridge.aiGenerateT === 'function') window.AndroidBridge.aiGenerateT(id, prompt, opts.temperature ?? 0.7);
-      else window.AndroidBridge.aiGenerate(id, prompt);
-    });
-    return String(text).split('<|im_end|>')[0].replace(/<\|im_start\|>assistant\s*/g, '').trim();
-  }
-  if (DESKTOP_AI) {
-    await aiEnsureDesktop();
-    return String(await tauriInvoke('ai_chat', { messages, temperature: opts.temperature ?? 0.7 })).trim();
-  }
-  const engine = await aiEnsureEngine();
-  const reply = await engine.chat.completions.create({ messages, temperature: opts.temperature ?? 0.6 });
-  return reply.choices[0].message.content;
-}
-window.stashAI = { chat: aiChat, native: NATIVE_AI || DESKTOP_AI };
-
-// ---- Runs by itself: no button. The advice is computed once the app is put in the background
-// (closed/switched away from) after the finances changed, and shown next time the AI tab is opened.
-let aiAutoRunning = false;
-function aiDataSignature() {
-  let inc = 0, exp = 0;
-  (state.transactions || []).forEach(tx => { if (tx.type === 'income') inc += tx.amountEUR || 0; else exp += tx.amountEUR || 0; });
-  return (state.transactions || []).length + ':' + inc.toFixed(2) + ':' + exp.toFixed(2) + ':' + (state.debts || []).length + ':' + (state.language || 'pl');
-}
-function renderAiTab() {
-  const box = document.getElementById('aiResultBox');
-  const status = document.getElementById('aiStatus');
-  if (!box || !status) return;
-  if (state.aiLastAnalysis && state.aiLastAnalysis.text) {
-    box.textContent = state.aiLastAnalysis.text;
-    box.classList.remove('hidden');
-    status.textContent = aiAutoRunning ? t('ai.thinking') : t('ai.updated') + ' ' + new Date(state.aiLastAnalysis.ts).toLocaleString(state.language || 'pl');
-  } else {
-    box.classList.add('hidden');
-    status.textContent = aiAutoRunning ? t('ai.thinking') : (aiBuildFinanceSummary() ? t('ai.pending') : t('ai.noData'));
-  }
-}
-async function runAiAnalysisInBackground() {
-  if (aiAutoRunning) return;
-  const summary = aiBuildFinanceSummary();
-  if (!summary) return;
-  const sig = aiDataSignature();
-  if (state.aiLastAnalysis && state.aiLastAnalysis.dataSig === sig) return;   // nothing changed since last time
-  aiAutoRunning = true;
-  aiBgJobs++; renderAiBgPill(); renderAiTab();
-  try {
-    const messages = [
-      { role: 'system', content: 'Jesteś pomocnym doradcą finansowym. Analizujesz dane budżetu domowego użytkownika i dajesz krótkie, konkretne porady (max 6-8 zdań, w punktach jeśli to pomaga). Nie wymyślaj liczb, których nie ma w danych. Odpowiadaj WYŁĄCZNIE w języku: ' + appLangName(state.language || 'pl') + '.' },
-      { role: 'user', content: 'Oto moje dane finansowe:\n\n' + summary + '\n\nPrzeanalizuj je i daj mi praktyczne porady: na czym najbardziej tracę, czy oszczędzam wystarczająco, i co mogę poprawić.' }
-    ];
-    const text = await aiChat(messages, { temperature: 0.6 });
-    state.aiLastAnalysis = { text, ts: Date.now(), dataSig: sig };
-    saveState();
-  } catch (e) {
-    console.warn('AI background analysis', e);
-  } finally {
-    aiAutoRunning = false;
-    aiBgJobs = Math.max(0, aiBgJobs - 1); renderAiBgPill(); renderAiTab();
-  }
-}
-// The moment the app is hidden (switched away from, or closed) is exactly when this should run —
-// it finishes in the background and is simply there, already written, next time the AI tab is opened.
-document.addEventListener('visibilitychange', () => { if (document.hidden) runAiAnalysisInBackground(); });
-window.addEventListener('pagehide', () => { runAiAnalysisInBackground(); });
-// First run a little after start-up too, so a first-time user doesn't have to background the app once first
-setTimeout(runAiAnalysisInBackground, 6000);
 
 // ============================================================
 // Skanowanie paragonów + grupy zakupów
@@ -3435,62 +3231,12 @@ function ltTranslateName(name, lang) {
   if (!hit) return null;
   return out.charAt(0).toUpperCase() + out.slice(1);
 }
-function appLangName(lang) {
-  return { pl: 'polski', en: 'angielski', ru: 'rosyjski', lt: 'litewski' }[lang] || 'polski';
-}
-// Name shown in the app: AI translation (it gets the dictionary as a hint, so it reads naturally),
-// otherwise the word-by-word dictionary translation, otherwise the original name
+// Name shown in the app: dictionary translation of the (always Lithuanian-original) product name
 function itemDisplayName(it) {
   const lang = state.language || 'pl';
   if (lang === 'lt') return null;
   if (it.tr && it.trLang === lang && String(it.tr).trim().toLowerCase() !== String(it.name).trim().toLowerCase()) return it.tr;
   return ltTranslateName(it.name, lang);
-}
-
-// ---- AI reads the receipt: products, prices, discounts, total (+ translation) ----
-async function aiReadReceipt(ocrText, draft) {
-  const text = String(ocrText || '').slice(0, 3000);
-  const lang = state.language || 'pl';
-  const target = lang === 'lt' ? 'polski' : appLangName(lang);
-  // hint: meanings of the Lithuanian words that really appear on this receipt
-  const seen = new Set();
-  const hints = [];
-  text.split(/[^A-Za-zĄČĘĖĮŠŲŪŽąčęėįšųūž]+/).forEach(w => {
-    const row = ltLookup(w);
-    if (row && !seen.has(row[0]) && hints.length < 40) { seen.add(row[0]); hints.push(w + ' = ' + row[1] + ' / ' + row[3]); }
-  });
-  const messages = [
-    { role: 'system', content:
-      'Jesteś czytnikiem paragonów. Paragony są zwykle LITEWSKIE. Dostajesz tekst paragonu odczytany ze zdjęcia (może mieć błędy odczytu, np. brak litewskich znaków). ' +
-      'NAZWA SKLEPU: zwykle jest w SAMEJ GÓRZE paragonu, często dużym pogrubionym drukiem albo w osobnym, wyróżnionym polu (logo firmy) — nie myl jej z adresem, kodem PVM ani numerem paragonu, które są zaraz pod nią. ' +
-      'RABAT: KAŻDA kwota poprzedzona znakiem "-" (minus) to rabat/zniżka odjęta od ceny POPRZEDNIEGO produktu — niezależnie od słowa obok niej (Nuolaida, Prekės Nuolaida, Sutaupote, Sutaupyta, Akcija, Nuolaida už CLASSIC taškus, itp.). Taka linia NIGDY nie jest osobnym produktem ani sumą końcową — zawsze odejmij ją od produktu bezpośrednio nad nią (pole "discount"), a "price" tego produktu zostaw jako cenę PRZED rabatem. ' +
-      'ILOŚĆ / WAGA: jeśli pod albo obok produktu jest linia typu "5 Vienet. X 3,59 EUR/Vienet.", "0,845 kg x 1,49 EUR/kg", "2 X 6,4900", "0.333*12.9500" albo "1,09 X 2,000 vnt." — to ilość i cena jednostkowa TEGO produktu, a nie osobna pozycja. Zapisz ją w polu "qty" krótko i czytelnie, np. "5 szt. x 3,59 €" albo "0,845 kg x 1,49 €/kg" (przetłumacz jednostkę na: ' + target + ', liczby zostaw jak są). Pomiń "qty", jeśli takiej linii nie ma. ' +
-      'Słowa na litewskim paragonie: "Iš viso", "Mokėti", "Suma", "Mokėti suapvalinus" = suma do zapłaty; "PVM", "Suma su PVM", "Be PVM", "PVM suma" = podatek VAT (NIE produkt); ' +
-      '"Grąža" = reszta; "kortele" = kartą; "grynaisiais" = gotówką (czasem błędnie odczytane jako "GRVNA IS" — litera Y bywa myl ona z V); "Apvalinimo suma" = zaokrąglenie; "vnt" = sztuk; "kg" = kilogram; "Kvito Nr.", "Kasa", "Kasininkas", "Kortelės" = dane kasy/karty (NIE produkt). ' +
-      'Długi numer (8-14 cyfr) przed nazwą to kod kreskowy — nie jest częścią nazwy. Litera A/B/D/E po cenie to stawka VAT — pomiń ją. ' +
-      'Zwróć WYŁĄCZNIE JSON, bez żadnego innego tekstu, w formacie: ' +
-      '{"store":"nazwa sklepu","total":12.34,"items":[{"name":"nazwa z paragonu","tr":"tłumaczenie nazwy","qty":"5 szt. x 3,59 €","price":1.99,"discount":0}]}. ' +
-      'name = nazwa produktu dokładnie jak na paragonie (po litewsku, bez tłumaczenia — litewski oryginał zawsze zostaje zapisany). tr = ta nazwa przetłumaczona na język: ' + target + '. ' +
-      'price = cena pozycji przed rabatem (za całą kupioną ilość, czyli suma z prawej strony linii produktu). discount = suma rabatów odjętych od tej pozycji (z linii zaczynających się od "-"), 0 jeśli brak. Liczby zapisuj z kropką.' +
-      (hints.length ? ' Słowniczek słów z tego paragonu: ' + hints.join('; ') + '.' : '') },
-    { role: 'user', content: text + (draft && draft.length ? '\n\nWSTĘPNY ODCZYT (sprawdź, popraw nazwy, dodaj brakujące, NIE wymyślaj cen): ' + JSON.stringify(draft) : '') }
-  ];
-  const raw = await aiChat(messages, { temperature: 0.1 });
-  const a = raw.indexOf('{'), b = raw.lastIndexOf('}');
-  if (a < 0 || b <= a) throw new Error('AI: brak JSON');
-  const j = JSON.parse(raw.slice(a, b + 1));
-  const trLang = lang === 'lt' ? 'pl' : lang;
-  const items = cleanItems(j.items).map((it, i) => {
-    const src = Array.isArray(j.items) ? j.items.filter(x => x && String(x.name || '').trim() && num(x.price) > 0)[i] : null;
-    const tr = src && typeof src.tr === 'string' ? src.tr.trim().slice(0, 80) : '';
-    const qty = src && typeof src.qty === 'string' ? src.qty.trim().slice(0, 40) : '';
-    return { ...it, ...(tr ? { tr, trLang } : {}), ...(qty ? { qty } : {}) };
-  })
-    // no made-up amounts: a price (and a discount) must be printed on the receipt
-    .filter(it => priceOnReceipt(it.price, text))
-    .map(it => (it.discount && !priceOnReceipt(it.discount, text)) ? { ...it, discount: 0 } : it);
-  const total = num(j.total);
-  return { store: String(j.store || '').trim(), total: total && priceOnReceipt(total, text) ? total : null, items };
 }
 function demoReceiptText(d) {
   return d.store + '\n' + d.items.map(it => it.name + '   ' + it.price.toFixed(2).replace('.', ',')) .join('\n') +
@@ -3740,86 +3486,10 @@ window.onNativeReceipt = function (res) {
     date: res.date || null,
     vmi,
     duplicateOf: vmi ? (findDuplicateReceipt(vmi) || {}).id || null : null,
-    confirmedDup: false,
-    aiState: res.text && res.text.length > 20 ? 'reading' : null
+    confirmedDup: false
   };
   showReceiptResult(receiptPendingResult);
-  if (receiptPendingResult.aiState === 'reading') refineReceiptWithAi(receiptPendingResult, res.text);
 };
-// ---- AI works in the background: you can save the receipt or leave, it finishes on its own ----
-let aiBgJobs = 0;
-function renderAiBgPill() {
-  let pill = document.getElementById('aiBgPill');
-  if (!pill) {
-    pill = document.createElement('div');
-    pill.id = 'aiBgPill';
-    pill.className = 'ai-bg-pill';
-    document.body.appendChild(pill);
-  }
-  pill.textContent = t('receipts.aiBackground');
-  pill.classList.toggle('show', aiBgJobs > 0);
-}
-// the AI finished after the receipt was already saved -> update that transaction
-function applyAiToSavedTx(pending) {
-  const tx = state.transactions.find(x => x.id === pending.savedTxId);
-  if (!tx || !tx.receipt) return;
-  tx.receipt.items = (pending.items || []).map(it => ({ name: it.name, price: it.price, discount: it.discount || 0,
-    ...(it.tr ? { tr: it.tr, trLang: it.trLang } : {}), ...(it.qty ? { qty: it.qty } : {}) }));
-  if (pending.store && pending.store !== '—' && (!tx.receipt.store || tx.receipt.store === '—')) tx.receipt.store = pending.store;
-  saveState();
-  renderAll();
-  showReceiptToast(t('receipts.aiFinished') + ' ' + (tx.receipt.store || ''));
-}
-async function refineReceiptWithAi(pending, ocrText) {
-  // On the phone the model is downloaded once from the AI tab - a receipt never starts a 1.6 GB download
-  try {
-    if (NATIVE_AI && typeof window.AndroidBridge.aiModelDownloaded === 'function' && !window.AndroidBridge.aiModelDownloaded()) {
-      pending.aiState = 'need';
-      renderReceiptVmiBox();
-      return;
-    }
-  } catch (e) {}
-  aiBgJobs++; renderAiBgPill();
-  try {
-    const draft = (pending.items || []).map(it => ({ name: it.name, price: it.price, discount: it.discount || 0 }));
-    const r = await aiReadReceipt(ocrText, draft);
-    if (pending.discarded) return;
-    // AI only replaces the list if it found at least as many real (printed) products
-    if (r.items.length && r.items.length >= Math.min(pending.items.length, 1)) {
-      if (r.items.length >= pending.items.length || !pending.items.length) pending.items = r.items;
-      else {
-        // keep our list, but take the AI translations for products it recognised
-        pending.items = pending.items.map(it => {
-          const hit = r.items.find(x => Math.abs(x.price - it.price) < 0.005 && x.tr);
-          return hit ? { ...it, tr: hit.tr, trLang: hit.trLang } : it;
-        });
-      }
-    }
-    const vmiTotal = pending.vmi && typeof pending.vmi.total === 'number' ? pending.vmi.total : null;
-    if (vmiTotal == null && r.total) pending.amount = r.total;   // VMI (official) always wins
-    if (!pending.vmi || !pending.vmi.store) {
-      if (r.store && (!pending.store || pending.store === '—')) pending.store = r.store;
-    }
-    pending.aiState = 'done';
-  } catch (e) {
-    console.warn('AI receipt', e);
-    pending.aiState = 'off';
-  } finally {
-    aiBgJobs = Math.max(0, aiBgJobs - 1); renderAiBgPill();
-  }
-  if (pending.discarded) return;
-  if (pending.savedTxId) { if (pending.aiState === 'done') applyAiToSavedTx(pending); return; }
-  if (receiptPendingResult !== pending) return;
-  const amtInput = document.getElementById('receiptResAmountInput');
-  if (amtInput && pending.amount) amtInput.value = pending.amount.toFixed(2);
-  const storeInput = document.getElementById('receiptResStoreInput');
-  if (storeInput && pending.store && pending.store !== '—') storeInput.value = pending.store;
-  document.getElementById('receiptResStore').textContent = pending.store;
-  updateReceiptMeta();
-  renderReceiptResultItems();
-  renderReceiptVmiBox();
-}
-
 let receiptScanIdx = 0;
 let receiptPendingResult = null;
 let newGroupEmoji = '';
@@ -3911,12 +3581,6 @@ function renderReceiptResultItems() {
 }
 function renderReceiptVmiBox() {
   const res = receiptPendingResult;
-  const aiEl = document.getElementById('receiptResAi');
-  if (aiEl) {
-    const st = res && res.aiState;
-    aiEl.classList.toggle('hidden', !st);
-    aiEl.textContent = st === 'reading' ? t('receipts.aiReading') : st === 'done' ? t('receipts.aiDone') : st === 'off' ? t('receipts.aiOff') : st === 'need' ? t('receipts.aiNeedModel') : '';
-  }
   const dupEl = document.getElementById('receiptResDup');
   const box = document.getElementById('receiptResVmi');
   const saveBtn = document.getElementById('receiptSaveBtn');
@@ -4048,8 +3712,6 @@ document.getElementById('receiptSaveBtn').addEventListener('click', () => {
       vmi: receiptPendingResult.vmi || null
     }
   });
-  // AI still reading? It finishes in the background and fills in this transaction
-  if (receiptPendingResult.aiState === 'reading') receiptPendingResult.savedTxId = state.transactions[state.transactions.length - 1].id;
   saveState();
   renderAll();
   renderReceiptRecent();
@@ -4211,7 +3873,8 @@ function openTxDetail(id) {
   const sub = [tx.date, card ? '💳 ' + card.name : '', grp ? grp.emoji + ' ' + grp.name : ''].filter(Boolean).map(escHtml).join(' · ');
   let html = '<div class="txd-head">' +
     '<div class="section-title" style="margin-bottom:6px;">' + escHtml(t('receipts.details')) + '</div>' +
-    '<div class="txd-title">' + escHtml(tx.desc || (tx.type === 'income' ? tr('type.income') : tr('type.expense'))) + '</div>' +
+    '<div class="txd-title-row"><div class="txd-title" id="txDetailTitle">' + escHtml(tx.desc || (tx.type === 'income' ? tr('type.income') : tr('type.expense'))) + '</div>' +
+    '<button class="txd-edit-btn" id="txDetailEditBtn" title="' + escHtml(t('receipts.editName')) + '">✎</button></div>' +
     '<div class="txd-sub">' + sub + '</div>' +
     '<div class="txd-amount ' + (tx.type === 'income' ? 'income-color' : 'expense-color') + '">' + sign + fmt(tx.amount, cur) + '</div>' +
     '</div>';
@@ -4241,6 +3904,7 @@ function openTxDetail(id) {
       '</div>';
   }
   body.innerHTML = html;
+  document.getElementById('txDetailEditBtn').addEventListener('click', () => startEditTxTitle(tx));
   const gp = document.getElementById('txDetailGroupPicker');
   if (rc) {
     gp.classList.remove('hidden');
@@ -4250,6 +3914,36 @@ function openTxDetail(id) {
     gp.innerHTML = '';
   }
   document.getElementById('txDetailModal').classList.add('open');
+}
+function startEditTxTitle(tx) {
+  const titleEl = document.getElementById('txDetailTitle');
+  const editBtn = document.getElementById('txDetailEditBtn');
+  if (!titleEl) return;
+  const current = tx.desc || '';
+  titleEl.outerHTML = '<input type="text" id="txDetailTitle" class="txd-title-input" maxlength="60" value="' + escHtml(current) + '">';
+  if (editBtn) editBtn.style.visibility = 'hidden';
+  const input = document.getElementById('txDetailTitle');
+  input.focus();
+  input.select();
+  let done = false;
+  const commit = () => {
+    if (done) return;
+    done = true;
+    const v = input.value.trim();
+    if (v && v !== current) {
+      tx.desc = v;
+      if (tx.receipt) tx.receipt.store = v.replace(/^[\p{Emoji_Presentation}\p{Extended_Pictographic}\u200d\ufe0f]+\s*/gu, '').trim() || tx.receipt.store;
+      saveState();
+      renderAll();
+      renderReceiptRecent();
+    }
+    openTxDetail(tx.id);
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    else if (e.key === 'Escape') { done = true; openTxDetail(tx.id); }
+  });
 }
 function renderTxDetailGroupPicker(tx) {
   const gp = document.getElementById('txDetailGroupPicker');
@@ -4371,6 +4065,71 @@ function selectCard(id) {
   });
 }
 
+// Long-press a card, then drag it onto another one to swap their positions in the row.
+// Uses a hold timer (like the app-icon long-press pattern elsewhere) so a quick tap still
+// just selects the card, and a quick horizontal swipe still just scrolls the row normally.
+function swapCards(idA, idB) {
+  const iA = state.cards.findIndex(c => c.id === idA);
+  const iB = state.cards.findIndex(c => c.id === idB);
+  if (iA < 0 || iB < 0 || iA === iB) return;
+  const tmp = state.cards[iA];
+  state.cards[iA] = state.cards[iB];
+  state.cards[iB] = tmp;
+  saveState();
+  renderCards();
+}
+function wireCardReorder() {
+  const strip = document.getElementById('cardsStrip');
+  if (!strip) return;
+  const LONG_PRESS_MS = 450;
+  let pressTimer = null, dragId = null, startX = 0, startY = 0, activePointerId = null, longPressFired = false, suppressClick = false;
+  const cancelPress = () => { clearTimeout(pressTimer); pressTimer = null; };
+
+  strip.addEventListener('pointerdown', (e) => {
+    const tile = e.target.closest('.cards-strip-item[data-card-tile]');
+    if (!tile || !tile.dataset.cardTile || e.target.closest('[data-delcard]')) return;
+    startX = e.clientX; startY = e.clientY; activePointerId = e.pointerId; longPressFired = false;
+    cancelPress();
+    pressTimer = setTimeout(() => {
+      longPressFired = true;
+      dragId = tile.dataset.cardTile;
+      tile.classList.add('reordering');
+      try { navigator.vibrate && navigator.vibrate(15); } catch (err) {}
+      try { strip.setPointerCapture(e.pointerId); } catch (err) {}
+    }, LONG_PRESS_MS);
+  });
+  strip.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== activePointerId) return;
+    if (!longPressFired) {
+      if (Math.abs(e.clientX - startX) > 10 || Math.abs(e.clientY - startY) > 10) cancelPress();
+      return;
+    }
+    e.preventDefault();
+    strip.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const overTile = el && el.closest && el.closest('.cards-strip-item[data-card-tile]');
+    if (overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId) overTile.classList.add('drop-target');
+  }, { passive: false });
+  const finish = (e) => {
+    if (e.pointerId !== activePointerId) return;
+    cancelPress();
+    activePointerId = null;
+    if (!longPressFired) return;
+    longPressFired = false;
+    suppressClick = true;
+    setTimeout(() => { suppressClick = false; }, 0);
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const overTile = el && el.closest && el.closest('.cards-strip-item[data-card-tile]');
+    strip.querySelectorAll('.reordering, .drop-target').forEach(t => t.classList.remove('reordering', 'drop-target'));
+    if (overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId) swapCards(dragId, overTile.dataset.cardTile);
+    dragId = null;
+  };
+  strip.addEventListener('pointerup', finish);
+  strip.addEventListener('pointercancel', finish);
+  strip.addEventListener('click', (e) => { if (suppressClick) { e.stopPropagation(); e.preventDefault(); } }, true);
+}
+wireCardReorder();
+
 // Switching which card is active changes the balance figures and the whole
 // transaction list at once — fade the old numbers/rows out, swap the data,
 // then fade the new ones in, instead of an abrupt pop.
@@ -4468,7 +4227,9 @@ function showSettingsView(name) {
   panel.querySelectorAll('.settings-view').forEach(v => v.classList.toggle('active', v.dataset.view === name));
   if (!panel.classList.contains('open')) return;
   const active = panel.querySelector('.settings-view.active');
-  const h = Math.min((active ? active.scrollHeight : 0) + 32, window.innerHeight * 0.8);
+  const cs = getComputedStyle(panel);
+  const vPad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const h = Math.min((active ? active.scrollHeight : 0) + vPad, window.innerHeight * 0.8);
   panel.style.height = h + 'px';
 }
 document.querySelectorAll('#appSettingsPopover .settings-tile').forEach(tile => {
@@ -4652,10 +4413,12 @@ function syncableData() {
   return data;
 }
 
+let lastPushedJson = null;   // the data WE last sent to the cloud — its own echo needs no re-render
 function pushToCloud() {
   if (!fbDb || !currentUser || applyingRemote) return;
+  lastPushedJson = JSON.stringify(syncableData());
   fbDb.collection('skarbonka_users').doc(currentUser.uid).set({
-    data: JSON.stringify(syncableData()),
+    data: lastPushedJson,
     updatedAt: Date.now()
   }).catch(e => console.warn('sync push failed', e));
 }
@@ -4692,6 +4455,9 @@ function startCloudSync(user) {
     if (!doc.exists) { pushToCloud(); return; }
     const remote = doc.data();
     if (!remote || !remote.data) return;
+    // Firestore echoes our own writes straight back through this same listener — that is not
+    // a change from elsewhere, so skip the (expensive, visibly flashing) full re-render for it.
+    if (remote.data === lastPushedJson) return;
     try {
       const parsed = JSON.parse(remote.data);
       applyingRemote = true;

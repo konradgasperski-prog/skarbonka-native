@@ -41,10 +41,7 @@
         "providerShortName": null,
         "signingIdentity": null
       },
-      "resources": [
-        "llama/*",
-        "models/*"
-      ],
+      "resources": [],
       "shortDescription": "",
       "targets": [
         "dmg",
