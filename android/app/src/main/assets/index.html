@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262100">
+<meta name="stash-version" content="202609262403">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -686,6 +686,8 @@
     border-radius: 14px; padding: 11px; cursor: pointer; position: relative; box-sizing: border-box;
     background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow);
     display: flex; flex-direction: column; justify-content: space-between;
+    -webkit-user-select: none; user-select: none;   /* holding it to drag must not trigger the browser's
+       own "select this text" highlight (that's the blue overlay it was showing) */
   }
   .cards-strip-item.all-item { background: var(--accent-soft); }
   .cards-strip-item { transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
@@ -4185,7 +4187,7 @@ function wireCardReorder() {
   const strip = document.getElementById('cardsStrip');
   if (!strip) return;
   const LONG_PRESS_MS = 450;
-  let pressTimer = null, dragId = null, startX = 0, startY = 0, activePointerId = null, longPressFired = false, suppressClick = false;
+  let pressTimer = null, dragId = null, dragTile = null, startX = 0, startY = 0, activePointerId = null, longPressFired = false, suppressClick = false, shiftedTile = null;
   const cancelPress = () => { clearTimeout(pressTimer); pressTimer = null; };
 
   strip.addEventListener('pointerdown', (e) => {
@@ -4196,7 +4198,14 @@ function wireCardReorder() {
     pressTimer = setTimeout(() => {
       longPressFired = true;
       dragId = tile.dataset.cardTile;
+      dragTile = tile;
+      shiftedTile = null;
       tile.classList.add('reordering');
+      tile.style.pointerEvents = 'none';   // so elementFromPoint below finds the tile UNDER it, not itself
+      // The dragged tile must track the finger 1:1, not chase it — the base .cards-strip-item
+      // rule has a transform transition (for hover/press states) that would otherwise fight
+      // every style update below, making the card visibly lag and "settle" late.
+      tile.style.transition = 'none';
       try { navigator.vibrate && navigator.vibrate(15); } catch (err) {}
       try { strip.setPointerCapture(e.pointerId); } catch (err) {}
     }, LONG_PRESS_MS);
@@ -4208,10 +4217,39 @@ function wireCardReorder() {
       return;
     }
     e.preventDefault();
-    strip.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+    // The card itself follows your finger/mouse — sideways only (left or right), never up/down.
+    if (dragTile) dragTile.style.transform = 'translateX(' + (e.clientX - startX) + 'px) scale(1.06)';
+    // The card under the cursor slides aside to make room, the opposite way from your drag —
+    // so as you drag right, the one you're about to swap with visibly steps left, and back again.
+    // Driven explicitly via the Web Animations API instead of a CSS transition triggered by a
+    // style change: on a real touchscreen, move events can arrive too sparsely (sometimes a
+    // single event landing right on the target) for a transition to reliably kick in, so the
+    // tile would just appear in its shifted spot with no visible slide.
+    const shiftDir = (e.clientX - startX) > 0 ? -1 : 1;
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const overTile = el && el.closest && el.closest('.cards-strip-item[data-card-tile]');
-    if (overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId) overTile.classList.add('drop-target');
+    const validTarget = (overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId) ? overTile : null;
+    if (validTarget !== shiftedTile) {
+      if (shiftedTile) {
+        shiftedTile.classList.remove('drop-target');
+        const fromPx = Number(shiftedTile.dataset.shiftPx || 0);
+        shiftedTile.animate(
+          [{ transform: 'translateX(' + fromPx + 'px)' }, { transform: 'translateX(0px)' }],
+          { duration: 150, easing: 'ease', fill: 'forwards' }
+        );
+        shiftedTile.dataset.shiftPx = '0';
+      }
+      if (validTarget) {
+        validTarget.classList.add('drop-target');
+        const px = shiftDir * 16;
+        validTarget.animate(
+          [{ transform: 'translateX(0px)' }, { transform: 'translateX(' + px + 'px)' }],
+          { duration: 150, easing: 'ease', fill: 'forwards' }
+        );
+        validTarget.dataset.shiftPx = String(px);
+      }
+      shiftedTile = validTarget;
+    }
   }, { passive: false });
   const finish = (e) => {
     if (e.pointerId !== activePointerId) return;
@@ -4223,9 +4261,47 @@ function wireCardReorder() {
     setTimeout(() => { suppressClick = false; }, 0);
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const overTile = el && el.closest && el.closest('.cards-strip-item[data-card-tile]');
+    if (dragTile) {
+      // Re-enable the transition (removed at drag start) so a card that's simply released
+      // without a swap eases back to its resting spot instead of snapping there instantly.
+      dragTile.style.transition = '';
+      void dragTile.offsetWidth;
+      dragTile.style.transform = '';
+      dragTile.style.pointerEvents = '';
+    }
+    if (shiftedTile) {
+      shiftedTile.getAnimations().forEach(a => a.cancel());
+      shiftedTile.style.transform = '';
+      shiftedTile.dataset.shiftPx = '';
+      shiftedTile = null;
+    }
     strip.querySelectorAll('.reordering, .drop-target').forEach(t => t.classList.remove('reordering', 'drop-target'));
-    if (overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId) swapCards(dragId, overTile.dataset.cardTile);
+    if (overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId) {
+      // swapCards() re-renders the whole strip from scratch, so every tile is a brand new
+      // DOM node in its new spot with no visual continuity. FLIP it: remember where each
+      // card was right before the swap, then once the new nodes exist, animate each one
+      // from its old position to its new one instead of letting it just "appear" there.
+      const beforeRects = {};
+      strip.querySelectorAll('.cards-strip-item[data-card-tile]').forEach(t => {
+        beforeRects[t.dataset.cardTile] = t.getBoundingClientRect().left;
+      });
+      swapCards(dragId, overTile.dataset.cardTile);
+      requestAnimationFrame(() => {
+        strip.querySelectorAll('.cards-strip-item[data-card-tile]').forEach(t => {
+          const beforeLeft = beforeRects[t.dataset.cardTile];
+          if (beforeLeft === undefined) return;
+          const dx = beforeLeft - t.getBoundingClientRect().left;
+          if (Math.abs(dx) > 0.5) {
+            t.animate(
+              [{ transform: 'translateX(' + dx + 'px)' }, { transform: 'translateX(0px)' }],
+              { duration: 200, easing: 'ease-out' }
+            );
+          }
+        });
+      });
+    }
     dragId = null;
+    dragTile = null;
   };
   strip.addEventListener('pointerup', finish);
   strip.addEventListener('pointercancel', finish);
