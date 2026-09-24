@@ -102,12 +102,26 @@ class ScannerActivity : AppCompatActivity() {
     private var lastCheck = 0L
     private var lastOtherQrHint = 0L
     private var lang = "pl"
+    // "Long receipt" mode: a very long thermal receipt has to be photographed from far enough back
+    // to fit it all in one shot, which makes the small print too tiny/blurry for OCR - letting the
+    // user take it as two overlapping photos (top half, then bottom half) and reading each normally
+    // solves that without needing any special stitching: the two recognised texts are just
+    // concatenated before being handed to the app's own item/total parsing.
+    private lateinit var multiToggle: TextView
+    private var multiMode = false
+    private var awaitingSecondPart = false
+    private var firstPartResult: ReceiptResult? = null
+    private var firstPartQr: String? = null
 
     private val strings = mapOf(
-        "pl" to mapOf("aim" to "Ustaw cały paragon w ramce (razem z kodem QR) i zrób zdjęcie", "qrSeen" to "Kod QR widoczny ✓ — zrób zdjęcie", "reading" to "Odczytuję paragon…", "vmi" to "Sprawdzam w VMI…", "done" to "Gotowe ✓ — zdjęcie usunięte", "fail" to "Nie udało się odczytać — spróbuj bliżej i przy lepszym świetle", "noCam" to "Brak dostępu do aparatu"),
-        "en" to mapOf("aim" to "Fit the whole receipt in the frame (with the QR code) and take a photo", "qrSeen" to "QR code visible ✓ — take the photo", "reading" to "Reading the receipt…", "vmi" to "Checking with VMI…", "done" to "Done ✓ — photo deleted", "fail" to "Couldn't read it — try closer and with better light", "noCam" to "No camera access"),
-        "ru" to mapOf("aim" to "Поместите весь чек в рамку (вместе с QR-кодом) и сделайте фото", "qrSeen" to "QR-код виден ✓ — сделайте фото", "reading" to "Читаю чек…", "vmi" to "Проверяю в VMI…", "done" to "Готово ✓ — фото удалено", "fail" to "Не удалось прочитать — попробуйте ближе и при лучшем свете", "noCam" to "Нет доступа к камере"),
-        "lt" to mapOf("aim" to "Sutalpinkite visą kvitą rėmelyje (su QR kodu) ir nufotografuokite", "qrSeen" to "QR kodas matomas ✓ — fotografuokite", "reading" to "Skaitau kvitą…", "vmi" to "Tikrinu VMI…", "done" to "Atlikta ✓ — nuotrauka ištrinta", "fail" to "Nepavyko nuskaityti — bandykite arčiau ir šviesiau", "noCam" to "Nėra prieigos prie kameros")
+        "pl" to mapOf("aim" to "Ustaw cały paragon w ramce (razem z kodem QR) i zrób zdjęcie", "qrSeen" to "Kod QR widoczny ✓ — zrób zdjęcie", "reading" to "Odczytuję paragon…", "vmi" to "Sprawdzam w VMI…", "done" to "Gotowe ✓ — zdjęcie usunięte", "fail" to "Nie udało się odczytać — spróbuj bliżej i przy lepszym świetle", "noCam" to "Brak dostępu do aparatu",
+            "multiOff" to "🧾 Długi paragon (2 zdjęcia)", "multiOn" to "🧾 Długi paragon: WŁ.", "multiHint1" to "Zrób zdjęcie GÓRNEJ części paragonu", "multiHint2" to "Teraz zrób zdjęcie DOLNEJ części — może się trochę nakładać z górną"),
+        "en" to mapOf("aim" to "Fit the whole receipt in the frame (with the QR code) and take a photo", "qrSeen" to "QR code visible ✓ — take the photo", "reading" to "Reading the receipt…", "vmi" to "Checking with VMI…", "done" to "Done ✓ — photo deleted", "fail" to "Couldn't read it — try closer and with better light", "noCam" to "No camera access",
+            "multiOff" to "🧾 Long receipt (2 photos)", "multiOn" to "🧾 Long receipt: ON", "multiHint1" to "Photograph the TOP part of the receipt", "multiHint2" to "Now photograph the BOTTOM part — a little overlap with the top is fine"),
+        "ru" to mapOf("aim" to "Поместите весь чек в рамку (вместе с QR-кодом) и сделайте фото", "qrSeen" to "QR-код виден ✓ — сделайте фото", "reading" to "Читаю чек…", "vmi" to "Проверяю в VMI…", "done" to "Готово ✓ — фото удалено", "fail" to "Не удалось прочитать — попробуйте ближе и при лучшем свете", "noCam" to "Нет доступа к камере",
+            "multiOff" to "🧾 Длинный чек (2 фото)", "multiOn" to "🧾 Длинный чек: ВКЛ", "multiHint1" to "Сфотографируйте ВЕРХНЮЮ часть чека", "multiHint2" to "Теперь сфотографируйте НИЖНЮЮ часть — небольшое перекрытие не страшно"),
+        "lt" to mapOf("aim" to "Sutalpinkite visą kvitą rėmelyje (su QR kodu) ir nufotografuokite", "qrSeen" to "QR kodas matomas ✓ — fotografuokite", "reading" to "Skaitau kvitą…", "vmi" to "Tikrinu VMI…", "done" to "Atlikta ✓ — nuotrauka ištrinta", "fail" to "Nepavyko nuskaityti — bandykite arčiau ir šviesiau", "noCam" to "Nėra prieigos prie kameros",
+            "multiOff" to "🧾 Ilgas kvitas (2 nuotraukos)", "multiOn" to "🧾 Ilgas kvitas: ĮJ.", "multiHint1" to "Nufotografuokite VIRŠUTINĘ kvito dalį", "multiHint2" to "Dabar nufotografuokite APATINĘ dalį — nedidelis persidengimas su viršumi netrukdo")
     )
     private fun s(key: String) = strings[lang]?.get(key) ?: strings["pl"]!![key] ?: key
     private fun dp(v: Int) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v.toFloat(), resources.displayMetrics).toInt()
@@ -169,6 +183,31 @@ class ScannerActivity : AppCompatActivity() {
         val close = pill("✕", 18f).apply { setOnClickListener { finish() } }
         root.addView(close, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.START).apply {
             topMargin = dp(36); leftMargin = dp(20)
+        })
+
+        multiToggle = pill(s("multiOff"), 12f).apply {
+            maxWidth = dp(220)
+            alpha = 0.75f
+            setOnClickListener {
+                if (busy) return@setOnClickListener
+                if (awaitingSecondPart) {
+                    // mid-sequence: tapping it again cancels back to a normal single photo
+                    awaitingSecondPart = false
+                    multiMode = false
+                    firstPartResult = null
+                    firstPartQr = null
+                    text = s("multiOff"); alpha = 1f
+                    status.text = s("aim")
+                } else {
+                    multiMode = !multiMode
+                    text = if (multiMode) s("multiOn") else s("multiOff")
+                    alpha = if (multiMode) 1f else 0.75f
+                    status.text = if (multiMode) s("multiHint1") else s("aim")
+                }
+            }
+        }
+        root.addView(multiToggle, FrameLayout.LayoutParams(WRAP, WRAP, Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(36); rightMargin = dp(20)
         })
 
         setContentView(root)
@@ -309,20 +348,59 @@ class ScannerActivity : AppCompatActivity() {
             val codes: List<Barcode> = if (qrTask.isSuccessful) (qrTask.result ?: emptyList()) else emptyList()
             val qr = codes.mapNotNull { it.rawValue }.firstOrNull { isVmi(it) }?.let { canonicalVmiUrl(it) } ?: liveQr
             val r = if (text != null && text.text.isNotBlank()) ReceiptParser.parse(text) else null
-            if (qr == null && (r == null || (r.total == null && r.items.isEmpty()))) { fail(); return@addOnCompleteListener }
-            val result = r ?: ReceiptResult("", null, null, emptyList(), "")
-            if (qr == null) { finishWith(result, null); return@addOnCompleteListener }
+
+            // Long-receipt mode, first (top) half: nothing to show yet - just remember what was read
+            // and ask for the bottom half. The VMI QR code (usually printed near the very bottom, after
+            // everything else) is unlikely to be on this half anyway, so it is not looked up here even
+            // if one happened to be caught - firstPartQr is kept only as a fallback for the final result.
+            if (multiMode && !awaitingSecondPart) {
+                if (r == null && qr == null) { fail(); return@addOnCompleteListener }
+                firstPartResult = r ?: ReceiptResult("", null, null, emptyList(), "")
+                firstPartQr = qr
+                awaitingSecondPart = true
+                deletePhoto()
+                setBusy(false)
+                liveQr = null   // let the live preview catch a QR again on the second half
+                status.text = s("multiHint2")
+                startCamera()
+                return@addOnCompleteListener
+            }
+
+            val finalResult: ReceiptResult
+            val finalQr: String?
+            val first = firstPartResult
+            if (multiMode && awaitingSecondPart && first != null) {
+                // Merge top + bottom: the app's own parsing (parseReceiptText, on the web side) works
+                // off the concatenated raw text anyway, so gluing the two recognised texts together -
+                // top half first, then bottom half - is enough; no image stitching needed.
+                finalResult = ReceiptResult(
+                    store = first.store.ifEmpty { r?.store ?: "" },
+                    total = r?.total ?: first.total,
+                    date = first.date ?: r?.date,
+                    items = first.items + (r?.items ?: emptyList()),
+                    rawText = (first.rawText + "\n" + (r?.rawText ?: "")).trim()
+                )
+                finalQr = firstPartQr ?: qr
+                multiMode = false; awaitingSecondPart = false; firstPartResult = null; firstPartQr = null
+                multiToggle.text = s("multiOff"); multiToggle.alpha = 0.75f
+            } else {
+                finalResult = r ?: ReceiptResult("", null, null, emptyList(), "")
+                finalQr = qr
+            }
+
+            if (finalQr == null && finalResult.total == null && finalResult.items.isEmpty()) { fail(); return@addOnCompleteListener }
+            if (finalQr == null) { finishWith(finalResult, null); return@addOnCompleteListener }
             status.text = s("vmi")
             val vmi = JSONObject()
-            val u = Uri.parse(qr)
+            val u = Uri.parse(finalQr)
             fun param(k: String) = (u.getQueryParameter(k) ?: u.getQueryParameter(k.lowercase(Locale.ROOT)) ?: "").trim()
-            vmi.put("url", qr)
+            vmi.put("url", finalQr)
             vmi.put("nr", param("NR"))
             vmi.put("sm", param("SM"))
             vmi.put("dt", param("DT"))
-            fetchVmiText(qr) { pageText ->
+            fetchVmiText(finalQr) { pageText ->
                 vmi.put("text", pageText ?: JSONObject.NULL)
-                finishWith(result, vmi)
+                finishWith(finalResult, vmi)
             }
         }
     }
