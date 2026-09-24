@@ -2,6 +2,8 @@ package com.skarbonka.app
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.graphics.Color
+import androidx.core.view.WindowCompat
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -50,7 +52,15 @@ class MainActivity : Activity() {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("stash_prefs", Context.MODE_PRIVATE)
 
+        // Apka rysuje sie na caly ekran, pod paskiem stanu i pod dolnym paskiem gestow (zamiast
+        // zostawiac tam czarny/pusty pasek) - strona sama odsuwa swoja tresc od tych miejsc
+        // (CSS env(safe-area-inset-...) w index.html), wiec nic tam nie zostanie zakryte.
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+
         webView = WebView(this)
+        webView.setBackgroundColor(Color.TRANSPARENT)
         setContentView(webView)
 
         val settings: WebSettings = webView.settings
