@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609261200">
+<meta name="stash-version" content="202609261700">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -322,7 +322,7 @@
   .tab.active, .chart-type-btn.active { transform: translateY(-1px); }
   .theme-toggle, .account-toggle {
     background: color-mix(in srgb, var(--card) 65%, transparent);
-    transition: transform 0.15s ease, background 0.25s ease;
+    transition: transform 0.15s ease, background 0.25s ease, opacity 0.2s ease;
     position: relative; z-index: 51;   /* stays clickable even though the open popover now geometrically overlaps it */
   }
   .theme-toggle.spin { animation: themeSpin 0.45s ease; }
@@ -418,6 +418,13 @@
     background: none; border: none; color: var(--text-dim); font-size: 13px; font-weight: 600;
     padding: 0 0 10px; margin: 0; width: auto; cursor: pointer; display: flex; align-items: center; gap: 4px;
   }
+  .settings-home-head { display: flex; align-items: center; justify-content: space-between; }
+  .popover-close-btn {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text-dim); font-size: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .account-popover-close { position: absolute; top: 16px; right: 16px; z-index: 1; }
   .link-btn {
     background: none; border: none; color: var(--accent); font-size: 12.5px; font-weight: 600;
     padding: 6px 0 0; margin: 0; width: auto; cursor: pointer; text-align: left;
@@ -434,7 +441,7 @@
   }
   .account-popover input { margin-bottom: 8px; }
   .account-popover .row { margin-top: 4px; }
-  #appSettingsPopover.left-anchor { width: 290px; }
+  #appSettingsPopover.left-anchor { width: 260px; }
 
 
   .custom-color-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
@@ -457,7 +464,13 @@
     background: color-mix(in srgb, var(--bg1), var(--bg2)); border: 1px solid var(--border);
   }
   .icon-mode-opt span { font-size: 10px; color: var(--text-dim); }
-  .account-popover.left-anchor { left: 0; right: auto; transform-origin: top left; width: 280px; }
+  .account-popover.left-anchor {
+    left: 0; right: auto; transform-origin: top left; width: 260px;
+    /* the base rule above assumes a RIGHT-side icon (--ci-l:100%, --ci-r:0) — this one's icon (⚙️) is on
+       the LEFT, so its own resting state must default the other way round, or an in-between frame could
+       ever show it clipped toward the wrong edge before the real per-open values are set. */
+    --ci-t: 0px; --ci-l: 0px; --ci-r: 100%; --ci-b: 100%;
+  }
 
   /* --- Panel hide/show/reorder animations --- */
   .panel.panel-hiding { opacity: 0; transform: scale(0.92); pointer-events: none; }
@@ -853,7 +866,8 @@
     <button class="theme-toggle" id="appSettingsToggle" title="Wygląd" data-i18n-title="settings.appearance">⚙️</button>
     <div class="account-popover left-anchor" id="appSettingsPopover">
       <div class="settings-view active" data-view="home">
-        <div class="section-title" data-i18n="settings.title">Ustawienia</div>
+        <div class="settings-home-head"><div class="section-title" data-i18n="settings.title">Ustawienia</div>
+        <button class="popover-close-btn" id="appSettingsCloseBtn" title="Zamknij" data-i18n-title="action.close">✕</button></div>
         <div class="settings-tile-grid">
           <div class="settings-tile" data-open="appearance"><span class="ic">🌓</span><span data-i18n="settings.tileAppearance">Wygląd</span></div>
           <div class="settings-tile" data-open="background"><span class="ic">🎨</span><span data-i18n="settings.tileBackground">Tło i kolor</span></div>
@@ -962,6 +976,7 @@
     <button class="theme-toggle" id="themeToggle" title="Zmień motyw" data-i18n-title="theme.change"></button>
     <button class="account-toggle" id="accountToggle" title="Konto">👤</button>
     <div class="account-popover" id="accountPopover">
+      <button class="popover-close-btn account-popover-close" id="accountCloseBtn" title="Zamknij" data-i18n-title="action.close">✕</button>
       <div id="popLoggedOut">
         <div id="knownAccountsRow" class="known-accounts-row hidden"></div>
         <label data-i18n="auth.email">E-mail</label>
@@ -3389,6 +3404,9 @@ function parseReceiptText(text) {
   for (let i = 0; i < end; i++) {
     const r = rows[i];
     const n = normTxt(r);
+    // A plain divider line ("---------------", "________________"...) just separates sections of the
+    // receipt — skip it without touching `pending`, so a product name that wraps around one still joins up.
+    if (/^[-_=─━\s]{4,}$/.test(r)) continue;
     if (/^\s*[a-e]\s+\d+[.,]\d+\s*%/.test(n) || /^t?0{3,}\w*$/i.test(r.replace(/\s/g, ''))) { pending = ''; continue; }  // tax rate line / barcode text
     const am = rcAmounts(r);
     // "Iš viso suteikta nuolaidų" is a running summary of discounts already applied elsewhere —
@@ -3414,11 +3432,11 @@ function parseReceiptText(text) {
       // A price line whose own leftover text is just a leftover unit/number (e.g. "00 vnt" once the
       // qty itself is stripped out) counts as "nothing here" too, so the pending name is used instead.
       const bare = namePart.replace(/\b(vnt|kg|g|l|szt)\b/gi, '').replace(/[\d\s.,]/g, '');
-      const pendingIsBarcode = pending && /^\s*\d{8,14}\b/.test(pending);
       const namePartIsJunk = bare.length < 2;
-      const wraps = pending && (pendingIsBarcode || namePartIsJunk);
-      // when namePart is just leftover qty junk ("00 vnt"), drop it entirely rather than tacking it on
-      const name = rcCleanName(wraps ? (namePartIsJunk ? pending : pending + ' ' + namePart) : namePart);
+      // Anything already sitting in `pending` survived the RC_HEADER filter above, so it is a real
+      // continuation of THIS product's name (a long name wrapped onto more than one line, possibly with
+      // a dashed "----" divider line in between, which is skipped and never reaches here) — glue it on.
+      const name = rcCleanName(pending ? (namePartIsJunk ? pending : pending + ' ' + namePart) : namePart);
       if (/[A-Za-zÀ-ž]{2,}/.test(name) && last.v > 0 && last.v < 10000) {
         const item = { name, price: last.v, discount: 0 };
         if (qtyM) item.qty = qtyM[0].replace(/\s{2,}/g, ' ').trim();
@@ -4249,6 +4267,13 @@ function applyMorphPopoverLayout(panelId, iconId, open) {
   el.style.height = h + 'px';
   setPopoverIconClip(el, icon, h);
   el.classList.toggle('open', open);
+  // The icon disappears once its own panel is open — the panel now visually covers that exact spot
+  // anyway (same reason the cards-drawer icon hides), so a leftover icon floating on top of the open
+  // panel would look wrong and could block taps meant for whatever the panel now shows there.
+  if (icon) {
+    icon.style.opacity = open ? '0' : '1';
+    icon.style.pointerEvents = open ? 'none' : '';
+  }
 }
 function openMorphPopover(panelId, iconId) { applyMorphPopoverLayout(panelId, iconId, true); }
 function closeMorphPopover(panelId, iconId) {
@@ -4284,6 +4309,14 @@ document.getElementById('cardsToggle').addEventListener('click', (e) => {
 document.getElementById('cardsDrawerClose').addEventListener('click', (e) => {
   e.stopPropagation();
   closeCardsDrawer();
+});
+document.getElementById('appSettingsCloseBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeMorphPopover('appSettingsPopover', 'appSettingsToggle');
+});
+document.getElementById('accountCloseBtn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  closeMorphPopover('accountPopover', 'accountToggle');
 });
 document.getElementById('cardsDrawer').addEventListener('click', (e) => e.stopPropagation());
 window.addEventListener('resize', () => {
