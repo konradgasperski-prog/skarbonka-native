@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262411">
+<meta name="stash-version" content="202609262412">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -33,6 +33,36 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Stash">
 <meta name="mobile-web-app-capable" content="yes">
+<script>
+// Runs before the <style> block below is even parsed, straight off localStorage. Without this, the
+// very first paint has no data-theme attribute yet, so on a phone whose SYSTEM theme is dark the
+// "@media (prefers-color-scheme: dark)" rule below matches and the app paints itself dark for an
+// instant - then loadState()/applyTheme() run later (after the whole page loads) and flip it to
+// whatever theme the user actually chose (e.g. manually set to Light), which is the visible
+// "jump from dark to light" reported after closing and reopening the app. Keep this in sync with
+// applyTheme()/loadState() further down - it only needs to get the one attribute right that affects
+// first paint; the real load still happens normally afterwards and just confirms the same value.
+(function () {
+  try {
+    var theme = null, ts = -1;
+    var raw = localStorage.getItem('portfel_state');
+    if (raw) { var st = JSON.parse(raw); if (st && st.theme) { theme = st.theme; ts = st.appearanceTs || 0; } }
+    var rawA = localStorage.getItem('portfel_appearance');
+    if (rawA) { var a = JSON.parse(rawA); if (a && a.theme && (a.ts || 0) >= ts) { theme = a.theme; ts = a.ts || 0; } }
+    // On Android the native side can hold a newer appearance backup than localStorage (e.g. right
+    // after a fresh install restores it) - same candidate check loadState()/restoreAppearanceBackup()
+    // does later, just done here first so the very first paint already gets it right.
+    try {
+      if (window.AndroidBridge && typeof window.AndroidBridge.getAppearance === 'function') {
+        var ab = JSON.parse(window.AndroidBridge.getAppearance() || 'null');
+        if (ab && ab.theme && (ab.ts || 0) >= ts) theme = ab.theme;
+      }
+    } catch (e2) {}
+    if (theme === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    else if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch (e) {}
+})();
+</script>
 <style>
   :root {
     --bg: #f4f5f7;
@@ -3631,6 +3661,37 @@ function rcCleanName(s) {
     .replace(/[*#]+/g, ' ').replace(/\s{2,}/g, ' ')
     .replace(/^[\s,.;:-]+|[\s,;:-]+$/g, '').trim().slice(0, 80);
 }
+// Common store/chain names the scanner sees a lot - same idea as LT_DICT's product-word correction,
+// but for the shop-name line, and matched as a WHOLE word (chain names are usually short, e.g. 4
+// letters for "Lidl", too short for the "match a several-letter stem" approach used for products).
+// "Ladl" from a blurry photo -> "Lidl", "Maxlma" -> "Maxima", etc. Extend this list with any other
+// chain the scanner keeps misreading.
+const STORE_DICT = [
+  'Lidl','Maxima','IKI','Rimi','Norfa','Aldi','Prisma','Depo','Senukai','Pepco',
+  'Eurovaistinė','Camelia','Apotheka','Topo centras','Media Markt','Decathlon',
+  'Hesburger','McDonald\'s','Narvesen','Circle K','Statoil','Akropolis','Panorama',
+  'H&M','Reserved','Sinsay','IKEA','JYSK','Jysk','KFC','Burger King','Lukoil','Vlanta',
+  'Cido','Ermitažas','Kastytis','Iki express','Barbora','Selfa','Gerdau'
+];
+function correctStoreName(name) {
+  if (!name) return name;
+  return String(name).split(/(\s+)/).map(tok => {
+    const core = tok.trim();
+    if (core.length < 3) return tok;
+    const w = normTxt(core).replace(/[^a-z]/g, '');
+    if (!w) return tok;
+    let best = null, bestDist = Infinity;
+    for (const cand of STORE_DICT) {
+      const cw = normTxt(cand).replace(/[^a-z]/g, '');
+      if (Math.abs(cw.length - w.length) > 2) continue;
+      if (cw === w) return tok.replace(core, cand);   // already exact (case/diacritics aside) - keep official spelling
+      const d = levenshtein(w, cw);
+      const maxDist = cw.length >= 6 ? 2 : 1;          // one misread letter per ~5-6 correct ones
+      if (d <= maxDist && d < bestDist) { bestDist = d; best = cand; }
+    }
+    return best ? tok.replace(core, best) : tok;
+  }).join('');
+}
 function parseReceiptText(text) {
   const rows = String(text || '').split(/\n+/).map(r => r.replace(/\s{2,}/g, '   ').trim()).filter(Boolean);
   const res = { items: [], total: null, store: '', date: null };
@@ -3651,7 +3712,7 @@ function parseReceiptText(text) {
   for (const r of rows.slice(0, 6)) {
     if (/^\s*\d{8,}/.test(r) || rcAmounts(r).length) break;
     if (/[A-Za-zÀ-ž]{3,}/.test(r) && !RC_SKIP.test(normTxt(r))) {
-      res.store = r.replace(/^\s*(UAB|AB|MB)\s+/i, '').replace(/["„“”]/g, '').trim();
+      res.store = correctStoreName(r.replace(/^\s*(UAB|AB|MB)\s+/i, '').replace(/["„“”]/g, '').trim());
       break;
     }
   }
@@ -4391,6 +4452,16 @@ function wireCardReorder() {
       // rule has a transform transition (for hover/press states) that would otherwise fight
       // every style update below, making the card visibly lag and "settle" late.
       tile.style.transition = 'none';
+      // The strip itself is a horizontally-scrollable row (overflow-x: auto), and by default a
+      // touchscreen browser decides whether a touch is "a scroll" or not from its very FIRST move
+      // event of the whole gesture - calling preventDefault() later, once the long-press has fired,
+      // is too late if the browser already committed to scrolling earlier. Since the finger has been
+      // essentially still for the whole LONG_PRESS_MS hold (any bigger movement already cancelled the
+      // press above, before this runs), no scroll has been able to start yet - locking touch-action
+      // down right now, before the drag's own first move event, is what actually stops the strip from
+      // just sliding under the finger instead of the card following it. A plain swipe (no long hold)
+      // never reaches this line, so normal side-to-side browsing of the cards is untouched.
+      strip.style.touchAction = 'none';
       try { navigator.vibrate && navigator.vibrate(15); } catch (err) {}
       try { strip.setPointerCapture(e.pointerId); } catch (err) {}
     }, LONG_PRESS_MS);
@@ -4442,6 +4513,7 @@ function wireCardReorder() {
     activePointerId = null;
     if (!longPressFired) return;
     longPressFired = false;
+    strip.style.touchAction = '';   // restore normal side-to-side scrolling for the next swipe
     suppressClick = true;
     setTimeout(() => { suppressClick = false; }, 0);
     const el = document.elementFromPoint(e.clientX, e.clientY);
