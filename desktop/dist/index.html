@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262412">
+<meta name="stash-version" content="202609262413">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -3653,8 +3653,27 @@ function rcAmounts(line) {
   return out;
 }
 const RC_QTY = /\d+(?:[.,]\d+)?\s*(?:kg|g|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|vnt|l))?/i;
+// The OCR sometimes glues the store's own address line (never a product) straight onto the very
+// next line - the barcode+item line - with no space at all in between ("...LT-09214Vilnius
+// 63815702Aksesuarai augintini..."), so a plain whole-row check for "g. <number>" or "LT-#####"
+// that expects real word boundaries/spacing no longer matches, and the address ends up shown as
+// (part of) the product name. This strips everything up through an "LT-#####<City>" postal-code
+// chunk found ANYWHERE in the string - together with whatever (street name, etc.) came before it -
+// regardless of whether spaces survived around it. A name with no such chunk is left untouched.
+function stripAddressPrefix(s) {
+  const m = String(s).match(/^.*?lt-?\s*\d{4,6}[a-ząčęėįšųūžA-ZĄČĘĖĮŠŲŪŽ]*/i);
+  return m ? s.slice(m[0].length) : s;
+}
+// The OCR's own word-spacing guess (joinWords, on the phone side) sometimes glues two real words
+// together with no gap at all when the printed spacing between them was too tight to measure -
+// "Pepco Lithuania UAB" comes back as "PepcoLithuaniaUAB". A store name is reliably Title-Cased
+// per word, so splitting wherever a lowercase letter is immediately followed by an uppercase one
+// un-glues it correctly without needing to know the specific words in advance.
+function degluCamelCase(s) {
+  return String(s).replace(/([a-ząčęėįšųūž])([A-ZĄČĘĖĮŠŲŪŽ])/g, '$1 $2');
+}
 function rcCleanName(s) {
-  return String(s)
+  return stripAddressPrefix(String(s))
     .replace(/^\s*\d{8,14}\s*/, '')                                  // barcode before the name
     .replace(RC_QTY, ' ')
     .replace(/\s+[A-E]\s*\*?\s*$/, '')                              // VAT class letter after the price
@@ -3712,7 +3731,7 @@ function parseReceiptText(text) {
   for (const r of rows.slice(0, 6)) {
     if (/^\s*\d{8,}/.test(r) || rcAmounts(r).length) break;
     if (/[A-Za-zÀ-ž]{3,}/.test(r) && !RC_SKIP.test(normTxt(r))) {
-      res.store = correctStoreName(r.replace(/^\s*(UAB|AB|MB)\s+/i, '').replace(/["„“”]/g, '').trim());
+      res.store = correctStoreName(degluCamelCase(r.replace(/^\s*(UAB|AB|MB)\s+/i, '').replace(/["„“”]/g, '').trim()));
       break;
     }
   }
@@ -3769,7 +3788,11 @@ function parseReceiptText(text) {
       }
       pending = '';
     } else if (/[A-Za-zÀ-ž]{3,}/.test(r)) {
-      if (RC_HEADER.test(n) || (res.store && n === normTxt(res.store))) { pending = ''; continue; }   // shop name/address — not part of a product
+      // Compared with whitespace stripped on both sides: the store name shown to the user has
+      // already been through degluCamelCase() (so it reads "Pepco Lithuania UAB"), but the raw OCR
+      // row it came from can still be the glued original ("PepcoLithuaniaUAB") - a plain equality
+      // check would miss that match and let the header row leak into the item list below.
+      if (RC_HEADER.test(n) || (res.store && n.replace(/\s+/g, '') === normTxt(res.store).replace(/\s+/g, ''))) { pending = ''; continue; }   // shop name/address — not part of a product
       pending = (pending ? pending + ' ' : '') + r;
       if (pending.length > 160) pending = r;
     }
@@ -4425,7 +4448,7 @@ function wireCardReorder() {
   const strip = document.getElementById('cardsStrip');
   if (!strip) return;
   const LONG_PRESS_MS = 450;
-  let pressTimer = null, dragId = null, dragTile = null, startX = 0, startY = 0, activePointerId = null, longPressFired = false, suppressClick = false, shiftedTile = null;
+  let pressTimer = null, dragId = null, dragTile = null, startX = 0, startY = 0, activePointerId = null, longPressFired = false, suppressClick = false, shiftedTile = null, lockedScrollLeft = 0;
   const cancelPress = () => { clearTimeout(pressTimer); pressTimer = null; };
   // Android's own long-press-to-select (and on MIUI/HyperOS, the system "smart selection"
   // popup) can still win the race against our hold timer and highlight a card blue even with
@@ -4462,6 +4485,13 @@ function wireCardReorder() {
       // just sliding under the finger instead of the card following it. A plain swipe (no long hold)
       // never reaches this line, so normal side-to-side browsing of the cards is untouched.
       strip.style.touchAction = 'none';
+      // Belt-and-suspenders for touch-action above: some WebView builds still let the strip creep
+      // sideways during the drag (a real phone kept scrolling the row instead of moving the card,
+      // even with touch-action locked down) - likely because the browser had already half-committed
+      // to a scroll gesture before touch-action took effect. Remembering the scroll position right
+      // now and forcing it back every single move event below cancels that out unconditionally,
+      // regardless of why it crept, without touching the card's own translateX drag animation.
+      lockedScrollLeft = strip.scrollLeft;
       try { navigator.vibrate && navigator.vibrate(15); } catch (err) {}
       try { strip.setPointerCapture(e.pointerId); } catch (err) {}
     }, LONG_PRESS_MS);
@@ -4473,6 +4503,7 @@ function wireCardReorder() {
       return;
     }
     e.preventDefault();
+    if (strip.scrollLeft !== lockedScrollLeft) strip.scrollLeft = lockedScrollLeft;
     // The card itself follows your finger/mouse — sideways only (left or right), never up/down.
     if (dragTile) dragTile.style.transform = 'translateX(' + (e.clientX - startX) + 'px) scale(1.06)';
     // The card under the cursor slides aside to make room, the opposite way from your drag —
