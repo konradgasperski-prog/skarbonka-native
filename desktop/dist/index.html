@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262415">
+<meta name="stash-version" content="202609262416">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -4678,6 +4678,13 @@ function wireCardReorder() {
             // box (easy to do on a narrow row of cards) would stop delivering pointermove events
             // here entirely, freezing the scroll mid-swipe.
             try { strip.setPointerCapture(e.pointerId); } catch (err) {}
+            // scroll-snap-type is what made a hand-driven drag feel "jumpy" instead of smooth: with
+            // it left on, the browser keeps nudging scrollLeft towards the nearest card on its own
+            // every time we set it, fighting our own frame-by-frame value and making the row visibly
+            // hop between snap points rather than following the finger continuously. Switched off
+            // only for the duration of this one drag and restored the instant it ends, so cards still
+            // snap neatly into place once you let go.
+            strip.style.scrollSnapType = 'none';
           }
           cancelPress();
         } else {
@@ -4730,18 +4737,32 @@ function wireCardReorder() {
     cancelPress();
     activePointerId = null;
     panning = false; panDecided = false;
+    strip.style.scrollSnapType = '';   // let cards snap neatly back into place now that the drag is over
     if (!longPressFired) return;
     longPressFired = false;
     suppressClick = true;
     setTimeout(() => { suppressClick = false; }, 0);
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const overTile = el && el.closest && el.closest('.cards-strip-item[data-card-tile]');
+    const willSwap = !!(overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId);
     if (dragTile) {
-      // Re-enable the transition (removed at drag start) so a card that's simply released
-      // without a swap eases back to its resting spot instead of snapping there instantly.
-      dragTile.style.transition = '';
-      void dragTile.offsetWidth;
-      dragTile.style.transform = '';
+      if (willSwap) {
+        // A swap is about to re-render the whole strip below - snap the drag transform off
+        // INSTANTLY (no transition) so the "before" position captured just after this is the
+        // card's real resting slot. Leaving the transition on here was the cause of the card
+        // seeming to "disappear" on drop: getBoundingClientRect right after starting a transition
+        // still reports the pre-transition (dragged/scaled) position, so the FLIP animation below
+        // was computing its slide-in distance from the wrong starting point - often flinging the
+        // card off to one side for a frame before it snapped back into view.
+        dragTile.style.transition = 'none';
+        dragTile.style.transform = '';
+        void dragTile.offsetWidth;
+      } else {
+        // No swap - ease the card back to its resting spot instead of snapping there instantly.
+        dragTile.style.transition = '';
+        void dragTile.offsetWidth;
+        dragTile.style.transform = '';
+      }
       dragTile.style.pointerEvents = '';
     }
     if (shiftedTile) {
@@ -4751,7 +4772,7 @@ function wireCardReorder() {
       shiftedTile = null;
     }
     strip.querySelectorAll('.reordering, .drop-target').forEach(t => t.classList.remove('reordering', 'drop-target'));
-    if (overTile && overTile.dataset.cardTile && overTile.dataset.cardTile !== dragId) {
+    if (willSwap) {
       // swapCards() re-renders the whole strip from scratch, so every tile is a brand new
       // DOM node in its new spot with no visual continuity. FLIP it: remember where each
       // card was right before the swap, then once the new nodes exist, animate each one
