@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262410">
+<meta name="stash-version" content="202609262411">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -77,6 +77,18 @@
   button, a, .tab, .type-btn, .chart-type-btn, .panel-header, .currency-dd-option, .del-btn, .palette-swatch {
     -webkit-tap-highlight-color: transparent;
     outline: none;
+  }
+  /* This is meant to feel like a native app, not a webpage, so nowhere in it should a long press
+     ever select text and pop up the phone's own copy/selection UI (that's the wide blue highlight
+     across "Karty bankowe", the balance figures etc. reported from a real phone) — only the actual
+     input fields need real text selection, for typing and editing what's in them. Scoping this to
+     just the card tiles earlier wasn't enough; the same long-press can land anywhere in the app. */
+  body, body * {
+    -webkit-user-select: none; user-select: none;
+  }
+  input, textarea, [contenteditable], [contenteditable] * {
+    -webkit-user-select: text; user-select: text;
+    -webkit-touch-callout: default;
   }
   body {
     margin: 0;
@@ -2643,7 +2655,21 @@ function openCurWheel() {
   el.className = 'currency-wheel';
   el.style.left = currencyPickerEl.offsetLeft + 'px';
   el.style.width = currencyPickerEl.offsetWidth + 'px';
-  el.style.top = (currencyPickerEl.offsetTop + currencyPickerEl.offsetHeight / 2 - CUR_ROW * 1.5) + 'px';
+  // Centering the 96px-tall wheel on the button would need 32px of room above it - but the button
+  // sits right at the top of the balance card, so that pushed the wheel's top row out above the
+  // card entirely (looking cut off/broken, reported from a real phone). Clamp it so it never
+  // starts above the card's own top edge; past that point it just opens further downward instead.
+  let top = currencyPickerEl.offsetTop + currencyPickerEl.offsetHeight / 2 - CUR_ROW * 1.5;
+  const card = currencyPickerEl.closest('.balance-card');
+  if (card) {
+    const cardTop = card.getBoundingClientRect().top;
+    const hostTop = host.getBoundingClientRect().top;
+    const minTop = (cardTop + 6) - hostTop;   // 6px breathing room under the card's own border
+    if (top < minTop) top = minTop;
+  } else if (top < 0) {
+    top = 0;
+  }
+  el.style.top = top + 'px';
   el.innerHTML = '<div class="currency-wheel-sel"></div>';
   const items = [];
   for (let k = 0; k < 5; k++) {
@@ -3575,7 +3601,18 @@ function parseVmiText(text) {
 // ---- Receipt text (read from the photo) -> products, prices, discounts, total ----
 // Written for Lithuanian receipts; runs in the app, so it can be improved with a normal update.
 const RC_TOTAL = /^(mok[eė]ti suapvalinus|mok[eė]ti|i[sš] viso|suma|viso|moketina|total|razem|do zaplaty)\b/;
-const RC_SKIP = /(pvm|mokestis|apskaitos|kvitas|kvito|kasa\b|kasinink|gr[vy]na|kortel|mok[eė]jim|gr[aą][zž]a|apvalinim|a\.p\.|s\/n|cr-|sm-|saugos|para[sš]as|kodas|d[eė]kojame|a[cč]i[uū]|pirkote|informacij|likutis|inv\.|nr\.|www\.|tel\.|telefon)/;
+// "moke" (not the full "mokėti"/"mokėta") also catches the OCR's own common misreadings of those
+// words ("Mokei", "Mokela") - it's still specific enough not to false-match a real product name.
+// The aid:/tvr:/... fields, atsiskaitymo/patvirtinta/rrn/terminalo versija and card-brand names are
+// the card-terminal confirmation footer printed under the total on card-payment receipts - never
+// products, but easy for OCR to mangle into something odd enough to otherwise slip through as one.
+const RC_SKIP = /(pvm|mokestis|apskaitos|kvitas|kvito|kasa\b|kasinink|gr[vy]na|kortel|moke|gr[aą][zž]a|apvalinim|a\.p\.|s\/n|cr-|sm-|saugos|para[sš]as|kodas|d[eė]kojame|a[cč]i[uū]|pirkote|informacij|likutis|inv\.|nr\.|www\.|tel\.|telefon|\baid\s*:|\btvr\s*:|\btsi\s*:|\baip\s*:|\barqc\s*:|\bapp\s*:|atsiskaitym|patvirtint|\brrn\b|terminalo\s*versij|prekybinink|data\s*ir\s*laikas|aut\.?\s*k\.|master\s*card|mastercard|\bvisa\b|\*{3,}\d{3,4})/;
+// The card-terminal confirmation footer (Kvito Nr./Terminalo Nr./Data ir laikas/Kortelė/AID:.../
+// Atsiskaitymo suma/Patvirtinta/RRN/...) always comes after every real product and the true total,
+// so once it starts, parsing stops there for good - a stronger guarantee than matching each of its
+// lines individually against RC_SKIP above, which still only helps if that particular line's OCR
+// reading happens to still contain one of those keywords.
+const RC_FOOTER_START = /^(kvito\s*nr|terminalo\s*nr|prekybinink|data\s*ir\s*laikas|kortel|aid\s*:|tvr\s*:|atsiskaitym|patvirtint|\brrn\b|terminalo\s*versij|aut\.?\s*k\.|kasininkas)/;
 const RC_DISCOUNT = /(nuolaid|akcij|rabat|discount)/;
 const RC_AMOUNT = /(?<![\d.,])(-?\d{1,5})\s?[.,]\s?(\d{2})(?![.,]?\d)(?!\s*%)/g;
 function rcAmounts(line) {
@@ -3618,7 +3655,13 @@ function parseReceiptText(text) {
       break;
     }
   }
-  const end = totalIdx >= 0 ? totalIdx : rows.length;
+  // Whichever comes first: the recognised total line, or the start of the card-terminal
+  // confirmation footer - a receipt this is misread can end up with the total line itself so
+  // garbled it never matches RC_TOTAL, in which case totalIdx would otherwise only get set at
+  // some much later, coincidental "iš viso"-looking line deep inside that footer (its own summary
+  // restates the amount), letting everything in between get scanned as if it were products.
+  const footerIdx = rows.findIndex(r => RC_FOOTER_START.test(normTxt(r)));
+  const end = Math.min(totalIdx >= 0 ? totalIdx : rows.length, footerIdx >= 0 ? footerIdx : rows.length);
   let pending = '';
   // Company/address boilerplate at the top (before the first product) — never glued onto a product name.
   const RC_HEADER = /^(uab|ab|mb|vsi|ii)\b|pvm mok|imon.s kodas|kasa nr|\bg\.\s*\d|www\.\w/;
@@ -5296,6 +5339,18 @@ if (window.AndroidBridge && window.AndroidBridge.getIconMode) {
   } catch (e) {}
 }
 renderIconModeRow();
+// Belt-and-suspenders for the CSS user-select:none above: on some WebView builds (this is what a
+// real phone was still showing as a blue text-selection highlight over whole screens) the CSS alone
+// isn't always enough, but cancelling the browser's own selectstart/dragstart before it starts is.
+// Real inputs/textareas/editable fields are explicitly exempted, so typing still works normally.
+document.addEventListener('selectstart', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
+  e.preventDefault();
+});
+document.addEventListener('dragstart', (e) => {
+  if (e.target.closest && e.target.closest('input, textarea, [contenteditable], a[href]')) return;
+  e.preventDefault();
+});
 wireDragAndDrop();
 wirePanelHideButtons();
 wireBackgroundParallax();
