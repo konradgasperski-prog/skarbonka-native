@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262413">
+<meta name="stash-version" content="202609262414">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -3464,16 +3464,26 @@ function levenshtein(a, b) {
 // never for a short word or a big mismatch, so real brand names / other languages are left alone.
 function ltFuzzyStem(w) {
   if (w.length < 5) return null;
-  let best = null, bestDist = Infinity;
+  let best = null, bestDist = Infinity, ties = 0;
   for (const row of LT_DICT) {
     const stem = row[0];
+    // A stem shorter than 5 letters is too short to fuzzy-match safely: matching a whole word
+    // against just 3-4 overlapping letters throws up unrelated words too easily ("Sprite" ~
+    // "suri"/cheese, "Milka" ~ "milt"/flour, "Actimel" ~ "acto"/vinegar - all real false hits this
+    // produced before this length floor was added). Only stems long enough that a coincidental
+    // 1-letter overlap becomes unlikely are considered here.
+    if (stem.length < 5) continue;
     const cand = w.slice(0, stem.length);
     if (cand.length < stem.length - 1) continue;
     const d = levenshtein(cand, stem);
     const maxDist = stem.length >= 8 ? 2 : 1;   // one misread letter per ~5 correct ones, 2 letters max
-    if (d > 0 && d <= maxDist && d < bestDist) { bestDist = d; best = row; }
+    if (d === 0 || d > maxDist) continue;
+    if (d < bestDist) { bestDist = d; best = row; ties = 1; }
+    else if (d === bestDist) ties++;
   }
-  return best;
+  // Two equally-close stems means it's genuinely ambiguous which product was meant - safer to
+  // leave the word alone than to guess and possibly rewrite it into something else entirely.
+  return ties === 1 ? best : null;
 }
 function ltLookup(word) {
   const w = normTxt(word).replace(/[^a-z]/g, '');
@@ -3484,6 +3494,30 @@ function ltLookup(word) {
   }
   return ltFuzzyStem(w);
 }
+// LT_DICT's own stem column is plain ASCII (accents stripped, so it can be matched against OCR
+// text that may or may not have read the accent correctly). That's fine for MATCHING, but using
+// that same ASCII stem to WRITE the corrected word back out means every auto-correction was
+// silently deleting the word's real Lithuanian diacritics ("šviežias" -> "sviezias") even when
+// the correction itself was right - which is its own separate bug from simply misreading the
+// word. This map gives the properly-accented spelling to write back for every stem where the
+// ASCII form actually differs from real Lithuanian (most stems have no accented letters at all,
+// so they're simply absent here and fall back to the plain stem, unchanged from before).
+const LT_ACCENT_FIX = {
+  ekologisk: 'ekologišk', sviestuv: 'šviestuv', servetel: 'servetėl', sumustin: 'sumuštin',
+  sasiuvin: 'sąsiuvin', sasiuv: 'sąsiuv', lietuviu: 'lietuvių', prozekt: 'prožekt',
+  kilimel: 'kilimėl', siltnam: 'šiltnam', ziebtuv: 'žiebtuv', kiausin: 'kiaušin',
+  sokolad: 'šokolad', traskuc: 'traškuč', vistien: 'vištien', kukuruz: 'kukurūz',
+  zirneli: 'žirneli', piestuk: 'pieštuk', vaikisk: 'vaikišk', obuoliu: 'obuolių',
+  avizin: 'avižin', svogun: 'svogūn', cesnak: 'česnak', kopust: 'kopūst',
+  kriaus: 'kriauš', vistos: 'vištos', desrel: 'dešrel', lasisa: 'lašiša',
+  maisel: 'maišel', sampun: 'šampūn', riesut: 'riešut', rasikl: 'rašikl',
+  saldyt: 'šaldyt', varsk: 'varšk', surel: 'sūrel', suris: 'sūris',
+  ryziu: 'ryžių', brask: 'brašk', mesos: 'mėsos', sonin: 'šonin', lasis: 'lašiš',
+  padaz: 'padaž', kecup: 'kečup', dantu: 'dantų', rukyt: 'rūkyt', sviez: 'šviež',
+  klase: 'klasė', muro: 'mūro', zvak: 'žvak', file: 'filė', suri: 'sūri',
+  ledu: 'ledų', ryzi: 'ryži', mesa: 'mėsa', desr: 'dešr', zuvi: 'žuvi',
+  zuvy: 'žuvy', zali: 'žali'
+};
 // Fixes a single misread word in place (keeps whatever ending the OCR read, which is usually
 // right - Lithuanian grammar endings are short and distinctive - and only corrects the stem).
 function ltCorrectWord(token) {
@@ -3491,20 +3525,135 @@ function ltCorrectWord(token) {
   if (!m || m[2].length < 5) return token;
   const core = m[2];
   const w = normTxt(core).replace(/[^a-z]/g, '');
-  for (const row of LT_DICT) { if (w.startsWith(row[0])) return token; }   // already a clean match
-  const hit = ltFuzzyStem(w);
-  if (!hit) return token;
-  const stem = hit[0];
+  // Find the matching stem either way: an exact prefix match (the OCR read the word's letters
+  // right, just maybe without its accents) or, failing that, a fuzzy one (the OCR misread a
+  // letter or two of the stem itself). Either way we still need to check/restore the accented
+  // spelling below - a stem match on its own does NOT mean the word was written correctly,
+  // because accent-dropping is exactly the kind of "clean" match that slips through unnoticed.
+  let stem = null;
+  for (const row of LT_DICT) { if (w.startsWith(row[0])) { stem = row[0]; break; } }
+  if (!stem) {
+    const hit = ltFuzzyStem(w);
+    if (!hit) return token;
+    stem = hit[0];
+  }
+  const accentedStem = LT_ACCENT_FIX[stem];
   const rest = core.slice(stem.length);
+  // No accented form recorded for this stem (most of them have no special letters at all) - the
+  // ascii stem itself already IS the correct spelling, so only a genuine fuzzy misread needs fixing.
+  if (!accentedStem) {
+    if (core.slice(0, stem.length).toLowerCase() === stem) return token;   // already correct, leave as-is
+    const wasCapitalised = core.charAt(0) === core.charAt(0).toUpperCase() && core.charAt(0) !== core.charAt(0).toLowerCase();
+    const fixedStem = wasCapitalised ? stem.charAt(0).toUpperCase() + stem.slice(1) : stem;
+    return m[1] + fixedStem + rest + m[3];
+  }
+  // An accented form IS recorded - if the OCR's own reading of the stem already spells it that
+  // way (rare, but the on-device OCR does sometimes get diacritics right), leave it untouched;
+  // otherwise write back the properly accented spelling instead of the bare-letter one, whether
+  // that bare reading came from a dropped accent (the common case) or a genuine misread letter.
+  const gotItRight = core.slice(0, stem.length).toLowerCase() === accentedStem.toLowerCase();
+  const fixedForm = gotItRight ? core.slice(0, stem.length) : accentedStem;
   const wasCapitalised = core.charAt(0) === core.charAt(0).toUpperCase() && core.charAt(0) !== core.charAt(0).toLowerCase();
-  const fixedStem = wasCapitalised ? stem.charAt(0).toUpperCase() + stem.slice(1) : stem;
+  const fixedStem = wasCapitalised ? fixedForm.charAt(0).toUpperCase() + fixedForm.slice(1) : fixedForm;
   return m[1] + fixedStem + rest + m[3];
 }
+// Stores also sell plenty of goods labelled in plain English (imported groceries, clothing tags,
+// electronics, drugstore items) even on an otherwise-Lithuanian receipt, so the same kind of blurry-
+// photo letter misread ("miuk" for "milk", "shitt" for "shirt") needs the same fuzzy-dictionary fix -
+// just matched as a WHOLE word instead of a stem, since English doesn't take Lithuanian-style endings.
+const EN_GOODS = [
+  'milk','bread','cheese','butter','eggs','yogurt','cream','chicken','beef','pork','turkey','bacon',
+  'ham','sausage','salami','fish','salmon','tuna','shrimp','water','juice','coffee','tea','cola',
+  'soda','beer','wine','vodka','whiskey','sugar','salt','pepper','rice','pasta','flour','oil',
+  'vinegar','ketchup','mayonnaise','mustard','honey','jam','chocolate','candy','cookies','crackers',
+  'chips','nuts','almonds','walnuts','raisins','apples','bananas','oranges','lemons','limes','grapes',
+  'pears','peaches','plums','strawberries','blueberries','watermelon','melon','pineapple','tomatoes',
+  'cucumbers','onions','garlic','potatoes','carrots','cabbage','lettuce','spinach','peppers','mushrooms',
+  'corn','peas','beans','pizza','sandwich','burger','soup','salad','frozen','fresh','organic','napkins',
+  'tissues','toilet','paper','towels','shampoo','conditioner','soap','lotion','deodorant','toothpaste',
+  'toothbrush','razor','detergent','softener','bleach','cleaner','sponge','gloves','bags','batteries',
+  'charger','cable','headphones','speaker','mouse','keyboard','monitor','laptop','tablet','camera',
+  'shirt','hoodie','sweater','jacket','coat','jeans','trousers','pants','shorts','socks',
+  'shoes','sneakers','boots','sandals','dress','skirt','blouse','scarf','gloves','hat','cap','belt',
+  'underwear','pajamas','towel','blanket','pillow','curtain','carpet','plate','cup','mug','bowl',
+  'spoon','fork','knife','pan','pot','kettle','toy','ball','book','notebook','pen','pencil','candle',
+  'lighter','umbrella','backpack','wallet','watch'
+];
+function enFuzzyWord(w) {
+  // A 4-letter (or shorter) word has too few letters for a 1-letter difference to mean anything -
+  // "Coca" and "Cola" are both perfectly real, different words only one letter apart, and forcing
+  // one into the other would be a wrong "correction", not a fix. Below 5 letters, only an EXACT
+  // dictionary match (handled by the caller before this is even reached) is trusted; fuzzy
+  // forgiveness only kicks in once the word is long enough that a coincidental 1-letter overlap
+  // with some other real word becomes unlikely.
+  if (w.length < 5) return null;
+  let best = null, bestDist = Infinity, ties = 0;
+  for (const cand of EN_GOODS) {
+    const lenDiff = Math.abs(cand.length - w.length);
+    if (lenDiff > 2) continue;
+    if (cand === w) return cand;
+    // Below 7 letters, only a same-length misread (one letter shape confused for another) is
+    // trusted - tolerating a whole extra/missing letter at this length is what turned "Milka" (a
+    // real chocolate brand) into "milk". Longer words can safely tolerate a dropped/added letter.
+    if (cand.length < 7 && lenDiff > 0) continue;
+    const d = levenshtein(w, cand);
+    const maxDist = cand.length >= 7 ? 2 : 1;   // one misread letter per ~6-7 correct ones
+    if (d > maxDist) continue;
+    if (d < bestDist) { bestDist = d; best = cand; ties = 1; }
+    else if (d === bestDist) ties++;
+  }
+  // If two different dictionary words are an equally close match, it's genuinely ambiguous which
+  // one was meant - leave the word alone rather than guess.
+  return ties === 1 ? best : null;
+}
+function enCorrectWord(token) {
+  const m = token.match(/^([^A-Za-zÀ-ž]*)(.*?)([^A-Za-zÀ-ž]*)$/);
+  if (!m || m[2].length < 4) return token;
+  const core = m[2];
+  const w = normTxt(core).replace(/[^a-z]/g, '');
+  if (EN_GOODS.includes(w)) return token;   // already correct
+  const hit = enFuzzyWord(w);
+  if (!hit) return token;
+  const wasCapitalised = core.charAt(0) === core.charAt(0).toUpperCase() && core.charAt(0) !== core.charAt(0).toLowerCase();
+  const fixed = wasCapitalised ? hit.charAt(0).toUpperCase() + hit.slice(1) : hit;
+  return m[1] + fixed + m[3];
+}
+// Tries the Lithuanian correction first (it's the more specific/common case on these receipts);
+// only if that leaves the word untouched does it try the English goods dictionary instead - so a
+// word never gets "corrected" twice or fought over between the two dictionaries.
+// Well-known brand names that happen to sit one or two letters away from an unrelated dictionary
+// word ("Samsung" ~ šampūnas/shampoo, "Pampers" ~ peppers, "Snickers" ~ sneakers, "Milka" ~ milk) -
+// real, correctly-spelled brand names that fuzzy matching would otherwise mis-"fix" into something
+// else entirely. Checked as a whole word BEFORE any fuzzy matching, so these are never touched.
+const BRAND_PROTECT = new Set([
+  'samsung','pampers','snickers','milka','actimel','nivea','colgate','persil','ariel','nesquik',
+  'barilla','lavazza','nutella','dove','gillette','pringles','doritos','rimmel','loreal','garnier',
+  'palmolive','fairy','heinz','lipton','twix','oreo','danone','sprite','fanta','pepsi','cocacola',
+  'nescafe','lays','kinder','philips','bosch','siemens','electrolux','xiaomi','huawei','nokia',
+  'sony','apple','nike','adidas','zara','levis','ikea','jysk','decathlon','mediamarkt','reserved',
+  'sinsay','kfc','mcdonalds','burgerking','kingston','dell','acer','asus','braun','oralb'
+]);
+function correctWord(token) {
+  const m = token.match(/^([^A-Za-zÀ-ž]*)(.*?)([^A-Za-zÀ-ž]*)$/);
+  if (!m || m[2].length < 5) return token;
+  const core = m[2];
+  const w = normTxt(core).replace(/[^a-z]/g, '');
+  if (BRAND_PROTECT.has(w)) return token;
+  // If this word already matches (or fuzzy-matches) a Lithuanian stem, treat it as Lithuanian and
+  // ONLY run the Lithuanian correction - never fall through to English after it. Otherwise a
+  // perfectly correct Lithuanian word that happens to look similar to its English/international
+  // counterpart ("bananai" vs "bananas", "aktimel"-style brand spellings vs "actimel"...) would get
+  // wrongly rewritten into that English word instead of being left alone or fixed within its own
+  // language. English is only tried for words Lithuanian doesn't recognise as its own at all.
+  const isLithuanian = LT_DICT.some(row => w.startsWith(row[0])) || !!ltFuzzyStem(w);
+  if (isLithuanian) return ltCorrectWord(token);
+  return enCorrectWord(token);
+}
 // Runs the misread-word correction over a whole product name read off a receipt, so a name that
-// otherwise doesn't match any real Lithuanian product word doesn't get shown (or saved) as-is.
+// otherwise doesn't match any real Lithuanian OR English product word doesn't get shown (or saved) as-is.
 function ltCorrectName(name) {
   if (!name) return name;
-  return String(name).split(/(\s+)/).map(tok => tok.trim() ? ltCorrectWord(tok) : tok).join('');
+  return String(name).split(/(\s+)/).map(tok => tok.trim() ? correctWord(tok) : tok).join('');
 }
 // Word-by-word translation of a product name; null if no word was recognised
 function ltTranslateName(name, lang) {
@@ -3652,7 +3801,19 @@ function rcAmounts(line) {
   while ((m = RC_AMOUNT.exec(line))) out.push({ v: Math.abs(parseFloat(m[1] + '.' + m[2])), neg: m[1].trim().startsWith('-'), i: m.index });
   return out;
 }
-const RC_QTY = /\d+(?:[.,]\d+)?\s*(?:kg|g|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|vnt|l))?/i;
+const RC_QTY = /\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|ml|vnt|l))?/i;
+// A unit abbreviation printed right after a quantity is short (1-4 letters) and easy for a blurry
+// photo's OCR to misread as another, visually similar short combination - "0,5nl" for "0,5ml"
+// (m misread as n), "400lg" for "400kg" (k misread as l). Fixed ONLY when it directly follows a
+// digit (real quantity context), never as a blanket text replace, so a normal word that happens to
+// contain "nl" or "lg" is never touched.
+const UNIT_OCR_FIX = { mi: 'ml', nl: 'ml', inl: 'ml', kq: 'kg', ka: 'kg', lg: 'kg', q: 'g', unt: 'vnt', szl: 'szt' };
+function fixUnitOcr(s) {
+  return String(s).replace(/(\d[\d.,]*)\s*(mi|nl|inl|kq|ka|lg|q|unt|szl)\b/gi, (full, num, unit) => {
+    const fixed = UNIT_OCR_FIX[unit.toLowerCase()];
+    return fixed ? num + fixed : full;
+  });
+}
 // The OCR sometimes glues the store's own address line (never a product) straight onto the very
 // next line - the barcode+item line - with no space at all in between ("...LT-09214Vilnius
 // 63815702Aksesuarai augintini..."), so a plain whole-row check for "g. <number>" or "LT-#####"
@@ -3673,7 +3834,7 @@ function degluCamelCase(s) {
   return String(s).replace(/([a-ząčęėįšųūž])([A-ZĄČĘĖĮŠŲŪŽ])/g, '$1 $2');
 }
 function rcCleanName(s) {
-  return stripAddressPrefix(String(s))
+  return stripAddressPrefix(fixUnitOcr(String(s)))
     .replace(/^\s*\d{8,14}\s*/, '')                                  // barcode before the name
     .replace(RC_QTY, ' ')
     .replace(/\s+[A-E]\s*\*?\s*$/, '')                              // VAT class letter after the price
@@ -3712,7 +3873,7 @@ function correctStoreName(name) {
   }).join('');
 }
 function parseReceiptText(text) {
-  const rows = String(text || '').split(/\n+/).map(r => r.replace(/\s{2,}/g, '   ').trim()).filter(Boolean);
+  const rows = String(text || '').split(/\n+/).map(r => fixUnitOcr(r.replace(/\s{2,}/g, '   ').trim())).filter(Boolean);
   const res = { items: [], total: null, store: '', date: null };
   // total: "Mokėti suapvalinus" wins over "Mokėti" / "Iš viso"
   let totalIdx = -1;
@@ -3775,7 +3936,7 @@ function parseReceiptText(text) {
       // "Obuoliai" + "0,845 kg x 1,49  1,26" -> the name is on the line before the price.
       // A price line whose own leftover text is just a leftover unit/number (e.g. "00 vnt" once the
       // qty itself is stripped out) counts as "nothing here" too, so the pending name is used instead.
-      const bare = namePart.replace(/\b(vnt|kg|g|l|szt)\b/gi, '').replace(/[\d\s.,]/g, '');
+      const bare = namePart.replace(/\b(vnt|kg|g|ml|l|szt)\b/gi, '').replace(/[\d\s.,]/g, '');
       const namePartIsJunk = bare.length < 2;
       // Anything already sitting in `pending` survived the RC_HEADER filter above, so it is a real
       // continuation of THIS product's name (a long name wrapped onto more than one line, possibly with
@@ -4485,13 +4646,15 @@ function wireCardReorder() {
       // just sliding under the finger instead of the card following it. A plain swipe (no long hold)
       // never reaches this line, so normal side-to-side browsing of the cards is untouched.
       strip.style.touchAction = 'none';
-      // Belt-and-suspenders for touch-action above: some WebView builds still let the strip creep
-      // sideways during the drag (a real phone kept scrolling the row instead of moving the card,
-      // even with touch-action locked down) - likely because the browser had already half-committed
-      // to a scroll gesture before touch-action took effect. Remembering the scroll position right
-      // now and forcing it back every single move event below cancels that out unconditionally,
-      // regardless of why it crept, without touching the card's own translateX drag animation.
+      // touch-action alone still wasn't enough on this phone (reported twice) - the WebView had
+      // apparently already committed to a scroll gesture a moment earlier and touch-action can only
+      // stop a gesture that hasn't started yet. overflow-x:hidden is a much blunter, unconditional
+      // instrument: a container that isn't scrollable AT ALL can't be scrolled by any in-flight
+      // gesture, no matter when the browser committed to it. Restored the instant the drag ends.
       lockedScrollLeft = strip.scrollLeft;
+      strip.style.overflowX = 'hidden';
+      // Belt-and-suspenders on top of that: also force the scroll position back every single move
+      // event below, in case some WebView build still manages to nudge it even while hidden.
       try { navigator.vibrate && navigator.vibrate(15); } catch (err) {}
       try { strip.setPointerCapture(e.pointerId); } catch (err) {}
     }, LONG_PRESS_MS);
@@ -4545,6 +4708,8 @@ function wireCardReorder() {
     if (!longPressFired) return;
     longPressFired = false;
     strip.style.touchAction = '';   // restore normal side-to-side scrolling for the next swipe
+    strip.style.overflowX = '';
+    strip.scrollLeft = lockedScrollLeft;
     suppressClick = true;
     setTimeout(() => { suppressClick = false; }, 0);
     const el = document.elementFromPoint(e.clientX, e.clientY);
