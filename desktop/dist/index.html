@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262409">
+<meta name="stash-version" content="202609262410">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -540,7 +540,10 @@
   .currency-picker-label.slide-in-from-top { transform: translateY(-130%); opacity: 0; }
   /* --- Currency wheel: press the currency and the neighbours roll out above and below --- */
   .currency-wheel {
-    position: absolute; z-index: 20; height: 96px; overflow: hidden; touch-action: none;
+    /* Must render above .app-header (z-index: 31) - the wheel opens by expanding upward past
+       its button, and at z-index 20 that top portion was rendering underneath the header instead
+       of over it, so it looked like it "disappeared". */
+    position: absolute; z-index: 35; height: 96px; overflow: hidden; touch-action: none;
     cursor: grab; user-select: none; -webkit-user-select: none;
     background: color-mix(in srgb, var(--card) calc(var(--glass-opacity) + 15%), transparent);
     border: 1px solid color-mix(in srgb, white 26%, var(--border));
@@ -710,6 +713,7 @@
     -webkit-user-select: none; user-select: none;
     -webkit-touch-callout: none;
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-drag: none;
   }
   .cards-strip-item.all-item { background: var(--accent-soft); }
   .cards-strip-item { transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; }
@@ -1279,7 +1283,7 @@
         <label data-i18n="receipts.groupLabel">Grupa zakupów</label>
         <div class="receipt-group-picker" id="receiptResGroupPicker"></div>
       </div>
-      <div class="receipt-ai-note" id="receiptAiExplainNote">🤖 <span></span></div>
+      <div class="receipt-ai-note" id="receiptAiExplainNote">ℹ️ <span></span></div>
       <div class="row-btns">
         <button class="secondary" id="receiptDiscardBtn" data-i18n="receipts.discard">Odrzuć</button>
         <button class="primary" id="receiptSaveBtn" style="flex:2" data-i18n="receipts.saveAsTx">💾 Zapisz jako transakcję</button>
@@ -1419,7 +1423,7 @@ const TRANSLATIONS = {
     period: { day:'Dni', week:'Tygodnie', month:'Miesiące', year:'Kwartały', searchDay:'Przejdź do dnia', searchWeek:'Przejdź do tygodnia', searchMonth:'Przejdź do miesiąca', searchYear:'Przejdź do roku', yearPlaceholder:'np. 2026', weekLabel:'Tydzień {week}, {year} ({from}–{to})' },
     chart: { bar:'Słupkowy', line:'Liniowy', pie:'Kołowy', percent:'Procentowy', preview:'Podgląd', incomeVsExpense:'Przychody vs wydatki (wybrany okres)', percentShare:'Udział %' },
     update: { ready:'Nowa wersja apki jest gotowa', restart:'Uruchom ponownie' },
-    receipts: { editName:'Popraw nazwę', noGroup:'Bez grupy', noGroupNote:'Zapiszę bez przypisanej grupy — możesz ją dodać teraz albo później, w szczegółach transakcji.', noMatchNote:'Nie znalazłem pasującej grupy dla „{store}” — wybierz ją poniżej albo zapisz bez grupy. Możesz dopisać słowo kluczowe w zakładce Grupy.', matchNote:'Rozpoznano „{store}” i dopasowano do grupy {group} po słowie kluczowym.', autoNote:'Ta grupa ma włączone <b>auto-dodawanie</b> — w pełnej wersji AI zapisałoby to bez pytania.', confirmNote:'Ta grupa wymaga Twojego potwierdzenia przed zapisem.', changeGroup:'Zmień grupę', vmiNotFound:'Paragonu nie znaleziono w VMI', discount:'rabat', vmiMatch:'✓ Suma produktów zgadza się z VMI', vmiDiff:'⚠️ Suma produktów różni się od VMI', vmiOpen:'Otwórz w VMI', vmiDup:'Ten paragon jest już zapisany', saveAnyway:'💾 Zapisz mimo to', vmiFetched:'Sprawdzone w VMI', vmiOffline:'Bez internetu — dane z VMI nie zostały pobrane (kod QR jest zapisany)', withVat:'Suma z PVM', noVat:'Suma bez PVM', vatAmt:'PVM', receiptNo:'Nr paragonu', address:'Adres', items:'Produkty', fullText:'Pełny tekst paragonu', otherItems:'Pozostałe / nierozpoznane', total:'Suma', noItems:'Ta transakcja nie ma rozbicia na produkty — nie pochodzi ze skanu paragonu.', details:'Szczegóły transakcji', removeItem:'Usuń pozycję', itemsCount:'poz.', scanHintLive:'Zrób zdjęcie całego paragonu — AI odczyta każdy produkt, cenę i rabat, a kod QR na dole sprawdzi w VMI sklep, adres i sumę. Samo zdjęcie od razu jest usuwane.', scanCtaQr:'Zrób zdjęcie paragonu', scanSubQr:'AI odczyta produkty, a kod QR sprawdzi w VMI', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — AI samo odczyta sklep, kwotę i dopasuje grupę. (Na razie rozpoznawanie jest symulowane — to podgląd funkcji.)', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie (AI)...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'AI dopasowuje sklep do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby AI zapisywało wydatek bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'AI dodaje wydatek automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
+    receipts: { editName:'Popraw nazwę', noGroup:'Bez grupy', noGroupNote:'Zapiszę bez przypisanej grupy — możesz ją dodać teraz albo później, w szczegółach transakcji.', noMatchNote:'Nie znalazłem pasującej grupy dla „{store}” — wybierz ją poniżej albo zapisz bez grupy. Możesz dopisać słowo kluczowe w zakładce Grupy.', matchNote:'Rozpoznano „{store}” i dopasowano do grupy {group} po słowie kluczowym.', autoNote:'Ta grupa ma włączone <b>auto-dodawanie</b> — zostanie zapisane bez pytania.', confirmNote:'Ta grupa wymaga Twojego potwierdzenia przed zapisem.', changeGroup:'Zmień grupę', vmiNotFound:'Paragonu nie znaleziono w VMI', discount:'rabat', vmiMatch:'✓ Suma produktów zgadza się z VMI', vmiDiff:'⚠️ Suma produktów różni się od VMI', vmiOpen:'Otwórz w VMI', vmiDup:'Ten paragon jest już zapisany', saveAnyway:'💾 Zapisz mimo to', vmiFetched:'Sprawdzone w VMI', vmiOffline:'Bez internetu — dane z VMI nie zostały pobrane (kod QR jest zapisany)', withVat:'Suma z PVM', noVat:'Suma bez PVM', vatAmt:'PVM', receiptNo:'Nr paragonu', address:'Adres', items:'Produkty', fullText:'Pełny tekst paragonu', otherItems:'Pozostałe / nierozpoznane', total:'Suma', noItems:'Ta transakcja nie ma rozbicia na produkty — nie pochodzi ze skanu paragonu.', details:'Szczegóły transakcji', removeItem:'Usuń pozycję', itemsCount:'poz.', scanHintLive:'Zrób zdjęcie całego paragonu — odczytam każdy produkt, cenę i rabat, a kod QR na dole sprawdzi w VMI sklep, adres i sumę. Samo zdjęcie od razu jest usuwane.', scanCtaQr:'Zrób zdjęcie paragonu', scanSubQr:'Odczytam produkty, a kod QR sprawdzi w VMI', scanTab:'📷 Skanuj', groupsTab:'🗂️ Grupy', scanTitle:'Zdjęcie paragonu', scanHint:'Zrób zdjęcie telefonem albo wybierz plik — automatycznie odczytam sklep, kwotę i dopasuję grupę.', scanCta:'Zrób zdjęcie paragonu', scanSub:'albo wybierz z galerii', analyzing:'Analizuję zdjęcie...', recognized:'Rozpoznano paragon', storeLabel:'Sklep / opis', amountLabel:'Kwota (EUR)', groupLabel:'Grupa zakupów', discard:'Odrzuć', saveAsTx:'💾 Zapisz jako transakcję', savedToast:'Zapisano transakcję:', recentScans:'Ostatnio zeskanowane', emptyRecent:'Zeskanuj pierwszy paragon, żeby zobaczyć go tutaj.', groupsTitle:'Grupy zakupów', groupsHint:'Sklep jest dopasowywany do grupy po nazwie na paragonie (np. „LIDL” → grupa Lidl). Włącz „auto-dodawanie”, żeby wydatek zapisywał się bez pytania Cię o potwierdzenie.', newGroup:'Nowa grupa', newGroupTitle:'Nowa grupa zakupów', groupName:'Nazwa grupy', icon:'Ikona', emojiHint:'Wpisz dowolne emoji', color:'Kolor', keywords:'Słowa kluczowe do rozpoznawania (po przecinku)', autoAdd:'Wydatek dodawany jest automatycznie, bez pytania', autoAddShort:'Auto-dodawanie', createGroup:'Utwórz grupę', createdToast:'Utworzono grupę', needName:'Podaj nazwę grupy', noKeywords:'brak słów kluczowych' },
     cards: { myCards:'Karty', allTogether:'Wszystkie', title:'Karty bankowe', hint:'Dodaj swoje karty i wybierz jedną — nowe transakcje będą zapisywać się tylko do wybranej karty. Zakładka „Wszystkie” pokaże sumę ze wszystkich kart naraz.', newCard:'Nowa karta', newCardTitle:'Nowa karta', cardName:'Nazwa karty', createCard:'Utwórz kartę', needName:'Podaj nazwę karty', createdToast:'Utworzono kartę', showing:'Pokazuję:', showingAll:'Pokazuję: wszystkie karty', noCard:'bez karty', allBalanceLabel:'Saldo razem ze wszystkich kart' },
     rates: { title:'Kursy walut (1 EUR =)', refreshNow:'Odśwież teraz', lastSync:'Ostatnia synchronizacja: ', fetchFailed:'Nie udało się pobrać aktualnych kursów (brak połączenia) — używane są zapisane wcześniej.', newDayBanner:'Nowy dzień — sprawdź i zaktualizuj kursy walut.' },
     data: { title:'Dane', resetAll:'Wyczyść wszystkie dane' },
@@ -1452,7 +1456,7 @@ const TRANSLATIONS = {
     period: { day:'Days', week:'Weeks', month:'Months', year:'Quarters', searchDay:'Go to day', searchWeek:'Go to week', searchMonth:'Go to month', searchYear:'Go to year', yearPlaceholder:'e.g. 2026', weekLabel:'Week {week}, {year} ({from}–{to})' },
     chart: { bar:'Bar', line:'Line', pie:'Pie', percent:'Percent', preview:'Preview', incomeVsExpense:'Income vs expenses (selected period)', percentShare:'Share %' },
     update: { ready:'A new version of the app is ready', restart:'Restart' },
-    receipts: { editName:'Fix name', noGroup:'No group', noGroupNote:'This will be saved without a group — you can add one now or later, from the transaction details.', noMatchNote:'No matching group found for “{store}” — pick one below or save without a group. You can add a keyword in the Groups tab.', matchNote:'Recognized “{store}” and matched it to the {group} group by keyword.', autoNote:'This group has <b>auto-add</b> turned on — in the full version AI would save this without asking.', confirmNote:'This group needs your confirmation before saving.', changeGroup:'Change group', vmiNotFound:'Receipt not found in VMI', discount:'discount', vmiMatch:'✓ Items total matches VMI', vmiDiff:'⚠️ Items total differs from VMI', vmiOpen:'Open in VMI', vmiDup:'This receipt is already saved', saveAnyway:'💾 Save anyway', vmiFetched:'Verified with VMI', vmiOffline:'No internet — VMI data was not fetched (the QR code is saved)', withVat:'Total incl. VAT', noVat:'Total excl. VAT', vatAmt:'VAT', receiptNo:'Receipt no.', address:'Address', items:'Products', fullText:'Full receipt text', otherItems:'Other / unrecognized', total:'Total', noItems:'This transaction has no product breakdown — it did not come from a receipt scan.', details:'Transaction details', removeItem:'Remove item', itemsCount:'items', scanHintLive:'Take a photo of the whole receipt — AI reads every product, price and discount, and the QR code at the bottom is checked with VMI (store, address, total). The photo itself is deleted right away.', scanCtaQr:'Take a photo of the receipt', scanSubQr:'AI reads the products, the QR code is checked with VMI', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — AI will read the store, amount and match a group. (Recognition is currently simulated — this is a feature preview.)', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo (AI)...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'AI matches the store to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so AI saves the expense without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'AI adds the expense automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
+    receipts: { editName:'Fix name', noGroup:'No group', noGroupNote:'This will be saved without a group — you can add one now or later, from the transaction details.', noMatchNote:'No matching group found for “{store}” — pick one below or save without a group. You can add a keyword in the Groups tab.', matchNote:'Recognized “{store}” and matched it to the {group} group by keyword.', autoNote:'This group has <b>auto-add</b> turned on — this will be saved without asking.', confirmNote:'This group needs your confirmation before saving.', changeGroup:'Change group', vmiNotFound:'Receipt not found in VMI', discount:'discount', vmiMatch:'✓ Items total matches VMI', vmiDiff:'⚠️ Items total differs from VMI', vmiOpen:'Open in VMI', vmiDup:'This receipt is already saved', saveAnyway:'💾 Save anyway', vmiFetched:'Verified with VMI', vmiOffline:'No internet — VMI data was not fetched (the QR code is saved)', withVat:'Total incl. VAT', noVat:'Total excl. VAT', vatAmt:'VAT', receiptNo:'Receipt no.', address:'Address', items:'Products', fullText:'Full receipt text', otherItems:'Other / unrecognized', total:'Total', noItems:'This transaction has no product breakdown — it did not come from a receipt scan.', details:'Transaction details', removeItem:'Remove item', itemsCount:'items', scanHintLive:'Take a photo of the whole receipt — every product, price and discount is read automatically, and the QR code at the bottom is checked with VMI (store, address, total). The photo itself is deleted right away.', scanCtaQr:'Take a photo of the receipt', scanSubQr:'Products are read automatically, the QR code is checked with VMI', scanTab:'📷 Scan', groupsTab:'🗂️ Groups', scanTitle:'Receipt photo', scanHint:'Take a photo or pick a file — the store, amount and group will be read and matched automatically.', scanCta:'Take a photo of the receipt', scanSub:'or choose from gallery', analyzing:'Analyzing photo...', recognized:'Receipt recognized', storeLabel:'Store / description', amountLabel:'Amount (EUR)', groupLabel:'Purchase group', discard:'Discard', saveAsTx:'💾 Save as transaction', savedToast:'Transaction saved:', recentScans:'Recently scanned', emptyRecent:'Scan your first receipt to see it here.', groupsTitle:'Purchase groups', groupsHint:'The store is matched to a group by the name on the receipt (e.g. "LIDL" → Lidl group). Turn on "auto-add" so the expense saves without asking.', newGroup:'New group', newGroupTitle:'New purchase group', groupName:'Group name', icon:'Icon', emojiHint:'Type any emoji', color:'Color', keywords:'Keywords to recognize by (comma-separated)', autoAdd:'The expense is added automatically, without asking', autoAddShort:'Auto-add', createGroup:'Create group', createdToast:'Group created', needName:'Enter a group name', noKeywords:'no keywords' },
     cards: { myCards:'Cards', allTogether:'All', title:'Bank cards', hint:'Add your cards and pick one — new transactions will only be saved to the selected card. The "All" tab shows the total across every card at once.', newCard:'New card', newCardTitle:'New card', cardName:'Card name', createCard:'Create card', needName:'Enter a card name', createdToast:'Card created', showing:'Showing:', showingAll:'Showing: all cards', noCard:'no card', allBalanceLabel:'Combined balance across all cards' },
     rates: { title:'Exchange rates (1 EUR =)', refreshNow:'Refresh now', lastSync:'Last sync: ', fetchFailed:"Couldn't fetch current rates (no connection) — using previously saved ones.", newDayBanner:'New day — check and update exchange rates.' },
     data: { title:'Data', resetAll:'Clear all data' },
@@ -1485,7 +1489,7 @@ const TRANSLATIONS = {
     period: { day:'Дни', week:'Недели', month:'Месяцы', year:'Кварталы', searchDay:'Перейти к дню', searchWeek:'Перейти к неделе', searchMonth:'Перейти к месяцу', searchYear:'Перейти к году', yearPlaceholder:'напр. 2026', weekLabel:'Неделя {week}, {year} ({from}–{to})' },
     chart: { bar:'Столбчатый', line:'Линейный', pie:'Круговой', percent:'Процентный', preview:'Просмотр', incomeVsExpense:'Доходы и расходы (выбранный период)', percentShare:'Доля %' },
     update: { ready:'Новая версия приложения готова', restart:'Перезапустить' },
-    receipts: { editName:'Исправить название', noGroup:'Без группы', noGroupNote:'Сохраню без группы — вы можете добавить её сейчас или позже, в деталях операции.', noMatchNote:'Не нашёл подходящую группу для «{store}» — выберите ниже или сохраните без группы. Можно добавить ключевое слово во вкладке Группы.', matchNote:'Распознано «{store}» и сопоставлено с группой {group} по ключевому слову.', autoNote:'В этой группе включено <b>авто-добавление</b> — в полной версии AI сохранил бы это без вопросов.', confirmNote:'Эта группа требует вашего подтверждения перед сохранением.', changeGroup:'Изменить группу', vmiNotFound:'Чек не найден в VMI', discount:'скидка', vmiMatch:'✓ Сумма товаров совпадает с VMI', vmiDiff:'⚠️ Сумма товаров отличается от VMI', vmiOpen:'Открыть в VMI', vmiDup:'Этот чек уже сохранён', saveAnyway:'💾 Всё равно сохранить', vmiFetched:'Проверено в VMI', vmiOffline:'Нет интернета — данные VMI не загружены (QR-код сохранён)', withVat:'Сумма с НДС', noVat:'Сумма без НДС', vatAmt:'НДС', receiptNo:'№ чека', address:'Адрес', items:'Товары', fullText:'Полный текст чека', otherItems:'Прочее / не распознано', total:'Итого', noItems:'У этой операции нет разбивки по товарам — она не из скана чека.', details:'Детали операции', removeItem:'Удалить позицию', itemsCount:'поз.', scanHintLive:'Сфотографируйте весь чек — AI прочитает каждый товар, цену и скидку, а QR-код внизу проверит в VMI магазин, адрес и сумму. Само фото сразу удаляется.', scanCtaQr:'Сфотографировать чек', scanSubQr:'AI прочитает товары, QR-код проверит VMI', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — AI сам распознает магазин, сумму и подберёт группу. (Пока распознавание смоделировано — это предпросмотр функции.)', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото (AI)...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'AI сопоставляет магазин с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы AI сохранял расход без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'AI добавляет расход автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
+    receipts: { editName:'Исправить название', noGroup:'Без группы', noGroupNote:'Сохраню без группы — вы можете добавить её сейчас или позже, в деталях операции.', noMatchNote:'Не нашёл подходящую группу для «{store}» — выберите ниже или сохраните без группы. Можно добавить ключевое слово во вкладке Группы.', matchNote:'Распознано «{store}» и сопоставлено с группой {group} по ключевому слову.', autoNote:'В этой группе включено <b>авто-добавление</b> — это будет сохранено без вопросов.', confirmNote:'Эта группа требует вашего подтверждения перед сохранением.', changeGroup:'Изменить группу', vmiNotFound:'Чек не найден в VMI', discount:'скидка', vmiMatch:'✓ Сумма товаров совпадает с VMI', vmiDiff:'⚠️ Сумма товаров отличается от VMI', vmiOpen:'Открыть в VMI', vmiDup:'Этот чек уже сохранён', saveAnyway:'💾 Всё равно сохранить', vmiFetched:'Проверено в VMI', vmiOffline:'Нет интернета — данные VMI не загружены (QR-код сохранён)', withVat:'Сумма с НДС', noVat:'Сумма без НДС', vatAmt:'НДС', receiptNo:'№ чека', address:'Адрес', items:'Товары', fullText:'Полный текст чека', otherItems:'Прочее / не распознано', total:'Итого', noItems:'У этой операции нет разбивки по товарам — она не из скана чека.', details:'Детали операции', removeItem:'Удалить позицию', itemsCount:'поз.', scanHintLive:'Сфотографируйте весь чек — каждый товар, цена и скидка будут распознаны автоматически, а QR-код внизу проверит в VMI магазин, адрес и сумму. Само фото сразу удаляется.', scanCtaQr:'Сфотографировать чек', scanSubQr:'Товары будут распознаны автоматически, QR-код проверит VMI', scanTab:'📷 Сканировать', groupsTab:'🗂️ Группы', scanTitle:'Фото чека', scanHint:'Сфотографируйте чек или выберите файл — магазин, сумма и группа будут распознаны автоматически.', scanCta:'Сфотографировать чек', scanSub:'или выбрать из галереи', analyzing:'Анализирую фото...', recognized:'Чек распознан', storeLabel:'Магазин / описание', amountLabel:'Сумма (EUR)', groupLabel:'Группа покупок', discard:'Отклонить', saveAsTx:'💾 Сохранить как операцию', savedToast:'Операция сохранена:', recentScans:'Недавно отсканировано', emptyRecent:'Отсканируйте первый чек, чтобы увидеть его здесь.', groupsTitle:'Группы покупок', groupsHint:'Магазин сопоставляется с группой по названию на чеке (напр. «LIDL» → группа Lidl). Включите «авто-добавление», чтобы расход сохранялся без подтверждения.', newGroup:'Новая группа', newGroupTitle:'Новая группа покупок', groupName:'Название группы', icon:'Иконка', emojiHint:'Введите любой эмодзи', color:'Цвет', keywords:'Ключевые слова для распознавания (через запятую)', autoAdd:'Расход добавляется автоматически, без подтверждения', autoAddShort:'Авто-добавление', createGroup:'Создать группу', createdToast:'Группа создана', needName:'Укажите название группы', noKeywords:'нет ключевых слов' },
     cards: { myCards:'Карты', allTogether:'Все', title:'Банковские карты', hint:'Добавьте свои карты и выберите одну — новые операции будут сохраняться только на выбранную карту. Вкладка «Все» покажет сумму по всем картам сразу.', newCard:'Новая карта', newCardTitle:'Новая карта', cardName:'Название карты', createCard:'Создать карту', needName:'Укажите название карты', createdToast:'Карта создана', showing:'Показываю:', showingAll:'Показываю: все карты', noCard:'без карты', allBalanceLabel:'Общий баланс по всем картам' },
     rates: { title:'Курсы валют (1 EUR =)', refreshNow:'Обновить сейчас', lastSync:'Последняя синхронизация: ', fetchFailed:'Не удалось получить текущие курсы (нет соединения) — используются ранее сохранённые.', newDayBanner:'Новый день — проверьте и обновите курсы валют.' },
     data: { title:'Данные', resetAll:'Очистить все данные' },
@@ -1518,7 +1522,7 @@ const TRANSLATIONS = {
     period: { day:'Dienos', week:'Savaitės', month:'Mėnesiai', year:'Ketvirčiai', searchDay:'Eiti į dieną', searchWeek:'Eiti į savaitę', searchMonth:'Eiti į mėnesį', searchYear:'Eiti į metus', yearPlaceholder:'pvz. 2026', weekLabel:'{week} savaitė, {year} ({from}–{to})' },
     chart: { bar:'Stulpelinė', line:'Linijinė', pie:'Skritulinė', percent:'Procentinė', preview:'Peržiūra', incomeVsExpense:'Pajamos ir išlaidos (pasirinktas laikotarpis)', percentShare:'Dalis %' },
     update: { ready:'Nauja programos versija paruošta', restart:'Paleisti iš naujo' },
-    receipts: { editName:'Pataisyti pavadinimą', noGroup:'Be grupės', noGroupNote:'Išsaugosiu be grupės — galite ją priskirti dabar arba vėliau, operacijos informacijoje.', noMatchNote:'Neradau tinkamos grupės „{store}“ — pasirinkite žemiau arba išsaugokite be grupės. Raktažodį galite pridėti skiltyje Grupės.', matchNote:'Atpažinta „{store}“ ir priskirta grupei {group} pagal raktažodį.', autoNote:'Šioje grupėje įjungtas <b>auto-pridėjimas</b> — pilnoje versijoje AI tai išsaugotų neklausdama.', confirmNote:'Ši grupė reikalauja jūsų patvirtinimo prieš išsaugant.', changeGroup:'Keisti grupę', vmiNotFound:'Kvitas VMI nerastas', discount:'nuolaida', vmiMatch:'✓ Prekių suma sutampa su VMI', vmiDiff:'⚠️ Prekių suma skiriasi nuo VMI', vmiOpen:'Atidaryti VMI', vmiDup:'Šis kvitas jau išsaugotas', saveAnyway:'💾 Vis tiek išsaugoti', vmiFetched:'Patikrinta VMI', vmiOffline:'Nėra interneto — VMI duomenys neparsiųsti (QR kodas išsaugotas)', withVat:'Suma su PVM', noVat:'Suma be PVM', vatAmt:'PVM', receiptNo:'Kvito nr.', address:'Adresas', items:'Prekės', fullText:'Visas kvito tekstas', otherItems:'Kita / neatpažinta', total:'Suma', noItems:'Ši operacija neturi prekių sąrašo — ji ne iš kvito skenavimo.', details:'Operacijos informacija', removeItem:'Pašalinti prekę', itemsCount:'prek.', scanHintLive:'Nufotografuokite visą kvitą — AI nuskaitys kiekvieną prekę, kainą ir nuolaidą, o QR kodą apačioje patikrins VMI (parduotuvė, adresas, suma). Pati nuotrauka iškart ištrinama.', scanCtaQr:'Nufotografuoti kvitą', scanSubQr:'AI nuskaitys prekes, QR kodą patikrins VMI', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — AI pats atpažins parduotuvę, sumą ir priskirs grupę. (Kol kas atpažinimas imituojamas — tai funkcijos peržiūra.)', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką (AI)...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'AI priskiria parduotuvę grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad AI išsaugotų išlaidą neklausdamas.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'AI prideda išlaidą automatiškai, neklausdama', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
+    receipts: { editName:'Pataisyti pavadinimą', noGroup:'Be grupės', noGroupNote:'Išsaugosiu be grupės — galite ją priskirti dabar arba vėliau, operacijos informacijoje.', noMatchNote:'Neradau tinkamos grupės „{store}“ — pasirinkite žemiau arba išsaugokite be grupės. Raktažodį galite pridėti skiltyje Grupės.', matchNote:'Atpažinta „{store}“ ir priskirta grupei {group} pagal raktažodį.', autoNote:'Šioje grupėje įjungtas <b>auto-pridėjimas</b> — tai bus išsaugota neklausiant.', confirmNote:'Ši grupė reikalauja jūsų patvirtinimo prieš išsaugant.', changeGroup:'Keisti grupę', vmiNotFound:'Kvitas VMI nerastas', discount:'nuolaida', vmiMatch:'✓ Prekių suma sutampa su VMI', vmiDiff:'⚠️ Prekių suma skiriasi nuo VMI', vmiOpen:'Atidaryti VMI', vmiDup:'Šis kvitas jau išsaugotas', saveAnyway:'💾 Vis tiek išsaugoti', vmiFetched:'Patikrinta VMI', vmiOffline:'Nėra interneto — VMI duomenys neparsiųsti (QR kodas išsaugotas)', withVat:'Suma su PVM', noVat:'Suma be PVM', vatAmt:'PVM', receiptNo:'Kvito nr.', address:'Adresas', items:'Prekės', fullText:'Visas kvito tekstas', otherItems:'Kita / neatpažinta', total:'Suma', noItems:'Ši operacija neturi prekių sąrašo — ji ne iš kvito skenavimo.', details:'Operacijos informacija', removeItem:'Pašalinti prekę', itemsCount:'prek.', scanHintLive:'Nufotografuokite visą kvitą — kiekviena prekė, kaina ir nuolaida bus atpažinta automatiškai, o QR kodą apačioje patikrins VMI (parduotuvė, adresas, suma). Pati nuotrauka iškart ištrinama.', scanCtaQr:'Nufotografuoti kvitą', scanSubQr:'Prekės bus atpažintos automatiškai, QR kodą patikrins VMI', scanTab:'📷 Skenuoti', groupsTab:'🗂️ Grupės', scanTitle:'Kvito nuotrauka', scanHint:'Nufotografuokite telefonu arba pasirinkite failą — parduotuvė, suma ir grupė bus atpažinti automatiškai.', scanCta:'Nufotografuoti kvitą', scanSub:'arba pasirinkti iš galerijos', analyzing:'Analizuoju nuotrauką...', recognized:'Kvitas atpažintas', storeLabel:'Parduotuvė / aprašymas', amountLabel:'Suma (EUR)', groupLabel:'Pirkinių grupė', discard:'Atmesti', saveAsTx:'💾 Išsaugoti kaip operaciją', savedToast:'Operacija išsaugota:', recentScans:'Neseniai nuskaityta', emptyRecent:'Nuskaitykite pirmą kvitą, kad pamatytumėte jį čia.', groupsTitle:'Pirkinių grupės', groupsHint:'Parduotuvė priskiriama grupei pagal pavadinimą kvite (pvz. „LIDL“ → grupė Lidl). Įjunkite „auto-pridėjimą“, kad išlaida būtų išsaugota neklausiant.', newGroup:'Nauja grupė', newGroupTitle:'Nauja pirkinių grupė', groupName:'Grupės pavadinimas', icon:'Ikona', emojiHint:'Įveskite bet kokį emoji', color:'Spalva', keywords:'Raktažodžiai atpažinimui (atskirti kableliais)', autoAdd:'Išlaida pridedama automatiškai, neklausiant', autoAddShort:'Auto-pridėjimas', createGroup:'Sukurti grupę', createdToast:'Grupė sukurta', needName:'Įveskite grupės pavadinimą', noKeywords:'nėra raktažodžių' },
     cards: { myCards:'Kortelės', allTogether:'Visos', title:'Banko kortelės', hint:'Pridėkite savo korteles ir pasirinkite vieną — naujos operacijos bus išsaugomos tik pasirinktoje kortelėje. Skirtukas „Visos“ parodys visų kortelių sumą kartu.', newCard:'Nauja kortelė', newCardTitle:'Nauja kortelė', cardName:'Kortelės pavadinimas', createCard:'Sukurti kortelę', needName:'Įveskite kortelės pavadinimą', createdToast:'Kortelė sukurta', showing:'Rodoma:', showingAll:'Rodoma: visos kortelės', noCard:'be kortelės', allBalanceLabel:'Bendras balansas iš visų kortelių' },
     rates: { title:'Valiutų kursai (1 EUR =)', refreshNow:'Atnaujinti dabar', lastSync:'Paskutinis sinchronizavimas: ', fetchFailed:'Nepavyko gauti naujausių kursų (nėra ryšio) — naudojami anksčiau išsaugoti.', newDayBanner:'Nauja diena — patikrinkite ir atnaujinkite valiutų kursus.' },
     data: { title:'Duomenys', resetAll:'Išvalyti visus duomenis' },
@@ -1802,6 +1806,7 @@ function swapPanels(sourceId, targetId) {
   saveState();
   applyPanelOrder();
   playFlipAnimation(before);
+  updatePagerAvailability();
 }
 
 // Panel reordering is driven by Pointer Events rather than the native HTML5
@@ -1821,6 +1826,10 @@ function wireDragAndDrop() {
       dragSourceId = panel.dataset.panel;
       activePointerId = e.pointerId;
       panel.classList.add('dragging');
+      // Page 2 needs to be reachable by the edge-hover swipe below even while it's currently
+      // empty (and its dot hidden) - otherwise there'd be no way to ever carry a tile back onto
+      // it once it went empty. updatePagerAvailability() on drop puts things back as they should be.
+      if (typeof window.setPage2Enabled === 'function') window.setPage2Enabled(true);
       try { header.setPointerCapture(e.pointerId); } catch (err) {}
       e.preventDefault();
     });
@@ -1860,7 +1869,26 @@ function wireDragAndDrop() {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const overPanel = el && el.closest && el.closest('.panel');
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('drag-over','dragging'));
-    if (overPanel) swapPanels(dragSourceId, overPanel.dataset.panel);
+    if (overPanel) {
+      swapPanels(dragSourceId, overPanel.dataset.panel);
+    } else {
+      // Nothing to swap with under the finger — this is only reachable when page 2 is
+      // currently empty (edge-hover force-enables it during a drag) and the tile was carried
+      // there anyway, so just move it in rather than snapping it back to page 1.
+      const overPage2 = el && el.closest && el.closest('#appPage2');
+      const srcEl = document.querySelector('.panel[data-panel="' + dragSourceId + '"]');
+      const container2 = document.getElementById('panelsContainer2');
+      if (overPage2 && srcEl && container2 && srcEl.parentElement !== container2) {
+        const before = captureGridRects();
+        container2.appendChild(srcEl);
+        if (!state.panelPage) state.panelPage = {};
+        state.panelPage[dragSourceId] = 2;
+        saveState();
+        playFlipAnimation(before);
+        updatePagerAvailability();
+      }
+    }
+    updatePagerAvailability();
     dragSourceId = null;
     activePointerId = null;
   };
@@ -1918,6 +1946,19 @@ function applyPanelVisibility() {
     const el = document.querySelector('.panel[data-panel="' + id + '"]');
     if (el) el.classList.toggle('panel-desktop-hidden', !!state.panelHidden[id]);
   });
+  updatePagerAvailability();
+}
+
+// Page 2 only makes sense while it actually holds something visible — if its last tile gets
+// hidden (or dragged over to page 1), the page itself has to go away (no blank page to swipe
+// to, no dot for it); if a tile lands there again, it comes back.
+function computePage2HasVisiblePanels() {
+  const container2 = document.getElementById('panelsContainer2');
+  if (!container2) return false;
+  return Array.from(container2.querySelectorAll('.panel')).some(p => !(state.panelHidden && state.panelHidden[p.dataset.panel]));
+}
+function updatePagerAvailability() {
+  if (typeof window.setPage2Enabled === 'function') window.setPage2Enabled(computePage2HasVisiblePanels());
 }
 
 const PAGE1_PANEL_IDS = ['add', 'debts', 'stats', 'settings'];
@@ -2726,7 +2767,11 @@ document.querySelectorAll('#appPage1 .tab').forEach(tab => {
     dots.forEach(d => { d.style.transitionDuration = on ? '0s' : ''; });
   };
   const pages = Array.from(wrap.querySelectorAll('.app-page'));
-  const N = pages.length;
+  // Page 2 only exists as somewhere to swipe to while it actually holds a visible tile —
+  // once the last tile is hidden or dragged off it, it's unreachable (dot hidden too) until
+  // a tile lands there again. N() is what the rest of the pager treats as the page count.
+  let page2Enabled = true;
+  const N = () => (page2Enabled ? pages.length : 1);
   let idx = 0;
   const W = () => wrap.clientWidth || window.innerWidth;
   // Transform goes straight onto the two pages (an inherited CSS variable made the browser
@@ -2738,8 +2783,8 @@ document.querySelectorAll('#appPage1 .tab').forEach(tab => {
     pages.forEach(pg => { pg.style.transform = v; });
     // The dot indicator follows the finger continuously (not just a jump at the very end) — that
     // was what made it so hard to tell which page you were about to land on mid-swipe.
-    const frac = Math.max(0, Math.min(N - 1, -px / W()));
-    const lo = Math.floor(frac), hi = Math.min(N - 1, lo + 1), t = frac - lo;
+    const frac = Math.max(0, Math.min(N() - 1, -px / W()));
+    const lo = Math.floor(frac), hi = Math.min(N() - 1, lo + 1), t = frac - lo;
     dots.forEach((d, k) => d.style.setProperty('--a', k === lo ? 1 - t : (k === hi ? t : 0)));
   };
   const setX = (px) => {
@@ -2749,7 +2794,7 @@ document.querySelectorAll('#appPage1 .tab').forEach(tab => {
   };
   const setXNow = (px) => { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } pendingX = null; writeX(px); };
   function goTo(i, instant) {
-    idx = Math.max(0, Math.min(N - 1, i));
+    idx = Math.max(0, Math.min(N() - 1, i));
     if (instant) setPagerDragging(true);
     setXNow(-idx * W());
     if (instant) { void wrap.offsetWidth; setPagerDragging(false); }
@@ -2758,6 +2803,16 @@ document.querySelectorAll('#appPage1 .tab').forEach(tab => {
     wrap.dispatchEvent(new CustomEvent('pagechange', { detail: idx }));
   }
   window.goToAppPage = goTo;
+  // Called whenever a tile is hidden/restored or dragged across pages, to enable/disable
+  // page 2 (and its dot) depending on whether it still holds anything visible.
+  window.setPage2Enabled = (on) => {
+    on = !!on;
+    if (on === page2Enabled) return;
+    page2Enabled = on;
+    if (dots[1]) dots[1].style.display = on ? '' : 'none';
+    if (!on && idx > 0) goTo(0, true);
+  };
+  if (dots[1]) dots[1].style.display = page2Enabled ? '' : 'none';
   goTo(0, true);
   // overflow:hidden containers can still be scrolled by the browser (focus, scroll-into-view).
   // Never let that happen — instead slide to the page that got focus.
@@ -2773,7 +2828,7 @@ document.querySelectorAll('#appPage1 .tab').forEach(tab => {
     const tf = getComputedStyle(pages[0]).transform;
     return (tf && tf !== 'none') ? new DOMMatrixReadOnly(tf).m41 : -idx * W();
   };
-  const minX = () => -(N - 1) * W();
+  const minX = () => -(N() - 1) * W();
   const rubber = (x) => x > 0 ? x * 0.3 : (x < minX() ? minX() + (x - minX()) * 0.3 : x);
   const settle = (x, v) => {
     // switch after ~1/5 of the width or a quick flick (max one page per gesture)
@@ -3330,6 +3385,40 @@ const LT_DICT = [
 ];
 const LT_LANG_COL = { pl: 1, ru: 2, en: 3 };
 const LT_SMALL = { su: ['su', 'z', 'с', 'with'], ir: ['ir', 'i', 'и', 'and'], be: ['be', 'bez', 'без', 'without'] };
+// Plain Levenshtein edit distance (insert/delete/substitute), used below to catch a product
+// word the OCR misread by a letter or two rather than transcribed correctly.
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = a[i - 1] === b[j - 1] ? prev[j - 1] : 1 + Math.min(prev[j - 1], prev[j], cur[j - 1]);
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+// The camera OCR sometimes misreads one or two letters of an otherwise-correct Lithuanian word
+// ("pienss" for "pienas", "duoha" for "duona"). Rather than leaving that garbled reading as-is,
+// look for the closest known product stem in LT_DICT and, only when the vast majority of letters
+// already match (a small edit distance for the stem's length), treat it as that word misread -
+// never for a short word or a big mismatch, so real brand names / other languages are left alone.
+function ltFuzzyStem(w) {
+  if (w.length < 5) return null;
+  let best = null, bestDist = Infinity;
+  for (const row of LT_DICT) {
+    const stem = row[0];
+    const cand = w.slice(0, stem.length);
+    if (cand.length < stem.length - 1) continue;
+    const d = levenshtein(cand, stem);
+    const maxDist = stem.length >= 8 ? 2 : 1;   // one misread letter per ~5 correct ones, 2 letters max
+    if (d > 0 && d <= maxDist && d < bestDist) { bestDist = d; best = row; }
+  }
+  return best;
+}
 function ltLookup(word) {
   const w = normTxt(word).replace(/[^a-z]/g, '');
   if (LT_SMALL[w]) return LT_SMALL[w];
@@ -3337,7 +3426,29 @@ function ltLookup(word) {
   for (const row of LT_DICT) {
     if (w.startsWith(row[0]) && w.length <= row[0].length + 5) return row;
   }
-  return null;
+  return ltFuzzyStem(w);
+}
+// Fixes a single misread word in place (keeps whatever ending the OCR read, which is usually
+// right - Lithuanian grammar endings are short and distinctive - and only corrects the stem).
+function ltCorrectWord(token) {
+  const m = token.match(/^([^A-Za-zÀ-ž]*)(.*?)([^A-Za-zÀ-ž]*)$/);
+  if (!m || m[2].length < 5) return token;
+  const core = m[2];
+  const w = normTxt(core).replace(/[^a-z]/g, '');
+  for (const row of LT_DICT) { if (w.startsWith(row[0])) return token; }   // already a clean match
+  const hit = ltFuzzyStem(w);
+  if (!hit) return token;
+  const stem = hit[0];
+  const rest = core.slice(stem.length);
+  const wasCapitalised = core.charAt(0) === core.charAt(0).toUpperCase() && core.charAt(0) !== core.charAt(0).toLowerCase();
+  const fixedStem = wasCapitalised ? stem.charAt(0).toUpperCase() + stem.slice(1) : stem;
+  return m[1] + fixedStem + rest + m[3];
+}
+// Runs the misread-word correction over a whole product name read off a receipt, so a name that
+// otherwise doesn't match any real Lithuanian product word doesn't get shown (or saved) as-is.
+function ltCorrectName(name) {
+  if (!name) return name;
+  return String(name).split(/(\s+)/).map(tok => tok.trim() ? ltCorrectWord(tok) : tok).join('');
 }
 // Word-by-word translation of a product name; null if no word was recognised
 function ltTranslateName(name, lang) {
@@ -3546,7 +3657,7 @@ function parseReceiptText(text) {
       // Anything already sitting in `pending` survived the RC_HEADER filter above, so it is a real
       // continuation of THIS product's name (a long name wrapped onto more than one line, possibly with
       // a dashed "----" divider line in between, which is skipped and never reaches here) — glue it on.
-      const name = rcCleanName(pending ? (namePartIsJunk ? pending : pending + ' ' + namePart) : namePart);
+      const name = ltCorrectName(rcCleanName(pending ? (namePartIsJunk ? pending : pending + ' ' + namePart) : namePart));
       if (/[A-Za-zÀ-ž]{2,}/.test(name) && last.v > 0 && last.v < 10000) {
         const item = { name, price: last.v, discount: 0 };
         if (qtyM) item.qty = qtyM[0].replace(/\s{2,}/g, ' ').trim();
@@ -4212,10 +4323,14 @@ function wireCardReorder() {
   const LONG_PRESS_MS = 450;
   let pressTimer = null, dragId = null, dragTile = null, startX = 0, startY = 0, activePointerId = null, longPressFired = false, suppressClick = false, shiftedTile = null;
   const cancelPress = () => { clearTimeout(pressTimer); pressTimer = null; };
-  // Android's own long-press-to-select can still win the race against our hold timer and pop up
-  // its selection/copy UI over a card even with user-select:none - swallowing contextmenu (which
-  // is what that gesture fires) stops the blue highlight from ever appearing.
+  // Android's own long-press-to-select (and on MIUI/HyperOS, the system "smart selection"
+  // popup) can still win the race against our hold timer and highlight a card blue even with
+  // user-select:none in the stylesheet - some WebView builds only fully respect that CSS if we
+  // also cancel the browser's own selectstart event (the one that actually starts the highlight,
+  // before contextmenu even fires) and dragstart (native drag-ghost, a separate code path).
   strip.addEventListener('contextmenu', (e) => { if (e.target.closest('.cards-strip-item[data-card-tile]')) e.preventDefault(); });
+  strip.addEventListener('selectstart', (e) => { if (e.target.closest('.cards-strip-item[data-card-tile]')) e.preventDefault(); });
+  strip.addEventListener('dragstart', (e) => { if (e.target.closest('.cards-strip-item[data-card-tile]')) e.preventDefault(); });
 
   strip.addEventListener('pointerdown', (e) => {
     const tile = e.target.closest('.cards-strip-item[data-card-tile]');
