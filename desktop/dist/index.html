@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262428">
+<meta name="stash-version" content="202609262429">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -2425,7 +2425,7 @@ function buildTxRowsHTML(items) {
     <div class="tx-item" data-tx="${t.id}">
       <div>
         <div class="tx-desc">${t.desc || (t.type === 'income' ? tr('type.income') : tr('type.expense'))}${t.receipt && t.receipt.items && t.receipt.items.length ? '<span class="tx-receipt-badge">🧾 ' + t.receipt.items.length + '</span>' : ''}</div>
-        <div class="tx-date">${t.date}${timePart ? ' ' + timePart : ''} · ${fmt(t.amount, t.currency)}${cardPart}</div>
+        <div class="tx-date">${t.date}${timePart ? ' ' + timePart : ''}${cardPart}</div>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
         <div class="tx-amount ${t.type === 'income' ? 'income-color' : 'expense-color'}">
