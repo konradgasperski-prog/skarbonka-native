@@ -232,9 +232,12 @@ class MainActivity : Activity() {
     // --- JS <-> Kotlin bridge ---
     inner class AndroidBridge {
         @JavascriptInterface
-        fun postBalance(text: String) {
+        fun postBalance(text: String, otherText: String) {
             val widgetPrefs = getSharedPreferences("stash_widget", Context.MODE_PRIVATE)
-            widgetPrefs.edit().putString("balance_text", text).apply()
+            // "otherText" (saldo w pozostałych walutach) jest pokazywane tylko w największym
+            // wariancie widgetu (patrz BalanceWidgetProvider.pickLayout) - na mniejszych po prostu
+            // się nie zmieści.
+            widgetPrefs.edit().putString("balance_text", text).putString("balance_other_text", otherText).apply()
             try {
                 val intent = Intent(applicationContext, BalanceWidgetProvider::class.java)
                 intent.action = android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE
