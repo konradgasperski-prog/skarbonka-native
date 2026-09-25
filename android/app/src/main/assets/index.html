@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262424">
+<meta name="stash-version" content="202609262425">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -865,6 +865,13 @@
   .receipt-items .ri-row.sum { font-weight: 800; border-top: 1px solid var(--border); }
   .receipt-items .ri-row.other { color: var(--text-dim); font-style: italic; }
   .receipt-items .ri-del { background: none; border: none; color: var(--text-dim); font-size: 13px; padding: 2px 4px; cursor: pointer; }
+  .receipt-items .ri-editable { cursor: pointer; border-radius: 6px; padding: 2px 4px; margin: -2px -4px; transition: background 0.15s ease; }
+  .receipt-items .ri-editable:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .ri-edit-input {
+    width: 100%; margin: 0; padding: 3px 6px; font: inherit; font-weight: inherit; color: inherit;
+    border: 1px solid var(--accent); border-radius: 6px; background: var(--bg);
+  }
+  .ri-price .ri-edit-input { width: 90px; text-align: right; }
   .tx-item { cursor: pointer; }
   .update-banner { position: fixed; left: 12px; right: 12px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 2000;
     display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; font-size: 13.5px; font-weight: 600;
@@ -3909,6 +3916,22 @@ const RC_QTY = /\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}
 // Same shape as RC_QTY, but with the quantity and per-unit price captured — used only to
 // cross-check the amount picked for a weighed/multi-unit line (see RC_QTY_TOTAL_FALLBACK below).
 const RC_QTY_CAP = /(\d+(?:[.,]\d+)?)\s*(?:kg|g|ml|l|vnt|szt)?\s*[x×*]\s*(\d+[.,]\d{2})(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|ml|vnt|l))?/i;
+// Lithuanian receipt-footer/control lines this OCR sometimes glues into a single word with one or
+// two letters swapped ("Kvito suma" -> "Kyitosuma", "Apvalinama suma" -> "Apvalinalasuma") - close
+// enough that RC_SKIP's plain keyword match no longer catches them, so they got billed as if they
+// were real products. These stems are all long/distinctive enough that a small (1-2 char) edit
+// distance tolerance can't collide with a real, unrelated product name.
+const RC_FOOTER_FUZZY = ['kvitosuma','apvalinamasuma','apvalinimosuma','atsiskaitymas','grynaisiais','informacijos','patikrinti','kasininke','moketina'];
+function looksLikeFooterLine(letters) {
+  if (!letters || letters.length < 6) return false;
+  for (const stem of RC_FOOTER_FUZZY) {
+    if (letters.length < stem.length - 2 || letters.length > stem.length + 4) continue;
+    const cand = letters.slice(0, stem.length);
+    const maxDist = stem.length >= 10 ? 2 : 1;
+    if (levenshtein(cand, stem) <= maxDist) return true;
+  }
+  return false;
+}
 // A unit abbreviation printed right after a quantity is short (1-4 letters) and easy for a blurry
 // photo's OCR to misread as another, visually similar short combination - "0,5nl" for "0,5ml"
 // (m misread as n), "400lg" for "400kg" (k misread as l). Fixed ONLY when it directly follows a
@@ -4034,7 +4057,7 @@ function parseReceiptText(text) {
       pending = '';
       continue;
     }
-    if (RC_SKIP.test(n) || RC_TOTAL.test(n)) { pending = ''; continue; }
+    if (RC_SKIP.test(n) || RC_TOTAL.test(n) || looksLikeFooterLine(n.replace(/[^a-z]/g, ''))) { pending = ''; continue; }
     if (am.length) {
       const last = am[am.length - 1];
       const qtyM = r.slice(0, last.i).match(RC_QTY);
@@ -4216,6 +4239,53 @@ function restoreReceiptScanZone() {
   }
 }
 
+// Recomputes the "Kwota" total from the current item list — but only when nothing more
+// authoritative (the VMI-verified total, when the QR code was reachable) already anchors it.
+// Called after every item edit/delete, so fixing a misread price also fixes the transaction
+// total, instead of leaving the user to separately notice and correct the amount field too.
+function recalcReceiptAmountFromItems(res, amountInputId) {
+  if (res.vmi && typeof res.vmi.total === 'number') return;
+  res.amount = Math.round(sumItems(res.items) * 100) / 100;
+  const input = document.getElementById(amountInputId);
+  if (input) input.value = res.amount ? res.amount.toFixed(2) : '';
+}
+// Turns one item's name (or price) into an editable field in place — a misread OCR line
+// ("Kyitosuma" instead of a real product, a garbled name, a wrong price) can be fixed by hand
+// right here instead of only being deletable. Commits on blur or Enter, cancels on Escape.
+function makeReceiptItemFieldEditable(el, item, field, onCommit) {
+  el.addEventListener('click', () => {
+    if (el.querySelector('input')) return;   // already editing
+    const isPrice = field === 'price';
+    const input = document.createElement('input');
+    input.type = isPrice ? 'number' : 'text';
+    if (isPrice) input.step = '0.01';
+    input.className = 'ri-edit-input';
+    input.value = isPrice ? (item[field] != null ? item[field] : '') : (item[field] || '');
+    el.textContent = '';
+    el.appendChild(input);
+    input.focus();
+    input.select();
+    let done = false;
+    const commit = () => {
+      if (done) return;
+      done = true;
+      const raw = input.value;
+      if (isPrice) {
+        const v = num(raw);
+        if (v > 0) item.price = Math.round(v * 100) / 100;
+      } else {
+        const v = raw.trim();
+        if (v) { item.name = v; delete item.tr; delete item.trLang; }   // a manually-fixed name replaces any auto-translation shown under it
+      }
+      onCommit();
+    };
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') input.blur();
+      else if (e.key === 'Escape') { done = true; onCommit(); }
+    });
+  });
+}
 function renderReceiptResultItems() {
   const res = receiptPendingResult;
   const box = document.getElementById('receiptResItems');
@@ -4223,13 +4293,22 @@ function renderReceiptResultItems() {
   box.classList.remove('hidden');
   box.innerHTML = '<div class="ri-title">' + t('receipts.items') + '</div>' +
     res.items.map((it, i) =>
-      '<div class="ri-row"><span class="ri-name">' + itemNameHtml(it, 'EUR') + '</span>' +
-      '<span class="ri-price">' + itemPriceHtml(it, 'EUR') + '</span>' +
+      '<div class="ri-row"><span class="ri-name ri-editable" data-i="' + i + '" data-field="name">' + itemNameHtml(it, 'EUR') + '</span>' +
+      '<span class="ri-price ri-editable" data-i="' + i + '" data-field="price">' + itemPriceHtml(it, 'EUR') + '</span>' +
       '<button class="ri-del" data-i="' + i + '" title="' + escHtml(t('receipts.removeItem')) + '">✕</button></div>'
     ).join('');
+  box.querySelectorAll('.ri-editable').forEach(el => {
+    const it = res.items[parseInt(el.dataset.i, 10)];
+    makeReceiptItemFieldEditable(el, it, el.dataset.field, () => {
+      renderReceiptResultItems();
+      recalcReceiptAmountFromItems(res, 'receiptResAmountInput');
+      updateReceiptMeta();
+    });
+  });
   box.querySelectorAll('.ri-del').forEach(b => b.addEventListener('click', () => {
     res.items.splice(parseInt(b.dataset.i, 10), 1);   // drop a misread line
     renderReceiptResultItems();
+    recalcReceiptAmountFromItems(res, 'receiptResAmountInput');
     updateReceiptMeta();
   }));
 }
@@ -4535,8 +4614,8 @@ function openTxDetail(id) {
   if (rc && rc.items && rc.items.length) {
     const itemsSum = sumItems(rc.items);
     const rest = Math.round((tx.amount - itemsSum) * 100) / 100;
-    html += '<div class="receipt-items" style="max-height:none;"><div class="ri-title">' + escHtml(t('receipts.items')) + ' (' + rc.items.length + ')</div>' +
-      rc.items.map(it => '<div class="ri-row"><span class="ri-name">' + itemNameHtml(it, cur) + '</span><span class="ri-price">' + itemPriceHtml(it, cur) + '</span></div>').join('') +
+    html += '<div class="receipt-items" style="max-height:none;" id="txDetailItems"><div class="ri-title">' + escHtml(t('receipts.items')) + ' (' + rc.items.length + ')</div>' +
+      rc.items.map((it, i) => '<div class="ri-row"><span class="ri-name ri-editable" data-i="' + i + '" data-field="name">' + itemNameHtml(it, cur) + '</span><span class="ri-price ri-editable" data-i="' + i + '" data-field="price">' + itemPriceHtml(it, cur) + '</span><button class="ri-del" data-i="' + i + '" title="' + escHtml(t('receipts.removeItem')) + '">✕</button></div>').join('') +
       (Math.abs(rest) >= 0.01 ? '<div class="ri-row other"><span class="ri-name">' + escHtml(t('receipts.otherItems')) + '</span><span class="ri-price">' + fmt(rest, cur) + '</span></div>' : '') +
       '<div class="ri-row sum"><span class="ri-name">' + escHtml(t('receipts.total')) + '</span><span class="ri-price">' + fmt(tx.amount, cur) + '</span></div>' +
       '</div>';
@@ -4575,6 +4654,35 @@ function openTxDetail(id) {
       box.classList.toggle('hidden');
       rawToggle.textContent = t('receipts.fullText') + (box.classList.contains('hidden') ? ' ▾' : ' ▴');
     });
+  }
+  const itemsBox = document.getElementById('txDetailItems');
+  if (itemsBox && rc && rc.items) {
+    // A misread product line (wrong name, or a footer/total line the parser mistook for a
+    // product — see parseReceiptText) used to be stuck that way forever once the transaction
+    // was saved, especially for a group with auto-add turned on where it's saved without ever
+    // showing the scan-result screen at all. Editable right here closes that gap.
+    itemsBox.querySelectorAll('.ri-editable').forEach(el => {
+      const it = rc.items[parseInt(el.dataset.i, 10)];
+      makeReceiptItemFieldEditable(el, it, el.dataset.field, () => {
+        if (!(rc.vmi && typeof rc.vmi.total === 'number')) {
+          tx.amount = Math.round(sumItems(rc.items) * 100) / 100;
+        }
+        saveState();
+        renderAll();
+        renderReceiptRecent();
+        openTxDetail(tx.id);
+      });
+    });
+    itemsBox.querySelectorAll('.ri-del').forEach(b => b.addEventListener('click', () => {
+      rc.items.splice(parseInt(b.dataset.i, 10), 1);
+      if (!(rc.vmi && typeof rc.vmi.total === 'number')) {
+        tx.amount = Math.round(sumItems(rc.items) * 100) / 100;
+      }
+      saveState();
+      renderAll();
+      renderReceiptRecent();
+      openTxDetail(tx.id);
+    }));
   }
   document.getElementById('txDetailEditBtn').addEventListener('click', () => startEditTxTitle(tx));
   const gp = document.getElementById('txDetailGroupPicker');
