@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262419">
+<meta name="stash-version" content="202609262421">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -2783,20 +2783,14 @@ function openCurWheel() {
   el.className = 'currency-wheel';
   el.style.left = currencyPickerEl.offsetLeft + 'px';
   el.style.width = currencyPickerEl.offsetWidth + 'px';
-  // Centering the 96px-tall wheel on the button would need 32px of room above it - but the button
-  // sits right at the top of the balance card, so that pushed the wheel's top row out above the
-  // card entirely (looking cut off/broken, reported from a real phone). Clamp it so it never
-  // starts above the card's own top edge; past that point it just opens further downward instead.
-  let top = currencyPickerEl.offsetTop + currencyPickerEl.offsetHeight / 2 - CUR_ROW * 1.5;
-  const card = currencyPickerEl.closest('.balance-card');
-  if (card) {
-    const cardTop = card.getBoundingClientRect().top;
-    const hostTop = host.getBoundingClientRect().top;
-    const minTop = (cardTop + 6) - hostTop;   // 6px breathing room under the card's own border
-    if (top < minTop) top = minTop;
-  } else if (top < 0) {
-    top = 0;
-  }
+  // Open centred on the button itself — equally into the space above and below it, so the
+  // previous/next currency both appear to unfold symmetrically out of the button, as asked.
+  // (An earlier version clamped this so the wheel could never start above the balance card's
+  // own top edge, worried the top row would look cut off — but the wheel already sits above
+  // the header at z-index 35 and the card has no overflow:hidden to clip it, so that concern
+  // doesn't actually apply; clamping it just made the open look lopsided, growing downward
+  // instead of from the button, which is the "slides down" look that was reported.)
+  const top = currencyPickerEl.offsetTop + currencyPickerEl.offsetHeight / 2 - CUR_ROW * 1.5;
   el.style.top = top + 'px';
   el.innerHTML = '<div class="currency-wheel-sel"></div>';
   const items = [];
@@ -5349,6 +5343,17 @@ function stopCloudSync() {
   if (fbUnsub) { fbUnsub(); fbUnsub = null; }
   if (cloudRetryTimer) { clearTimeout(cloudRetryTimer); cloudRetryTimer = null; }
   cloudRetryDelay = 3000;
+  // THE actual cause of "log out, log back in (same app session), nothing comes back":
+  // lastPushedJson still held the exact JSON string of the last successful push from
+  // BEFORE logout. Logging back into the same account without restarting the app fetches
+  // that same cloud document again, byte-for-byte identical to lastPushedJson — and the
+  // snapshot handler's "that's just our own write echoing back, skip it" check
+  // (`if (remote.data === lastPushedJson) return;`) then mistook the genuine restore for
+  // its own echo and silently threw it away, leaving the just-wiped-empty state in place
+  // forever. A full app restart reset this variable to null, which is why the same steps
+  // didn't always reproduce it. Clearing it on logout makes the next login's data always
+  // get applied, regardless of whether it happens to match what this device pushed earlier.
+  lastPushedJson = null;
   currentUser = null;
   state.lastSyncedUid = null;
   // Clear the locally-visible transactions/debts on logout too, so a
