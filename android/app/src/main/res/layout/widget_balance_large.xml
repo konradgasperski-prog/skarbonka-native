@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Wariant "średni" (domyślny, np. 3x2 lub 4x2) - etykieta + duże saldo, na zaokrąglonej karcie
-  zamiast poprzedniego czarnego prostokąta z ostrymi rogami. Ikonka apki obok etykiety, żeby od
-  razu było widać, że to Stash, nawet gdy widget jest mały i etykieta może się nie zmieścić w
-  całości.
+  Wariant "duży" (np. 4x4, 2x6 lub szerszy/wyższy) - jest miejsce na dodatkową linię z saldem w
+  pozostałych walutach (ten sam tekst, który w apce widać pod głównym saldem), więc ją pokazujemy -
+  na małym widgecie by się nie zmieściła, dlatego jest tylko w tym wariancie.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
@@ -12,7 +11,7 @@
     android:orientation="vertical"
     android:gravity="center"
     android:background="@drawable/widget_background"
-    android:padding="14dp">
+    android:padding="18dp">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -21,8 +20,8 @@
         android:gravity="center_vertical">
 
         <ImageView
-            android:layout_width="14dp"
-            android:layout_height="14dp"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
             android:layout_marginEnd="6dp"
             android:src="@mipmap/ic_launcher_round" />
 
@@ -32,7 +31,7 @@
             android:layout_height="wrap_content"
             android:text="@string/widget_label"
             android:textColor="#9aa0a6"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
     </LinearLayout>
 
     <TextView
@@ -42,11 +41,23 @@
         android:text="0,00 €"
         android:textColor="#edeef0"
         android:textStyle="bold"
-        android:textSize="24sp"
+        android:textSize="34sp"
         android:autoSizeTextType="uniform"
-        android:autoSizeMinTextSize="14sp"
-        android:autoSizeMaxTextSize="26sp"
+        android:autoSizeMinTextSize="18sp"
+        android:autoSizeMaxTextSize="36sp"
         android:maxLines="1"
         android:ellipsize="end"
-        android:layout_marginTop="4dp" />
+        android:layout_marginTop="6dp" />
+
+    <TextView
+        android:id="@+id/widget_other"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textColor="#7a8085"
+        android:textSize="12sp"
+        android:maxLines="2"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:layout_marginTop="8dp" />
 </LinearLayout>

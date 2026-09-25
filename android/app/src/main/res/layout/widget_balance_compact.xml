@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Wariant dla najmniejszych rozmiarów (np. 2x2 lub węższy pasek) - na tak małej powierzchni nie ma
+  miejsca ani na etykietę "Stash balance", ani na drugą linię z innymi walutami, więc pokazujemy
+  tylko samą kwotę, wyśrodkowaną, z autosize (na Androidzie 8+; na starszych po prostu użyje
+  textSize jak jest, bez skalowania - bez błędu).
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:background="@drawable/widget_background"
+    android:padding="8dp">
+
+    <TextView
+        android:id="@+id/widget_balance"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0,00 €"
+        android:textColor="#edeef0"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="11sp"
+        android:autoSizeMaxTextSize="20sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:gravity="center" />
+</LinearLayout>
