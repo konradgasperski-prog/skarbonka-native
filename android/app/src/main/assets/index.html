@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262427">
+<meta name="stash-version" content="202609262428">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -1775,6 +1775,13 @@ function fmtDateObj(d) {
 function fmtDateUTC(d) {
   return d.getUTCFullYear() + '-' + String(d.getUTCMonth()+1).padStart(2,'0') + '-' + String(d.getUTCDate()).padStart(2,'0');
 }
+// Godzina:minuta:sekunda dodawania transakcji (na podstawie t.ts), pokazywana obok daty na
+// liście transakcji na głównym ekranie.
+function fmtTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0') + ':' + String(d.getSeconds()).padStart(2,'0');
+}
 function fmt(n, cur) {
   const symbols = { EUR: '€', USD: '$', GBP: '£', CHF: 'CHF', PLN: 'zł', JPY: '¥' };
   const s = symbols[cur] || cur;
@@ -2408,11 +2415,17 @@ function renderBalance() {
 
 function buildTxRowsHTML(items) {
   if (items.length === 0) return '<div class="empty">' + t('empty.noTx') + '</div>';
-  return items.map(t => `
+  return items.map(t => {
+    // Godzina:minuta:sekunda dodania transakcji oraz nazwa karty (jeśli transakcja jest
+    // przypisana do jakiejś karty - dla transakcji bez karty nic tu nie dopisujemy).
+    const timePart = fmtTime(t.ts);
+    const card = t.cardId ? cardById(t.cardId) : null;
+    const cardPart = card ? ' · ' + card.name : '';
+    return `
     <div class="tx-item" data-tx="${t.id}">
       <div>
         <div class="tx-desc">${t.desc || (t.type === 'income' ? tr('type.income') : tr('type.expense'))}${t.receipt && t.receipt.items && t.receipt.items.length ? '<span class="tx-receipt-badge">🧾 ' + t.receipt.items.length + '</span>' : ''}</div>
-        <div class="tx-date">${t.date} · ${fmt(t.amount, t.currency)}</div>
+        <div class="tx-date">${t.date}${timePart ? ' ' + timePart : ''} · ${fmt(t.amount, t.currency)}${cardPart}</div>
       </div>
       <div style="display:flex; align-items:center; gap:4px;">
         <div class="tx-amount ${t.type === 'income' ? 'income-color' : 'expense-color'}">
@@ -2421,7 +2434,8 @@ function buildTxRowsHTML(items) {
         <button class="del-btn" data-id="${t.id}">✕</button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 function wireTxDelButtons(container) {
   container.querySelectorAll('.tx-item[data-tx]').forEach(row => {
