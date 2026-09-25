@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -171,21 +170,13 @@ class MainActivity : Activity() {
         }
     }
 
-    // --- Icon switching (light / dark / glass / auto) ---
-    private fun isSystemDark(): Boolean {
-        val mode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
-        return mode == Configuration.UI_MODE_NIGHT_YES
-    }
-
-    private fun resolveEffectiveMode(saved: String): String {
-        return if (saved == "auto") {
-            if (isSystemDark()) "dark" else "light"
-        } else saved
-    }
-
+    // --- Icon switching (light / dark / glass) ---
+    // "Auto" (ikonka sama zmieniająca się pod system) zostało usunięte z ustawień w apce - ta
+    // funkcja też nie istnieje już po stronie natywnej: nie ma już automatycznego przełączania na
+    // podstawie motywu telefonu, tylko wprost zapisany wybór użytkownika (domyślnie "light").
     private fun applyIconMode() {
-        val saved = prefs.getString("icon_mode", "auto") ?: "auto"
-        val effective = resolveEffectiveMode(saved)
+        val saved = prefs.getString("icon_mode", "light") ?: "light"
+        val effective = if (saved == "auto") "light" else saved
         val aliases = mapOf(
             "light" to ".IconLight",
             "dark" to ".IconDark",
@@ -258,7 +249,8 @@ class MainActivity : Activity() {
 
         @JavascriptInterface
         fun getIconMode(): String {
-            return prefs.getString("icon_mode", "auto") ?: "auto"
+            val saved = prefs.getString("icon_mode", "light") ?: "light"
+            return if (saved == "auto") "light" else saved
         }
 
         // Kopia ustawien wygladu (tlo, liquid glass, motyw) w pamieci telefonu - nigdy sie nie gubi
