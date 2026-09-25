@@ -48,6 +48,8 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -66,11 +68,28 @@ jobs:
         working-directory: android
         run: gradle assembleDebug
 
-      - name: Upload APK
+      - name: Upload APK (build artifact, needs unzipping)
         uses: actions/upload-artifact@v4
         with:
           name: skarbonka-android
           path: android/app/build/outputs/apk/debug/*.apk
+
+      # Actions artifacts above are always zipped and need a GitHub login to download - some
+      # phones' file managers fail to extract that zip at all. A GitHub Release asset is a plain
+      # file with a stable, login-free URL: tapping it on a phone downloads the .apk directly and
+      # Android offers to install it right away, no unzipping step involved. The "android-latest"
+      # tag is reused and updated on every push, so this is always one link to the newest build.
+      - name: Publish APK as a direct-download Release asset
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: "Stash na Androida (najnowszy build)"
+          body: |
+            Automatycznie budowane przy każdym pushu do `main`. Otwórz ten link na telefonie i
+            pobierz plik `.apk` poniżej — to gotowy plik do zainstalowania, nic nie trzeba
+            wypakowywać. Commit: ${{ github.sha }}
+          prerelease: true
+          files: android/app/build/outputs/apk/debug/*.apk
 
   build-ios:
     runs-on: macos-latest
