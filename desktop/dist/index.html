@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262417">
+<meta name="stash-version" content="202609262418">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -5143,7 +5143,13 @@ function pushToCloud() {
   fbDb.collection('skarbonka_users').doc(currentUser.uid).set({
     data: lastPushedJson,
     updatedAt: Date.now()
-  }).catch(e => console.warn('sync push failed', e));
+  }).then(() => {
+    // A write failure used to only ever reach console.warn — invisible on a phone,
+    // so a user whose data was silently never actually reaching the cloud (e.g. a
+    // permissions or token problem) had no way to know until they logged back in
+    // somewhere else and found nothing there. Now a failed write is shown right away.
+    setSyncStatus('auth.syncActive');
+  }).catch(e => { console.warn('sync push failed', e); setSyncStatus('auth.syncError'); });
 }
 
 function startCloudSync(user) {
