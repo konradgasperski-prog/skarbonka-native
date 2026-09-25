@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262423">
+<meta name="stash-version" content="202609262424">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -885,6 +885,16 @@
   .receipt-vmi .v-row { display: flex; justify-content: space-between; gap: 10px; }
   .receipt-vmi .v-row b { font-variant-numeric: tabular-nums; }
   .vmi-btn { margin-top: 10px; width: 100%; }
+  .receipt-rawtext { margin-top: 10px; }
+  .receipt-rawtext-toggle {
+    background: none; border: none; padding: 4px 0; font-size: 12px; color: var(--text-dim);
+    cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .receipt-rawtext-box {
+    margin-top: 6px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--bg) 55%, transparent);
+    border: 1px solid var(--border); font-size: 11.5px; line-height: 1.4; white-space: pre-wrap;
+    word-break: break-word; max-height: 260px; overflow-y: auto; font-family: ui-monospace, monospace; color: var(--text-dim);
+  }
   .tx-receipt-badge { font-size: 11px; opacity: 0.75; margin-left: 4px; }
   .txd-head .txd-title { font-size: 17px; font-weight: 800; }
   .txd-title-row { display: flex; align-items: center; gap: 8px; }
@@ -3896,6 +3906,9 @@ function rcAmounts(line) {
   return out;
 }
 const RC_QTY = /\d+(?:[.,]\d+)?\s*(?:kg|g|ml|l|vnt|szt)?\s*[x×*]\s*\d+[.,]\d{2}(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|ml|vnt|l))?/i;
+// Same shape as RC_QTY, but with the quantity and per-unit price captured — used only to
+// cross-check the amount picked for a weighed/multi-unit line (see RC_QTY_TOTAL_FALLBACK below).
+const RC_QTY_CAP = /(\d+(?:[.,]\d+)?)\s*(?:kg|g|ml|l|vnt|szt)?\s*[x×*]\s*(\d+[.,]\d{2})(?:\s*(?:eur|€))?(?:\s*\/\s*(?:kg|ml|vnt|l))?/i;
 // A unit abbreviation printed right after a quantity is short (1-4 letters) and easy for a blurry
 // photo's OCR to misread as another, visually similar short combination - "0,5nl" for "0,5ml"
 // (m misread as n), "400lg" for "400kg" (k misread as l). Fixed ONLY when it directly follows a
@@ -4036,8 +4049,28 @@ function parseReceiptText(text) {
       // continuation of THIS product's name (a long name wrapped onto more than one line, possibly with
       // a dashed "----" divider line in between, which is skipped and never reaches here) — glue it on.
       const name = ltCorrectName(rcCleanName(pending ? (namePartIsJunk ? pending : pending + ' ' + namePart) : namePart));
-      if (/[A-Za-zÀ-ž]{2,}/.test(name) && last.v > 0 && last.v < 10000) {
-        const item = { name, price: last.v, discount: 0 };
+      // A weighed/multi-unit line prints "0,893 kg x 0,69 EUR/kg" followed, further right, by the
+      // actual line total (e.g. "1,079 kg x 11,49 EUR/kg   12,40") — but that trailing total sits in
+      // its own narrow right-hand column, and on a real photo (skew, low light, a worn thermal
+      // print) the OCR sometimes fails on just that one number while reading the qty/unit-price part
+      // fine. When that happens, `last` silently ends up being the *unit* price - here 11,49 instead
+      // of the true 12,40 - which then gets billed as if it were the whole line. Whenever the
+      // quantity is not ~1 (so unit price and true total would be near-identical anyway) and the
+      // amount we're about to use is exactly the qty pattern's own unit price - i.e. no separate
+      // total number was found anywhere on the row - trust the arithmetic instead: qty × unit price
+      // is printed right there and is far more reliable than accidentally billing at the per-kg rate.
+      let price = last.v;
+      const qtyCapM = r.match(RC_QTY_CAP);
+      if (qtyCapM) {
+        const qtyNum = num(qtyCapM[1]);
+        const unitPrice = num(qtyCapM[2]);
+        const expected = Math.round(qtyNum * unitPrice * 100) / 100;
+        if (Math.abs(last.v - unitPrice) < 0.005 && Math.abs(qtyNum - 1) > 0.02 && expected > 0) {
+          price = expected;
+        }
+      }
+      if (/[A-Za-zÀ-ž]{2,}/.test(name) && price > 0 && price < 10000) {
+        const item = { name, price, discount: 0 };
         if (qtyM) item.qty = qtyM[0].replace(/\s{2,}/g, ' ').trim();
         res.items.push(item);
       }
@@ -4524,7 +4557,25 @@ function openTxDetail(id) {
       (rc.items && rc.items.length ? vmiCheckHtml({ vmi: v, items: rc.items }) : '') +
       '</div>';
   }
+  // Collapsed by default — this is the exact raw text the phone's OCR produced for this receipt,
+  // before any of the cleanup/parsing above ran on it. Not something most people need, but when a
+  // product name or price comes out wrong, this is what shows whether the OCR itself misread the
+  // print (nothing more to do about that here) or the parsing logic misread otherwise-correct text
+  // (something this app can actually fix) — priceless for reporting/diagnosing that difference.
+  if (rc && rc.text) {
+    html += '<div class="receipt-rawtext"><button class="receipt-rawtext-toggle" id="txDetailRawToggle">' +
+      escHtml(t('receipts.fullText')) + ' ▾</button>' +
+      '<pre class="receipt-rawtext-box hidden" id="txDetailRawBox">' + escHtml(rc.text) + '</pre></div>';
+  }
   body.innerHTML = html;
+  const rawToggle = document.getElementById('txDetailRawToggle');
+  if (rawToggle) {
+    rawToggle.addEventListener('click', () => {
+      const box = document.getElementById('txDetailRawBox');
+      box.classList.toggle('hidden');
+      rawToggle.textContent = t('receipts.fullText') + (box.classList.contains('hidden') ? ' ▾' : ' ▴');
+    });
+  }
   document.getElementById('txDetailEditBtn').addEventListener('click', () => startEditTxTitle(tx));
   const gp = document.getElementById('txDetailGroupPicker');
   if (rc) {
