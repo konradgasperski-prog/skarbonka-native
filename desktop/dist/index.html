@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262418">
+<meta name="stash-version" content="202609262419">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -631,6 +631,17 @@
   }
   .currency-dd-option:hover { background: var(--accent-soft); padding-left: 18px; }
   .currency-dd-option.active { color: var(--accent); font-weight: 700; }
+  /* Custom stand-in for the plain <select> in the add-transaction/add-debt forms.
+     A native <select> is rendered by the OS on Android/WebView as a full-width sheet
+     anchored to the BOTTOM of the screen, not next to the field that opened it — this
+     replaces it with our own dropdown (reusing .currency-dropdown/.currency-dd-option
+     above) so it opens right under the field like the rest of the app's UI. */
+  .select-dd-btn {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 15px; margin-bottom: 10px;
+    text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  }
+  .select-dd-btn::after { content: '▾'; opacity: 0.6; margin-left: 6px; font-size: 12px; }
 
   /* --- Glass intensity slider --- */
   .glass-slider-row { margin-top: 10px; }
@@ -2119,7 +2130,84 @@ function populateCurrencySelect() {
   debtSel.innerHTML = CURRENCIES.map(c => `<option value="${c}">${c}</option>`).join('');
   const label = document.querySelector('#currencyPickerWindow .currency-picker-label');
   if (label) label.textContent = state.displayCurrency || 'EUR';
+  if (sel._syncCustomLabel) sel._syncCustomLabel();
+  if (debtSel._syncCustomLabel) debtSel._syncCustomLabel();
 }
+
+// Stand in for a plain <select>: on Android/WebView a native <select> opens as an OS-drawn
+// sheet anchored to the BOTTOM of the screen, not next to the field — this makes it open
+// as a small dropdown right under the field instead, matching the rest of the app's UI.
+function setupCustomSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel || sel._customized) return;
+  sel._customized = true;
+  sel.classList.add('hidden');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'select-dd-btn';
+  sel.parentNode.insertBefore(btn, sel.nextSibling);
+  const menu = document.createElement('div');
+  menu.className = 'currency-dropdown';
+  document.body.appendChild(menu);
+
+  function syncLabel() {
+    btn.textContent = sel.value || (sel.options[0] && sel.options[0].value) || '';
+  }
+  function renderMenu() {
+    menu.innerHTML = '';
+    Array.from(sel.options).forEach(opt => {
+      const item = document.createElement('div');
+      item.className = 'currency-dd-option' + (opt.value === sel.value ? ' active' : '');
+      item.textContent = opt.value;
+      item.addEventListener('click', () => {
+        sel.value = opt.value;
+        sel.dispatchEvent(new Event('change', { bubbles: true }));
+        syncLabel();
+        closeMenu();
+      });
+      menu.appendChild(item);
+    });
+  }
+  function positionMenu() {
+    const r = btn.getBoundingClientRect();
+    menu.style.minWidth = Math.max(100, r.width) + 'px';
+    let top = r.bottom + 6;
+    let left = r.right - menu.offsetWidth;
+    if (left < 8) left = 8;
+    const menuH = menu.offsetHeight || 0;
+    if (top + menuH > window.innerHeight - 8) {
+      // Not enough room below (e.g. field near the bottom of the screen) — open upward instead.
+      top = Math.max(8, r.top - menuH - 6);
+    }
+    menu.style.top = top + 'px';
+    menu.style.left = left + 'px';
+  }
+  function onDocDown(e) {
+    if (!menu.contains(e.target) && e.target !== btn) closeMenu();
+  }
+  function openMenu() {
+    renderMenu();
+    menu.classList.add('open');
+    positionMenu();
+    requestAnimationFrame(positionMenu);
+    document.addEventListener('pointerdown', onDocDown, true);
+    window.addEventListener('resize', closeMenu);
+    window.addEventListener('scroll', closeMenu, true);
+  }
+  function closeMenu() {
+    menu.classList.remove('open');
+    document.removeEventListener('pointerdown', onDocDown, true);
+    window.removeEventListener('resize', closeMenu);
+    window.removeEventListener('scroll', closeMenu, true);
+  }
+  btn.addEventListener('click', () => {
+    if (menu.classList.contains('open')) closeMenu(); else openMenu();
+  });
+  sel._syncCustomLabel = syncLabel;
+  syncLabel();
+}
+setupCustomSelect('currency');
+setupCustomSelect('debtCurrency');
 
 let currencyLabelSeq = 1;
 function cycleCurrency(direction) {
