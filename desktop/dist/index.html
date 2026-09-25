@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262425">
+<meta name="stash-version" content="202609262426">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -2391,6 +2391,13 @@ function renderBalance() {
   document.body.classList.toggle('balance-masked', !!state.balanceHidden);
   const eyeBtn = document.getElementById('balanceEyeBtn');
   if (eyeBtn) eyeBtn.textContent = state.balanceHidden ? '\u{1F648}' : '\u{1F441}️';
+  // Pushes the current balance to the native home-screen widget (BalanceWidgetProvider on the
+  // Android side) every time it changes here, so the widget never falls behind the app itself.
+  // Respects the "hide balance" toggle, same as the in-app display, so a masked balance in the
+  // app doesn't leak the real number onto the home screen.
+  if (window.AndroidBridge && typeof window.AndroidBridge.postBalance === 'function') {
+    try { window.AndroidBridge.postBalance(state.balanceHidden ? '••••••' : mainEl.textContent); } catch (e) {}
+  }
 }
 
 function buildTxRowsHTML(items) {
