@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262421">
+<meta name="stash-version" content="202609262423">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -2776,21 +2776,22 @@ function animateCurWheel(target, done) {
 }
 function openCurWheel() {
   if (curWheel) return;
-  // The wheel opens right in place, inside the balance card (not a floating layer),
-  // so it scrolls together with the page.
-  const host = currencyPickerEl.parentElement;
+  // The wheel used to be appended right inside the balance card, positioned with offsetTop/Left
+  // relative to it — but the card's page (.pages-wrap) clips anything that pokes out above its
+  // own box, so the moment the wheel opened symmetrically (equally up and down from the button)
+  // its top half got sliced off right at the card's own border, looking like it was "hiding
+  // under" the balance frame instead of floating above it. Appending it to <body> as a
+  // fixed-position overlay (the same trick already used for .currency-dropdown) puts it outside
+  // any clipping ancestor, so the top half now genuinely renders above the card.
   const el = document.createElement('div');
   el.className = 'currency-wheel';
-  el.style.left = currencyPickerEl.offsetLeft + 'px';
-  el.style.width = currencyPickerEl.offsetWidth + 'px';
-  // Open centred on the button itself — equally into the space above and below it, so the
-  // previous/next currency both appear to unfold symmetrically out of the button, as asked.
-  // (An earlier version clamped this so the wheel could never start above the balance card's
-  // own top edge, worried the top row would look cut off — but the wheel already sits above
-  // the header at z-index 35 and the card has no overflow:hidden to clip it, so that concern
-  // doesn't actually apply; clamping it just made the open look lopsided, growing downward
-  // instead of from the button, which is the "slides down" look that was reported.)
-  const top = currencyPickerEl.offsetTop + currencyPickerEl.offsetHeight / 2 - CUR_ROW * 1.5;
+  el.style.position = 'fixed';
+  const r = currencyPickerEl.getBoundingClientRect();
+  el.style.left = r.left + 'px';
+  el.style.width = r.width + 'px';
+  // Centred on the button itself — equally into the space above and below it, so the
+  // previous/next currency both appear to unfold symmetrically out of the button.
+  const top = r.top + r.height / 2 - CUR_ROW * 1.5;
   el.style.top = top + 'px';
   el.innerHTML = '<div class="currency-wheel-sel"></div>';
   const items = [];
@@ -2799,7 +2800,7 @@ function openCurWheel() {
     it.className = 'currency-wheel-item';
     el.appendChild(it); items.push(it);
   }
-  host.appendChild(el);
+  document.body.appendChild(el);
   currencyPickerEl.classList.add('wheel-open');
   const start = Math.max(0, CURRENCIES.indexOf(state.displayCurrency || 'EUR'));
   curWheel = { el, items, pos: start, lastBase: start, dragging: false, raf: 0 };
@@ -2874,6 +2875,7 @@ document.addEventListener('pointerdown', (e) => {
   if (curWheel && !curWheel.el.contains(e.target) && !currencyPickerEl.contains(e.target)) closeCurWheel();
 }, true);
 window.addEventListener('resize', () => { if (curWheel) closeCurWheel(); });
+window.addEventListener('scroll', () => { if (curWheel && !curWheel.dragging) closeCurWheel(); }, true);
 document.getElementById('pagesWrap').addEventListener('pagechange', () => { if (curWheel && !curWheel.dragging) closeCurWheel(); });
 // Mouse wheel / trackpad over the closed button still switches both ways
 let currencyWheelAcc = 0, currencyWheelLock = 0;
@@ -5181,6 +5183,18 @@ const firebaseConfig = {
 };
 let fbAuth = null, fbDb = null, currentUser = null, fbUnsub = null, applyingRemote = false;
 let cloudRetryTimer = null, cloudRetryDelay = 3000;
+// Guards the real remaining hole in the login sequence: right after `currentUser` is set,
+// startCloudSync() calls rememberKnownAccount(), which — being a completely unrelated,
+// on-device "recent accounts" list — calls saveState(), which unconditionally calls
+// pushToCloud(). At that exact moment the local state is still whatever logout wiped it to,
+// because the real cloud document hasn't been read back yet. That push .set()-replaces the
+// whole cloud document with this empty local state — permanently destroying the real data —
+// before the onSnapshot listener attached a moment later ever gets a chance to read it (worse,
+// Firestore's own SDK reflects that pending write in its local cache immediately, so the very
+// first snapshot the listener sees is that same empty write, which the echo-check then quietly
+// accepts as "nothing changed"). Blocking pushToCloud() until the listener has heard from
+// Firestore at least once closes this — nothing gets pushed before something has been pulled.
+let cloudSyncReady = false;
 function setSyncStatus(key) {
   const el = document.getElementById('syncStatus');
   if (el) el.textContent = t(key);
@@ -5220,7 +5234,7 @@ function syncableData() {
 
 let lastPushedJson = null;   // the data WE last sent to the cloud — its own echo needs no re-render
 function pushToCloud() {
-  if (!fbDb || !currentUser || applyingRemote) return;
+  if (!fbDb || !currentUser || applyingRemote || !cloudSyncReady) return;
   lastPushedJson = JSON.stringify(syncableData());
   fbDb.collection('skarbonka_users').doc(currentUser.uid).set({
     data: lastPushedJson,
@@ -5256,6 +5270,7 @@ function startCloudSync(user) {
   saveState();
 
   currentUser = user;
+  cloudSyncReady = false;   // stays false until the listener below hears from Firestore at least once
   rememberKnownAccount(user.email);
   document.getElementById('popLoggedOut').classList.add('hidden');
   document.getElementById('popLoggedIn').classList.remove('hidden');
@@ -5269,6 +5284,7 @@ function startCloudSync(user) {
     // so a *future* hiccup starts retrying quickly rather than inheriting a long delay.
     cloudRetryDelay = 3000;
     setSyncStatus('auth.syncActive');
+    cloudSyncReady = true;   // we've now heard from Firestore at least once — safe to push again
     if (!doc.exists) {
       // A snapshot straight from the local cache can report "doesn't exist" for a
       // brand-new listener before the real server round-trip has happened at all —
@@ -5355,6 +5371,7 @@ function stopCloudSync() {
   // get applied, regardless of whether it happens to match what this device pushed earlier.
   lastPushedJson = null;
   currentUser = null;
+  cloudSyncReady = false;
   state.lastSyncedUid = null;
   // Clear the locally-visible transactions/debts on logout too, so a
   // logged-out session (or the next account that logs in before this one)
