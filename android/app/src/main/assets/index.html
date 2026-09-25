@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<meta name="stash-version" content="202609262426">
+<meta name="stash-version" content="202609262427">
 <script>
 // Mac / Windows: automatic updates. The app hands over a newer index.html downloaded from GitHub.
 // If it is newer than this one, the rest of this page is switched off and the new version is shown instead.
@@ -2394,9 +2394,15 @@ function renderBalance() {
   // Pushes the current balance to the native home-screen widget (BalanceWidgetProvider on the
   // Android side) every time it changes here, so the widget never falls behind the app itself.
   // Respects the "hide balance" toggle, same as the in-app display, so a masked balance in the
-  // app doesn't leak the real number onto the home screen.
+  // app doesn't leak the real number onto the home screen. The second line (balances in the other
+  // currencies) is only shown by the widget's largest layout variant - smaller ones ignore it.
   if (window.AndroidBridge && typeof window.AndroidBridge.postBalance === 'function') {
-    try { window.AndroidBridge.postBalance(state.balanceHidden ? '••••••' : mainEl.textContent); } catch (e) {}
+    try {
+      window.AndroidBridge.postBalance(
+        state.balanceHidden ? '••••••' : mainEl.textContent,
+        state.balanceHidden ? '' : otherEl.textContent
+      );
+    } catch (e) {}
   }
 }
 
