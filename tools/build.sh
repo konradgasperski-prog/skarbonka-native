@@ -8,7 +8,7 @@ VC=${GITHUB_RUN_NUMBER:-1}
 echo "build-tools: $BT"; echo "platform: $PLAT"; echo "versionCode: $VC"
 
 echo "=== WFF XSD validation ==="
-if git clone -q --depth 1 https://github.com/google/watchface /tmp/wff; then
+if command -v xmllint >/dev/null && git clone -q --depth 1 https://github.com/google/watchface /tmp/wff; then
   find /tmp/wff -name "*.xsd" | sort | head -40
   for X in $(find /tmp/wff -name "watchface.xsd" | sort); do
     echo "--- $X"; xmllint --noout --schema "$X" tarcza/res/raw/watchface.xml 2>&1 | head -40
