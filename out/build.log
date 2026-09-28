@@ -1,0 +1,85 @@
+build-tools: /usr/local/lib/android/sdk/build-tools/37.0.0
+platform: /usr/local/lib/android/sdk/platforms/android-37.2-beta3
+versionCode: 2
+=== WFF XSD validation ===
+/tmp/wff/third_party/wff/specification/documents/1/bitmapFontsElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/clock/analogClock.xsd
+/tmp/wff/third_party/wff/specification/documents/1/clock/digitalClock.xsd
+/tmp/wff/third_party/wff/specification/documents/1/clock/hourHand.xsd
+/tmp/wff/third_party/wff/specification/documents/1/clock/minuteHand.xsd
+/tmp/wff/third_party/wff/specification/documents/1/clock/secondHand.xsd
+/tmp/wff/third_party/wff/specification/documents/1/clock/timeText.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/animationElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/alignmentAttribute.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/angleType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/arithmeticExpressionType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/calendarAttribute.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/colorAttributes.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/dimensionType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/geometricAttributes.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/normalizedType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/primitiveListTypes.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/sourceType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/attributes/unsignedCharacterType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/booleanType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/circularDirectionType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/conditionElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/eventTriggerType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/expressionsElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/launchElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/localizationElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/screenReaderElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/transform/gyroElements.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/transform/pivotType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/transform/transformElements.xsd
+/tmp/wff/third_party/wff/specification/documents/1/common/variant/variantElements.xsd
+/tmp/wff/third_party/wff/specification/documents/1/complication/boundingElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/complication/complicationElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/complication/complicationSlotElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/complication/defaultProviderPolicyElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/group/groupElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/group/part/abstractPartType.xsd
+/tmp/wff/third_party/wff/specification/documents/1/group/part/animatedImage/animatedImageElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/group/part/animatedImage/animatedImagesElement.xsd
+/tmp/wff/third_party/wff/specification/documents/1/group/part/animatedImage/animationControllerElement.xsd
+sort: write failed: 'standard output': Broken pipe
+sort: write error
+--- /tmp/wff/third_party/wff/specification/documents/1/watchface.xsd
+/tmp/wff/third_party/wff/specification/documents/1/group/part/abstractPartType.xsd:40: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+/tmp/wff/third_party/wff/specification/documents/1/group/part/abstractPartType.xsd:41: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+WXS schema /tmp/wff/third_party/wff/specification/documents/1/watchface.xsd failed to compile
+--- /tmp/wff/third_party/wff/specification/documents/2/watchface.xsd
+/tmp/wff/third_party/wff/specification/documents/2/group/part/abstractPartType.xsd:40: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+/tmp/wff/third_party/wff/specification/documents/2/group/part/abstractPartType.xsd:41: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+WXS schema /tmp/wff/third_party/wff/specification/documents/2/watchface.xsd failed to compile
+--- /tmp/wff/third_party/wff/specification/documents/3/watchface.xsd
+/tmp/wff/third_party/wff/specification/documents/3/group/part/abstractPartType.xsd:41: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+/tmp/wff/third_party/wff/specification/documents/3/group/part/abstractPartType.xsd:42: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+WXS schema /tmp/wff/third_party/wff/specification/documents/3/watchface.xsd failed to compile
+--- /tmp/wff/third_party/wff/specification/documents/4/watchface.xsd
+/tmp/wff/third_party/wff/specification/documents/4/group/part/abstractPartType.xsd:42: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+/tmp/wff/third_party/wff/specification/documents/4/group/part/abstractPartType.xsd:43: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+/tmp/wff/third_party/wff/specification/documents/4/group/part/abstractPartType.xsd:44: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+WXS schema /tmp/wff/third_party/wff/specification/documents/4/watchface.xsd failed to compile
+--- /tmp/wff/third_party/wff/specification/documents/5/watchface.xsd
+/tmp/wff/third_party/wff/specification/documents/5/group/part/abstractPartType.xsd:42: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+/tmp/wff/third_party/wff/specification/documents/5/group/part/abstractPartType.xsd:43: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+/tmp/wff/third_party/wff/specification/documents/5/group/part/abstractPartType.xsd:44: element element: Schemas parser error : Element '{http://www.w3.org/2001/XMLSchema}element': Invalid value for maxOccurs (must be 0 or 1).
+WXS schema /tmp/wff/third_party/wff/specification/documents/5/watchface.xsd failed to compile
+=== aapt2 ===
+new signing key generated
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): false
+Verified using v3 scheme (APK Signature Scheme v3): true
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+package: name='com.konrad.tarcza.szklo' versionCode='2' versionName='1.2' platformBuildVersionName='DEV' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='DEV'
+minSdkVersion:'33'
+targetSdkVersion:'34'
+application-label:'Szklane kapsuły'
+application-icon-160:'res/drawable-nodpi-v4/preview.png'
+application-icon-65535:'res/drawable-nodpi-v4/preview.png'
+application: label='Szklane kapsuły' icon='res/drawable-nodpi-v4/preview.png'
+property: name='com.google.wear.watchface.format.version' value='2' 
+-rw-r--r-- 1 runner runner 2059734 Sep 28 17:31 out/tarcza.apk
+BUILD OK
