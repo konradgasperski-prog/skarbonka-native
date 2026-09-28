@@ -1,0 +1,382 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WatchFace width="450" height="450">
+  <Metadata key="CLOCK_TYPE" value="DIGITAL"/>
+  <Metadata key="PREVIEW_TIME" value="10:08:32"/>
+  <UserConfigurations>
+    <ListConfiguration id="theme" displayName="cfg_theme" screenReaderText="cfg_theme" defaultValue="3">
+      <ListOption id="0" displayName="pal_0" screenReaderText="pal_0" icon="bg_0"/>
+      <ListOption id="1" displayName="pal_1" screenReaderText="pal_1" icon="bg_1"/>
+      <ListOption id="2" displayName="pal_2" screenReaderText="pal_2" icon="bg_2"/>
+      <ListOption id="3" displayName="pal_3" screenReaderText="pal_3" icon="bg_3"/>
+      <ListOption id="4" displayName="pal_4" screenReaderText="pal_4" icon="bg_4"/>
+      <ListOption id="5" displayName="pal_5" screenReaderText="pal_5" icon="bg_5"/>
+      <ListOption id="6" displayName="pal_6" screenReaderText="pal_6" icon="bg_6"/>
+      <ListOption id="7" displayName="pal_7" screenReaderText="pal_7" icon="bg_7"/>
+    </ListConfiguration>
+    <BooleanConfiguration id="stars" displayName="cfg_stars" screenReaderText="cfg_stars" defaultValue="TRUE"/>
+  </UserConfigurations>
+  <BitmapFonts>
+    <BitmapFont name="glass">
+      <Character name="0" resource="dg_0" width="77" height="96"/>
+      <Character name="1" resource="dg_1" width="52" height="96"/>
+      <Character name="2" resource="dg_2" width="69" height="96"/>
+      <Character name="3" resource="dg_3" width="73" height="96"/>
+      <Character name="4" resource="dg_4" width="78" height="96"/>
+      <Character name="5" resource="dg_5" width="76" height="96"/>
+      <Character name="6" resource="dg_6" width="76" height="96"/>
+      <Character name="7" resource="dg_7" width="66" height="96"/>
+      <Character name="8" resource="dg_8" width="77" height="96"/>
+      <Character name="9" resource="dg_9" width="74" height="96"/>
+      <Character name=":" resource="dg_colon" width="45" height="96"/>
+    </BitmapFont>
+    <BitmapFont name="outline">
+      <Character name="0" resource="da_0" width="77" height="96"/>
+      <Character name="1" resource="da_1" width="52" height="96"/>
+      <Character name="2" resource="da_2" width="69" height="96"/>
+      <Character name="3" resource="da_3" width="73" height="96"/>
+      <Character name="4" resource="da_4" width="78" height="96"/>
+      <Character name="5" resource="da_5" width="76" height="96"/>
+      <Character name="6" resource="da_6" width="76" height="96"/>
+      <Character name="7" resource="da_7" width="66" height="96"/>
+      <Character name="8" resource="da_8" width="77" height="96"/>
+      <Character name="9" resource="da_9" width="74" height="96"/>
+      <Character name=":" resource="da_colon" width="45" height="96"/>
+    </BitmapFont>
+  </BitmapFonts>
+  <Scene backgroundColor="#FF000000">
+    <Group name="bg_layer" x="0" y="0" width="450" height="450" alpha="255">
+      <Variant mode="AMBIENT" target="alpha" value="0"/>
+      <ListConfiguration id="theme">
+      <ListOption id="0">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_0"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="1">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_1"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="2">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_2"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="3">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_3"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="4">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_4"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="5">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_5"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="6">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_6"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="7">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="bg_7"/>
+        </PartImage>
+      </ListOption>
+      </ListConfiguration>
+    </Group>
+    <BooleanConfiguration id="stars">
+      <BooleanOption id="TRUE">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Image resource="stars"/>
+        </PartImage>
+      </BooleanOption>
+    </BooleanConfiguration>
+    <Group name="aod_layer" x="0" y="0" width="450" height="450" alpha="0">
+      <Variant mode="AMBIENT" target="alpha" value="255"/>
+      <ListConfiguration id="theme">
+      <ListOption id="0">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_0"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="1">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_1"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="2">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_2"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="3">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_3"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="4">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_4"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="5">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_5"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="6">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_6"/>
+        </PartImage>
+      </ListOption>
+      <ListOption id="7">
+        <PartImage x="0" y="0" width="450" height="450">
+          <Image resource="aod_7"/>
+        </PartImage>
+      </ListOption>
+      </ListConfiguration>
+    </Group>
+    <ComplicationSlot slotId="0" displayName="slot_lg" x="0" y="0" width="450" height="450" supportedTypes="RANGED_VALUE SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="STEP_COUNT" defaultSystemProviderType="SHORT_TEXT"/>
+      <BoundingBox x="8" y="40" width="112" height="150"/>
+      <Complication type="RANGED_VALUE">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="288.0" endAngle="338.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="150"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="288.0" endAngle="288.0">
+            <Transform target="endAngle" value="288 + 50 * clamp(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]), 0, 1)"/>
+            <Stroke color="#FFFFB020" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="9" y="180" width="22" height="22" tintColor="#FFFFB020">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="140" y="7" width="90" height="28" angle="349.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="288.0" endAngle="338.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="9" y="180" width="22" height="22" tintColor="#FFFFB020">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="140" y="7" width="90" height="28" angle="349.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+    <ComplicationSlot slotId="1" displayName="slot_pg" x="0" y="0" width="450" height="450" supportedTypes="RANGED_VALUE SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="HEART_RATE" defaultSystemProviderType="SHORT_TEXT"/>
+      <BoundingBox x="330" y="40" width="112" height="150"/>
+      <Complication type="RANGED_VALUE">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="22.0" endAngle="72.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="150"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="72.0" endAngle="72.0">
+            <Transform target="startAngle" value="72 - 50 * clamp(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]), 0, 1)"/>
+            <Stroke color="#FFFF6FB5" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="419" y="180" width="22" height="22" tintColor="#FFFF6FB5">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="220" y="7" width="90" height="28" angle="11.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="22.0" endAngle="72.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="419" y="180" width="22" height="22" tintColor="#FFFF6FB5">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="220" y="7" width="90" height="28" angle="11.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+    <ComplicationSlot slotId="2" displayName="slot_ld" x="0" y="0" width="450" height="450" supportedTypes="RANGED_VALUE SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY"/>
+      <BoundingBox x="8" y="260" width="112" height="150"/>
+      <Complication type="RANGED_VALUE">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="202.0" endAngle="252.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="150"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="252.0" endAngle="252.0">
+            <Transform target="startAngle" value="252 - 50 * clamp(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]), 0, 1)"/>
+            <Stroke color="#FF2FD6A6" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="9" y="248" width="22" height="22" tintColor="#FF2FD6A6">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="140" y="415" width="90" height="28" angle="11.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="202.0" endAngle="252.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="9" y="248" width="22" height="22" tintColor="#FF2FD6A6">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="140" y="415" width="90" height="28" angle="11.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+    <ComplicationSlot slotId="3" displayName="slot_pd" x="0" y="0" width="450" height="450" supportedTypes="RANGED_VALUE SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="WATCH_BATTERY" defaultSystemProviderType="RANGED_VALUE"/>
+      <BoundingBox x="330" y="260" width="112" height="150"/>
+      <Complication type="RANGED_VALUE">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="108.0" endAngle="158.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="150"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="108.0" endAngle="108.0">
+            <Transform target="endAngle" value="108 + 50 * clamp(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]), 0, 1)"/>
+            <Stroke color="#FF6C8BFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="419" y="248" width="22" height="22" tintColor="#FF6C8BFF">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="220" y="415" width="90" height="28" angle="-11.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="225" width="416" height="416" startAngle="108.0" endAngle="158.0">
+            <Stroke color="#26FFFFFF" thickness="8" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="419" y="248" width="22" height="22" tintColor="#FF6C8BFF">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="220" y="415" width="90" height="28" angle="-11.0">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="19" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+    <ComplicationSlot slotId="4" displayName="slot_dol" x="0" y="0" width="450" height="450" supportedTypes="RANGED_VALUE SHORT_TEXT" isCustomizable="TRUE">
+      <DefaultProviderPolicy defaultSystemProvider="EMPTY" defaultSystemProviderType="EMPTY"/>
+      <BoundingBox x="195" y="351" width="60" height="60"/>
+      <Complication type="RANGED_VALUE">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="381" width="44" height="44" startAngle="0.0" endAngle="360.0">
+            <Stroke color="#26FFFFFF" thickness="5" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Arc centerX="225" centerY="381" width="44" height="44" startAngle="0.0" endAngle="0.0">
+            <Transform target="endAngle" value="359.9 * clamp(([COMPLICATION.RANGED_VALUE_VALUE] - [COMPLICATION.RANGED_VALUE_MIN]) / ([COMPLICATION.RANGED_VALUE_MAX] - [COMPLICATION.RANGED_VALUE_MIN]), 0, 1)"/>
+            <Stroke color="#FF4BE08A" thickness="5" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="217" y="366" width="16" height="16" tintColor="#FF4BE08A">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="201" y="381" width="48" height="16">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="13" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+      <Complication type="SHORT_TEXT">
+        <PartDraw x="0" y="0" width="450" height="450">
+          <Variant mode="AMBIENT" target="alpha" value="0"/>
+          <Arc centerX="225" centerY="381" width="44" height="44" startAngle="0.0" endAngle="360.0">
+            <Stroke color="#26FFFFFF" thickness="5" cap="ROUND"/>
+          </Arc>
+        </PartDraw>
+        <PartImage x="217" y="366" width="16" height="16" tintColor="#FF4BE08A">
+          <Image resource="[COMPLICATION.MONOCHROMATIC_IMAGE]"/>
+        </PartImage>
+        <PartText x="201" y="381" width="48" height="16">
+          <Text align="CENTER" ellipsis="TRUE">
+            <Font family="SYNC_TO_DEVICE" size="13" weight="BOLD" color="#FFFFFFFF"><Template>%s<Parameter expression="[COMPLICATION.TEXT]"/></Template></Font>
+          </Text>
+        </PartText>
+      </Complication>
+    </ComplicationSlot>
+    <Group name="clock_glass" x="0" y="0" width="450" height="450">
+      <Variant mode="AMBIENT" target="alpha" value="0"/>
+      <DigitalClock x="30" y="112" width="390" height="96">
+        <TimeText format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER" x="0" y="0" width="390" height="96">
+          <BitmapFont family="glass" size="96"/>
+        </TimeText>
+      </DigitalClock>
+    </Group>
+    <Group name="clock_aod" x="0" y="0" width="450" height="450" alpha="0">
+      <Variant mode="AMBIENT" target="alpha" value="255"/>
+      <DigitalClock x="30" y="112" width="390" height="96">
+        <TimeText format="hh:mm" hourFormat="SYNC_TO_DEVICE" align="CENTER" x="0" y="0" width="390" height="96">
+          <BitmapFont family="outline" size="96"/>
+        </TimeText>
+      </DigitalClock>
+    </Group>
+    <PartText x="100" y="210" width="250" height="34">
+      <Variant mode="AMBIENT" target="alpha" value="170"/>
+      <Text align="CENTER">
+        <Font family="SYNC_TO_DEVICE" size="24" weight="BOLD" color="#E6FFFFFF"><Template>%s %s<Parameter expression="[DAY_OF_WEEK_S]"/><Parameter expression="[DAY]"/></Template></Font>
+      </Text>
+    </PartText>
+  </Scene>
+</WatchFace>

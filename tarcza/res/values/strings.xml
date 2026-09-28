@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="app_name">Szklane kapsuły</string>
+  <string name="cfg_theme">Kolor</string>
+  <string name="cfg_stars">Gwiazdki</string>
+  <string name="slot_lg">Lewy górny pasek</string>
+  <string name="slot_pg">Prawy górny pasek</string>
+  <string name="slot_ld">Lewy dolny pasek</string>
+  <string name="slot_pd">Prawy dolny pasek</string>
+  <string name="slot_dol">Kółko na dole</string>
+  <string name="pal_0">Pomarańcz</string>
+  <string name="pal_1">Magenta</string>
+  <string name="pal_2">Turkus</string>
+  <string name="pal_3">Indygo</string>
+  <string name="pal_4">Czerwień</string>
+  <string name="pal_5">Błękit</string>
+  <string name="pal_6">Bursztyn</string>
+  <string name="pal_7">Fiolet</string>
+</resources>

@@ -1,0 +1,29 @@
+name: Tarcza Watch 5 (WFF)
+on:
+  push:
+    branches: [ tarcza-watch5 ]
+    paths-ignore: [ 'out/**' ]
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency: { group: tarcza, cancel-in-progress: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Signing key cache
+        uses: actions/cache@v4
+        with: { path: ks, key: tarcza-signing-key-v1 }
+      - name: Install xmllint
+        run: sudo apt-get install -y -qq libxml2-utils >/dev/null
+      - name: Build APK
+        run: bash tools/build.sh 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Publish result to branch
+        if: always()
+        run: |
+          mkdir -p out && cp build.log out/build.log
+          git config user.name "tarcza-bot"; git config user.email "tarcza-bot@users.noreply.github.com"
+          git add out
+          git commit -m "[skip ci] build ${GITHUB_RUN_NUMBER}" || exit 0
+          git pull --rebase -q origin tarcza-watch5 && git push -q origin HEAD:tarcza-watch5
